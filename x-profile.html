@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X Profile Image - YAS AI SUPPORT</title>
+  <style>
+    :root {
+      --bg: #0d1f3c;
+      --gold: #f5a623;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #e9edf5;
+      font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    }
+
+    .avatar {
+      width: 400px;
+      height: 400px;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .network {
+      width: 210px;
+      height: 210px;
+      margin-top: 8px;
+    }
+
+    .text-wrap {
+      margin-top: 22px;
+      text-align: center;
+      letter-spacing: 0.08em;
+    }
+
+    .yas {
+      margin: 0;
+      font-weight: 700;
+      font-size: 42px;
+      line-height: 1;
+    }
+
+    .support {
+      margin: 8px 0 0;
+      font-weight: 600;
+      font-size: 20px;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="avatar" role="img" aria-label="YAS AI SUPPORT profile image">
+    <svg class="network" viewBox="0 0 240 240" aria-hidden="true">
+      <g stroke="#F5A623" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="120,32 183,68 183,140 120,176 57,140 57,68" stroke-width="4" />
+
+        <line x1="120" y1="32" x2="120" y2="176" stroke-width="2.8" />
+        <line x1="57" y1="68" x2="183" y2="140" stroke-width="2.8" />
+        <line x1="183" y1="68" x2="57" y2="140" stroke-width="2.8" />
+        <line x1="57" y1="68" x2="183" y2="68" stroke-width="2.8" />
+        <line x1="57" y1="140" x2="183" y2="140" stroke-width="2.8" />
+        <line x1="120" y1="32" x2="57" y2="140" stroke-width="2.8" />
+        <line x1="120" y1="32" x2="183" y2="140" stroke-width="2.8" />
+        <line x1="120" y1="176" x2="57" y2="68" stroke-width="2.8" />
+        <line x1="120" y1="176" x2="183" y2="68" stroke-width="2.8" />
+      </g>
+
+      <g fill="#F5A623">
+        <circle cx="120" cy="32" r="5.5" />
+        <circle cx="183" cy="68" r="5.5" />
+        <circle cx="183" cy="140" r="5.5" />
+        <circle cx="120" cy="176" r="5.5" />
+        <circle cx="57" cy="140" r="5.5" />
+        <circle cx="57" cy="68" r="5.5" />
+        <circle cx="120" cy="104" r="5.5" />
+      </g>
+    </svg>
+
+    <div class="text-wrap">
+      <p class="yas">YAS</p>
+      <p class="support">AI SUPPORT</p>
+    </div>
+  </div>
+</body>
+</html>

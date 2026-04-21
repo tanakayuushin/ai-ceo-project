@@ -1,0 +1,8 @@
+.env
+*.pdf
+*.jpg
+*.png
+__pycache__/
+*.pyc
+.cursor/
+.claude/

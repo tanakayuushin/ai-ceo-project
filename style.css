@@ -1,0 +1,261 @@
+:root {
+  --navy: #0f2a5a;
+  --navy-deep: #0a1c3d;
+  --white: #ffffff;
+  --bg-light: #f4f7fc;
+  --text: #1e2a3a;
+  --muted: #5d6c84;
+  --accent: #ffb400;
+  --border: #d9e1ef;
+  --shadow: 0 8px 20px rgba(15, 42, 90, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+  color: var(--text);
+  background-color: var(--white);
+  line-height: 1.7;
+}
+
+.container {
+  width: min(1080px, 92%);
+  margin: 0 auto;
+}
+
+.site-header {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+}
+
+.logo {
+  text-decoration: none;
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--navy-deep), var(--navy));
+  color: var(--white);
+  padding: 88px 0 72px;
+}
+
+.hero-content {
+  max-width: 760px;
+}
+
+.badge {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 14px;
+  line-height: 1.3;
+}
+
+h1 {
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+}
+
+h2 {
+  text-align: center;
+  color: var(--navy);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  margin-bottom: 34px;
+}
+
+h3 {
+  color: var(--navy);
+  font-size: 1.1rem;
+}
+
+.lead {
+  margin: 0 0 24px;
+  font-size: clamp(1rem, 2.2vw, 1.1rem);
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.section {
+  padding: 72px 0;
+}
+
+.section-alt {
+  background-color: var(--bg-light);
+}
+
+.card-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.services-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.pricing-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.testimonials-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.plan {
+  text-align: center;
+}
+
+.plan-name {
+  color: var(--navy);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.price {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--navy-deep);
+  margin: 0 0 6px;
+}
+
+.plan-detail {
+  color: var(--muted);
+}
+
+.featured-plan {
+  border: 2px solid var(--navy);
+  transform: translateY(-4px);
+}
+
+.section-contact {
+  background: var(--navy);
+  color: var(--white);
+}
+
+.contact-box {
+  text-align: center;
+}
+
+.section-contact h2 {
+  color: var(--white);
+}
+
+.section-contact p {
+  margin: 0 0 24px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.btn {
+  display: inline-block;
+  text-decoration: none;
+  border-radius: 999px;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-cta {
+  background: var(--accent);
+  color: #172133;
+  padding: 10px 20px;
+  box-shadow: 0 8px 16px rgba(255, 180, 0, 0.28);
+}
+
+.btn-large {
+  padding: 14px 28px;
+  font-size: 1.02rem;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.site-footer {
+  background: var(--navy-deep);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 28px 0;
+}
+
+.footer-content {
+  text-align: center;
+  font-size: 0.92rem;
+}
+
+.footer-content p {
+  margin: 4px 0;
+}
+
+@media (max-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pricing-grid,
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .featured-plan {
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav {
+    gap: 10px;
+  }
+
+  .logo {
+    font-size: 0.9rem;
+  }
+
+  .btn-cta {
+    padding: 10px 14px;
+    font-size: 0.88rem;
+  }
+
+  .hero {
+    padding-top: 72px;
+  }
+
+  .section {
+    padding: 56px 0;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+}
