@@ -3,116 +3,568 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>山口県の中小企業向けAI導入支援 | AIで、あなたの会社を進化させる</title>
-  <meta
-    name="description"
-    content="山口県の中小企業向けAI導入支援会社。FAQボット、メール自動化、業務効率化コンサル、AIエージェント開発を提供。無料相談受付中。"
-  />
-  <link rel="stylesheet" href="style.css" />
+  <title>Emport AI｜山口県の中小企業向けAI活用支援</title>
+  <meta name="description" content="山口県の中小企業がAIを「使える」形で導入するための支援会社。AI業務診断・導入コンサル・IT補助金サポートを提供。まずは無料相談から。" />
+  <style>
+    :root {
+      --navy: #1a2744;
+      --navy-light: #253461;
+      --gold: #c9a84c;
+      --gold-light: #e8c96d;
+      --white: #ffffff;
+      --gray-bg: #f5f6f8;
+      --gray-text: #555;
+      --border: #e0e0e0;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      color: #333;
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ヘッダー */
+    .site-header {
+      background: var(--navy);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      color: var(--white);
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo span {
+      color: var(--gold);
+    }
+
+    .btn-cta {
+      background: var(--gold);
+      color: var(--navy);
+      padding: 10px 22px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+
+    .btn-cta:hover { background: var(--gold-light); }
+
+    /* ヒーロー */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+      color: var(--white);
+      padding: 80px 0 70px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(201,168,76,0.2);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: 2.4rem;
+      line-height: 1.3;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 em {
+      color: var(--gold);
+      font-style: normal;
+    }
+
+    .lead {
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.85);
+      max-width: 600px;
+      margin: 0 auto 36px;
+    }
+
+    .btn-large {
+      display: inline-block;
+      padding: 16px 36px;
+      font-size: 1.05rem;
+      border-radius: 4px;
+    }
+
+    .sub-note {
+      margin-top: 14px;
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* セクション共通 */
+    .section {
+      padding: 72px 0;
+    }
+
+    .section-alt {
+      background: var(--gray-bg);
+    }
+
+    .section h2 {
+      text-align: center;
+      font-size: 1.8rem;
+      color: var(--navy);
+      margin-bottom: 12px;
+    }
+
+    .section-lead {
+      text-align: center;
+      color: var(--gray-text);
+      margin-bottom: 48px;
+      font-size: 0.95rem;
+    }
+
+    .underline {
+      display: block;
+      width: 48px;
+      height: 3px;
+      background: var(--gold);
+      margin: 12px auto 36px;
+      border-radius: 2px;
+    }
+
+    /* カードグリッド */
+    .card-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px 24px;
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+    }
+
+    .card h3 {
+      font-size: 1.05rem;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 0.9rem;
+      color: var(--gray-text);
+    }
+
+    /* 課題セクション */
+    .trouble-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .trouble-list li {
+      background: var(--white);
+      border-left: 4px solid var(--gold);
+      padding: 14px 18px;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.95rem;
+    }
+
+    .trouble-list li::before {
+      content: "□ ";
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .trouble-note {
+      text-align: center;
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    /* サービスカード */
+    .service-card {
+      border-top: 4px solid var(--gold);
+    }
+
+    .service-card .price-tag {
+      display: inline-block;
+      background: var(--navy);
+      color: var(--gold);
+      font-size: 0.8rem;
+      padding: 3px 10px;
+      border-radius: 3px;
+      margin-bottom: 12px;
+    }
+
+    /* フロー */
+    .flow-steps {
+      display: flex;
+      gap: 0;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .step {
+      flex: 1;
+      min-width: 160px;
+      text-align: center;
+      position: relative;
+      padding: 24px 16px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 0 4px;
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      background: var(--navy);
+      color: var(--gold);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin: 0 auto 12px;
+    }
+
+    .step h4 {
+      font-size: 0.9rem;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+
+    .step p {
+      font-size: 0.8rem;
+      color: var(--gray-text);
+    }
+
+    /* 補助金 */
+    .subsidy-box {
+      background: var(--white);
+      border: 2px solid var(--gold);
+      border-radius: 10px;
+      padding: 36px 40px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .subsidy-text h3 {
+      color: var(--navy);
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    .subsidy-text p {
+      color: var(--gray-text);
+      font-size: 0.92rem;
+    }
+
+    .subsidy-items {
+      list-style: none;
+    }
+
+    .subsidy-items li {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .subsidy-items li:last-child { border-bottom: none; }
+
+    .subsidy-items .rate {
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    /* お問い合わせ */
+    .contact-section {
+      background: var(--navy);
+      padding: 72px 0;
+      text-align: center;
+      color: var(--white);
+    }
+
+    .contact-section h2 {
+      color: var(--white);
+      font-size: 1.9rem;
+      margin-bottom: 12px;
+    }
+
+    .contact-section p {
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 36px;
+    }
+
+    .contact-options {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 32px;
+    }
+
+    .contact-option {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 20px 32px;
+      color: var(--white);
+      text-decoration: none;
+    }
+
+    .contact-option .label {
+      font-size: 0.8rem;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+
+    .contact-option .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    /* フッター */
+    .site-footer {
+      background: #0f1a30;
+      color: rgba(255,255,255,0.5);
+      padding: 28px 0;
+      text-align: center;
+      font-size: 0.82rem;
+    }
+
+    .site-footer a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    /* レスポンシブ */
+    @media (max-width: 700px) {
+      .hero h1 { font-size: 1.7rem; }
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      .trouble-list { grid-template-columns: 1fr; }
+      .subsidy-box { grid-template-columns: 1fr; }
+      .flow-steps { flex-direction: column; }
+      .step { margin: 4px 0; }
+    }
+  </style>
 </head>
 <body>
+
+  <!-- ヘッダー -->
   <header class="site-header">
     <div class="container nav">
-      <a href="#" class="logo">Yamaguchi AI Support</a>
-      <a href="#contact" class="btn btn-cta">無料相談はこちら</a>
+      <a href="#" class="logo">Emport <span>AI</span></a>
+      <a href="#contact" class="btn-cta">無料相談はこちら</a>
     </div>
   </header>
 
   <main>
+
+    <!-- ヒーロー -->
     <section class="hero">
-      <div class="container hero-content">
-        <p class="badge">山口県の中小企業向けAI導入支援</p>
-        <h1>AIで、あなたの会社を進化させる</h1>
+      <div class="container">
+        <p class="badge">山口県の中小企業向けAI活用支援</p>
+        <h1>「難しくない・高くない・<em>使えるAI</em>」を<br>地域の経営者へ。</h1>
         <p class="lead">
-          現場にフィットするAI活用で、日々の業務をもっと速く、もっと確実に。
-          導入から運用改善まで、伴走型でサポートします。
+          Emport AIは、山口県の中小企業がAIを現場で活かせる形で導入できるよう、
+          診断・提案・伴走支援まで一貫してサポートします。
         </p>
-        <a href="#contact" class="btn btn-cta btn-large">無料相談はこちら</a>
+        <a href="#contact" class="btn-cta btn-large">まずは無料相談（30分）</a>
+        <p class="sub-note">電話・メール・オンラインいずれも対応</p>
       </div>
     </section>
 
+    <!-- こんな課題ありませんか -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>こんな課題、ありませんか？</h2>
+        <span class="underline"></span>
+        <ul class="trouble-list">
+          <li>毎日同じメール返信や書類作成に時間がかかっている</li>
+          <li>AIを試したいが、何から始めればいいかわからない</li>
+          <li>人手不足で業務が追いつかなくなってきた</li>
+          <li>ITツールを入れたが使いこなせず放置している</li>
+          <li>他社がDXで進んでいるのに自社だけ取り残される不安</li>
+          <li>補助金でAI導入できると聞いたが手続きが面倒そう</li>
+        </ul>
+        <p class="trouble-note">→ それ、AIで解決できるかもしれません。まずご相談ください。</p>
+      </div>
+    </section>
+
+    <!-- サービス -->
     <section class="section" id="services">
       <div class="container">
         <h2>サービス内容</h2>
-        <div class="card-grid services-grid">
-          <article class="card">
-            <h3>社内FAQボット構築</h3>
-            <p>Difyを活用し、社内問い合わせを自動化。情報共有のスピードを向上します。</p>
-          </article>
-          <article class="card">
-            <h3>メール自動化</h3>
-            <p>n8nを用いて定型メール業務を自動化し、対応漏れや工数を削減します。</p>
-          </article>
-          <article class="card">
-            <h3>業務効率化コンサルティング</h3>
-            <p>業務フローを分析し、AI導入で効果が高い領域を明確にして改善します。</p>
-          </article>
-          <article class="card">
-            <h3>AIエージェント開発</h3>
-            <p>Claude Codeを活用したカスタムAIエージェントで、業務プロセスを高度化します。</p>
-          </article>
+        <span class="underline"></span>
+        <div class="card-grid grid-3">
+          <div class="card service-card">
+            <div class="card-icon">&#128269;</div>
+            <span class="price-tag">5〜10万円</span>
+            <h3>AI業務診断</h3>
+            <p>半日で御社の業務フローを拝見し、AIで改善できるポイントをレポートにまとめてお渡しします。補助金活用で実質負担を抑えられます。</p>
+          </div>
+          <div class="card service-card">
+            <div class="card-icon">&#128200;</div>
+            <span class="price-tag">要お見積り</span>
+            <h3>AI導入コンサルティング</h3>
+            <p>診断結果をもとに最適なAIツールを選定・導入。現場に合わせたカスタマイズで「入れただけ」で終わらない支援をします。</p>
+          </div>
+          <div class="card service-card">
+            <div class="card-icon">&#128176;</div>
+            <span class="price-tag">無料サポート</span>
+            <h3>IT補助金申請サポート</h3>
+            <p>IT導入補助金・持続化補助金など、AI導入に使える補助金の選定から申請書類作成まで並走します。</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="section section-alt" id="pricing">
+    <!-- 導入の流れ -->
+    <section class="section section-alt" id="flow">
       <div class="container">
-        <h2>料金プラン</h2>
-        <div class="card-grid pricing-grid">
-          <article class="card plan">
-            <p class="plan-name">ライトプラン</p>
-            <p class="price">月3万円</p>
-            <p class="plan-detail">FAQボット1本</p>
-          </article>
-          <article class="card plan featured-plan">
-            <p class="plan-name">スタンダードプラン</p>
-            <p class="price">月8万円</p>
-            <p class="plan-detail">ボット2本 + 改善</p>
-          </article>
-          <article class="card plan">
-            <p class="plan-name">プレミアムプラン</p>
-            <p class="price">月20万円</p>
-            <p class="plan-detail">カスタムAIエージェント</p>
-          </article>
+        <h2>導入の流れ</h2>
+        <span class="underline"></span>
+        <div class="flow-steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <h4>無料相談（30分）</h4>
+            <p>現状の課題と目標をヒアリング。オンライン・対面どちらでも対応。</p>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <h4>AI業務診断</h4>
+            <p>業務フローを可視化し、AI活用のポイントをレポートに整理。</p>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <h4>提案・お見積り</h4>
+            <p>最適なAIツールと導入スケジュールをご提案。補助金も試算。</p>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <h4>導入・設定</h4>
+            <p>ツール設定・現場へのレクチャーまで対応。迷ったらすぐ聞けます。</p>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <h4>定着・改善支援</h4>
+            <p>導入後も継続的にサポート。使いこなせるまで伴走します。</p>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="section" id="results">
+    <!-- 補助金 -->
+    <section class="section" id="subsidy">
       <div class="container">
-        <h2>実績・お客様の声</h2>
-        <div class="card-grid testimonials-grid">
-          <article class="card">
-            <h3>製造業A社</h3>
-            <p>FAQボット導入後、社内問い合わせ対応時間を約40%削減。</p>
-          </article>
-          <article class="card">
-            <h3>小売業B社</h3>
-            <p>「メール自動化で担当者の残業が減り、顧客対応の質も向上しました。」</p>
-          </article>
-          <article class="card">
-            <h3>サービス業C社</h3>
-            <p>「業務改善の提案が具体的で、AI導入を安心して進められました。」</p>
-          </article>
+        <h2>補助金を活用してコストを抑える</h2>
+        <span class="underline"></span>
+        <div class="subsidy-box">
+          <div class="subsidy-text">
+            <h3>AI導入費用の<br>最大2/3が補助対象に</h3>
+            <p>
+              国・県のIT補助金を活用すれば、AI導入にかかる費用の大部分を補助金でまかなえる場合があります。
+              申請手続きもEmport AIがサポートします。
+            </p>
+          </div>
+          <ul class="subsidy-items">
+            <li>
+              <span>IT導入補助金（国）</span>
+              <span class="rate">最大2/3補助</span>
+            </li>
+            <li>
+              <span>小規模事業者持続化補助金</span>
+              <span class="rate">最大2/3補助</span>
+            </li>
+            <li>
+              <span>ものづくり補助金</span>
+              <span class="rate">最大1/2補助</span>
+            </li>
+            <li>
+              <span>山口県独自支援策</span>
+              <span class="rate">要確認</span>
+            </li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section class="section section-contact" id="contact">
-      <div class="container contact-box">
-        <h2>まずは無料でご相談ください</h2>
-        <p>課題整理から導入イメージ作成まで、初回相談は無料です。</p>
-        <a href="mailto:info@example.co.jp" class="btn btn-cta btn-large">無料相談はこちら</a>
+    <!-- お問い合わせ -->
+    <section class="contact-section" id="contact">
+      <div class="container">
+        <h2>まずは気軽にご相談ください</h2>
+        <p>「AIって自社には関係ない」と思っていた経営者ほど、<br>実は一番効果が出やすいです。30分だけ話を聞かせてください。</p>
+        <a href="mailto:tsubeyou081@gmail.com" class="btn-cta btn-large">無料メール相談はこちら</a>
+        <div class="contact-options">
+          <div class="contact-option">
+            <div class="label">メール</div>
+            <div class="value">tsubeyou081@gmail.com</div>
+          </div>
+          <div class="contact-option">
+            <div class="label">電話番号</div>
+            <div class="value">（準備中）</div>
+          </div>
+          <a href="https://x.com/AI_chuusyou" target="_blank" class="contact-option">
+            <div class="label">X（旧Twitter）</div>
+            <div class="value">@AI_chuusyou</div>
+          </a>
+        </div>
       </div>
     </section>
+
   </main>
 
+  <!-- フッター -->
   <footer class="site-footer">
-    <div class="container footer-content">
-      <p>Yamaguchi AI Support</p>
-      <p>お問い合わせ: info@example.co.jp / 083-000-0000</p>
-      <p>山口県山口市〇〇町1-2-3</p>
+    <div class="container">
+      <p>Emport AI &nbsp;|&nbsp; 山口県 &nbsp;|&nbsp; <a href="mailto:tsubeyou081@gmail.com">tsubeyou081@gmail.com</a> &nbsp;|&nbsp; <a href="https://x.com/AI_chuusyou" target="_blank">@AI_chuusyou</a></p>
+      <p style="margin-top:8px;">&copy; 2026 Emport AI. All rights reserved.</p>
     </div>
   </footer>
+
 </body>
 </html>
