@@ -3,230 +3,224 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI問い合わせ分析ツール</title>
+  <title>AI問い合わせ分析ツール | Emport AI</title>
   <style>
-    :root {
-      --bg: #0d1f3c;
-      --card: #132a51;
-      --accent: #f5a623;
-      --text: #f8fbff;
-      --muted: #ced9eb;
-      --border: rgba(245, 166, 35, 0.35);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
-      font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.7;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: #0f1c35;
+      color: #e8eaf0;
+      min-height: 100vh;
+      padding: 32px 16px;
     }
 
-    .container {
-      width: min(920px, 92%);
-      margin: 0 auto;
-      padding: 28px 0 40px;
-    }
+    .container { max-width: 760px; margin: 0 auto; }
 
     h1 {
-      margin: 0 0 20px;
-      color: var(--accent);
       text-align: center;
-      font-size: clamp(1.5rem, 4vw, 2.1rem);
+      font-size: 1.7rem;
+      font-weight: 900;
+      color: #f0b429;
+      margin-bottom: 28px;
+      letter-spacing: -0.5px;
     }
 
+    /* タブ */
     .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 14px;
+      display: flex;
+      border-bottom: 1px solid #2a3f60;
+      margin-bottom: 24px;
     }
 
-    .tab {
-      display: block;
-      text-align: center;
-      text-decoration: none;
-      background: #0f2243;
-      color: var(--muted);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      padding: 10px 12px;
+    .tab-btn {
+      flex: 1;
+      padding: 14px;
+      background: none;
+      border: none;
+      color: #8a9bbf;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .tab-btn.active {
+      color: #f0b429;
+      border-bottom-color: #f0b429;
+    }
+
+    .tab-btn:hover:not(.active) { color: #c8d4e8; }
+
+    /* カード */
+    .card {
+      background: #162040;
+      border: 1px solid #2a3f60;
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      color: #a8c0e0;
+      margin-bottom: 14px;
       font-weight: 700;
     }
 
-    .tab.active {
-      color: #1a2332;
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
-    }
-
+    /* フォーム */
     label {
       display: block;
-      margin-bottom: 8px;
-      font-weight: 700;
-      color: var(--muted);
+      font-size: 0.85rem;
+      color: #8a9bbf;
+      margin-bottom: 6px;
+      font-weight: 500;
     }
 
     textarea {
       width: 100%;
-      min-height: 220px;
-      resize: vertical;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background: #0f2243;
-      color: var(--text);
-      font-size: 1rem;
-      padding: 14px;
-      outline: none;
-    }
-
-    textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
-    }
-
-    .actions {
-      margin-top: 14px;
-    }
-
-    button {
-      background: var(--accent);
-      color: #1a2332;
-      border: none;
-      border-radius: 999px;
-      padding: 12px 24px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.2s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    .error {
-      margin-top: 14px;
-      padding: 10px 12px;
+      min-height: 140px;
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
       border-radius: 8px;
-      background: rgba(255, 70, 70, 0.16);
-      color: #ffdada;
-      border: 1px solid rgba(255, 130, 130, 0.35);
-    }
-
-    .result {
-      margin-top: 22px;
-    }
-
-    .result h2 {
-      margin: 0 0 10px;
-      color: var(--accent);
-      font-size: 1.2rem;
-    }
-
-    .row {
-      margin: 10px 0;
-      color: var(--muted);
-    }
-
-    .row strong {
-      color: var(--text);
-      margin-right: 8px;
-    }
-
-    .reply {
-      margin-top: 10px;
-      background: #0f2243;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 10px;
-      padding: 12px;
-      white-space: pre-wrap;
-      color: var(--text);
-    }
-
-    ol {
-      margin: 8px 0 0 20px;
-      color: var(--text);
-    }
-
-    .post-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 12px;
-    }
-
-    .post-card {
-      background: #0f2243;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 10px;
-      padding: 12px;
-    }
-
-    .post-title {
-      margin: 0 0 8px;
-      color: var(--accent);
+      color: #e8eaf0;
       font-size: 0.95rem;
-      font-weight: 700;
+      font-family: inherit;
+      padding: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
     }
 
-    .post-text {
-      margin: 0 0 10px;
-      white-space: pre-wrap;
-      color: var(--text);
-      min-height: 130px;
-    }
+    textarea:focus { border-color: #f0b429; }
 
-    .copy-btn {
-      width: 100%;
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f0b429;
+      color: #0f1c35;
+      border: none;
+      padding: 12px 28px;
       border-radius: 8px;
-      padding: 9px 10px;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
+      font-weight: 900;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 14px;
+      transition: background 0.2s;
     }
 
-    @media (max-width: 600px) {
-      .container {
-        width: 94%;
-        padding-top: 20px;
-      }
+    .btn:hover { background: #fbbf24; }
 
-      .card {
-        padding: 14px;
-      }
-
-      textarea {
-        min-height: 180px;
-      }
-
-      button {
-        width: 100%;
-      }
-
-      .tabs {
-        grid-template-columns: 1fr;
-      }
+    /* エラー */
+    .error-box {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: #fca5a5;
+      font-size: 0.88rem;
+      margin-top: 14px;
     }
 
-    @media (max-width: 860px) {
-      .post-grid {
-        grid-template-columns: 1fr;
-      }
+    /* 分析結果 */
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
 
-      .post-text {
-        min-height: auto;
-      }
+    .result-chip {
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
+      border-radius: 8px;
+      padding: 12px 16px;
+    }
+
+    .result-chip .chip-label {
+      font-size: 0.75rem;
+      color: #8a9bbf;
+      margin-bottom: 4px;
+    }
+
+    .result-chip .chip-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f0b429;
+    }
+
+    .urgency-高 { color: #f87171; }
+    .urgency-中 { color: #fbbf24; }
+    .urgency-低 { color: #6ee7b7; }
+
+    .reply-box {
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 0.92rem;
+      line-height: 1.75;
+      color: #c8d4e8;
+      white-space: pre-wrap;
+      margin-bottom: 14px;
+    }
+
+    .summary-list { list-style: none; }
+
+    .summary-list li {
+      padding: 8px 0;
+      border-bottom: 1px solid #1e3050;
+      font-size: 0.88rem;
+      color: #a8c0e0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .summary-list li::before {
+      content: "▸";
+      color: #f0b429;
+      flex-shrink: 0;
+    }
+
+    /* X投稿 */
+    .x-post-card {
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .x-post-num {
+      font-size: 0.75rem;
+      color: #f0b429;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .x-post-text {
+      font-size: 0.92rem;
+      line-height: 1.75;
+      color: #c8d4e8;
+    }
+
+    .x-char-count {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #8a9bbf;
+      margin-top: 6px;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    @media (max-width: 560px) {
+      .result-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -234,101 +228,103 @@
   <div class="container">
     <h1>AI問い合わせ分析ツール</h1>
 
+    <!-- タブ -->
     <div class="tabs">
-      <a href="/?tab=inquiry" class="tab {% if active_tab == 'inquiry' %}active{% endif %}">問い合わせ分析</a>
-      <a href="/?tab=xpost" class="tab {% if active_tab == 'xpost' %}active{% endif %}">X投稿文生成</a>
+      <button class="tab-btn {% if active_tab == 'inquiry' %}active{% endif %}"
+              onclick="location.href='/?tab=inquiry'">
+        問い合わせ分析
+      </button>
+      <button class="tab-btn {% if active_tab == 'xpost' %}active{% endif %}"
+              onclick="location.href='/?tab=xpost'">
+        X投稿文生成
+      </button>
     </div>
 
-    {% if active_tab == "inquiry" %}
-      <section class="card">
-        <form method="post">
-          <input type="hidden" name="action" value="inquiry" />
-          <label for="inquiry">問い合わせ入力欄</label>
-          <textarea
-            id="inquiry"
-            name="inquiry"
-            placeholder="問い合わせ内容を入力してください..."
-          >{{ inquiry_text }}</textarea>
-          <div class="actions">
-            <button type="submit">分析する</button>
-          </div>
-        </form>
+    <!-- ========== 問い合わせ分析タブ ========== -->
+    {% if active_tab == 'inquiry' or active_tab == '' %}
+    <div class="card">
+      <h2>問い合わせ入力欄</h2>
+      <form method="POST">
+        <input type="hidden" name="action" value="inquiry" />
+        <label for="inquiry">顧客からの問い合わせ文を貼り付けてください</label>
+        <textarea id="inquiry" name="inquiry" placeholder="例）先日発注した商品がまだ届きません。注文番号は12345です。至急確認をお願いします。">{{ inquiry_text }}</textarea>
+        <button type="submit" class="btn">&#9889; 分析する</button>
+      </form>
 
-        {% if inquiry_error %}
-        <div class="error">{{ inquiry_error }}</div>
-        {% endif %}
-      </section>
-
-      {% if inquiry_result %}
-      <section class="card result">
-        <h2>分析結果</h2>
-        <p class="row"><strong>種類:</strong>{{ inquiry_result.category }}</p>
-        <p class="row"><strong>緊急度:</strong>{{ inquiry_result.urgency }}</p>
-
-        <div class="row">
-          <strong>返信文:</strong>
-          <div class="reply">{{ inquiry_result.reply }}</div>
-        </div>
-
-        <div class="row">
-          <strong>3行要約:</strong>
-          <ol>
-            <li>{{ inquiry_result.summary[0] }}</li>
-            <li>{{ inquiry_result.summary[1] }}</li>
-            <li>{{ inquiry_result.summary[2] }}</li>
-          </ol>
-        </div>
-      </section>
+      {% if inquiry_error %}
+      <div class="error-box">{{ inquiry_error }}</div>
       {% endif %}
+    </div>
+
+    {% if inquiry_result %}
+    <div class="card">
+      <h2>分析結果</h2>
+      <div class="result-grid">
+        <div class="result-chip">
+          <div class="chip-label">カテゴリ</div>
+          <div class="chip-value">{{ inquiry_result.category }}</div>
+        </div>
+        <div class="result-chip">
+          <div class="chip-label">緊急度</div>
+          <div class="chip-value urgency-{{ inquiry_result.urgency }}">
+            {{ inquiry_result.urgency }}
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom:10px;">返信文（案）</h2>
+      <div class="reply-box">{{ inquiry_result.reply }}</div>
+
+      <h2 style="margin-bottom:10px;">要約（3行）</h2>
+      <ul class="summary-list">
+        {% for line in inquiry_result.summary %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     {% endif %}
 
-    {% if active_tab == "xpost" %}
-      <section class="card">
-        <form method="post">
-          <input type="hidden" name="action" value="xpost" />
-          <label for="work_text">今日やったこと</label>
-          <textarea id="work_text" name="work_text" placeholder="例: 顧客ヒアリングを3社実施し、AI導入課題を整理した。">{{ work_text }}</textarea>
-
-          <label for="learning_text" style="margin-top: 12px;">学んだこと</label>
-          <textarea id="learning_text" name="learning_text" placeholder="例: 小さくPoCを回す方が中小企業では定着しやすい。">{{ learning_text }}</textarea>
-
-          <div class="actions">
-            <button type="submit">分析する</button>
+    <!-- ========== X投稿文生成タブ ========== -->
+    {% if active_tab == 'xpost' %}
+    <div class="card">
+      <h2>今日の活動を入力</h2>
+      <form method="POST">
+        <input type="hidden" name="action" value="xpost" />
+        <div class="form-row">
+          <div>
+            <label for="work_text">今日やったこと</label>
+            <textarea id="work_text" name="work_text" style="min-height:100px;"
+              placeholder="例）山口商工会議所に電話でセミナー提案を打診した">{{ work_text }}</textarea>
           </div>
-        </form>
-
-        {% if x_error %}
-        <div class="error">{{ x_error }}</div>
-        {% endif %}
-      </section>
-
-      {% if x_posts %}
-      <section class="card result">
-        <h2>X投稿文 3パターン</h2>
-        <div class="post-grid">
-          {% for post in x_posts %}
-          <article class="post-card">
-            <p class="post-title">パターン {{ loop.index }}</p>
-            <p id="post-{{ loop.index }}" class="post-text">{{ post }}</p>
-            <button type="button" class="copy-btn" onclick="copyPost('post-{{ loop.index }}', this)">コピー</button>
-          </article>
-          {% endfor %}
+          <div>
+            <label for="learning_text">学んだこと</label>
+            <textarea id="learning_text" name="learning_text" style="min-height:100px;"
+              placeholder="例）中小企業はAI導入より補助金申請の方が関心が高いとわかった">{{ learning_text }}</textarea>
+          </div>
         </div>
-      </section>
+        <button type="submit" class="btn">&#9998; 投稿文を生成する</button>
+      </form>
+
+      {% if x_error %}
+      <div class="error-box">{{ x_error }}</div>
       {% endif %}
+    </div>
+
+    {% if x_posts %}
+    <div class="card">
+      <h2>生成された投稿文（3パターン）</h2>
+      {% for post in x_posts %}
+      <div class="x-post-card">
+        <div class="x-post-num">パターン {{ loop.index }}</div>
+        <div class="x-post-text">{{ post }}</div>
+        <div class="x-char-count">{{ post | length }}文字</div>
+      </div>
+      {% endfor %}
+    </div>
     {% endif %}
+    {% endif %}
+
   </div>
-  <script>
-    function copyPost(id, btn) {
-      const text = document.getElementById(id).innerText;
-      navigator.clipboard.writeText(text).then(function () {
-        const original = btn.innerText;
-        btn.innerText = "コピー済み";
-        setTimeout(function () {
-          btn.innerText = original;
-        }, 1200);
-      });
-    }
-  </script>
 </body>
 </html>
