@@ -3,565 +3,963 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Emport AI｜山口県の中小企業向けAI活用支援</title>
-  <meta name="description" content="山口県の中小企業がAIを「使える」形で導入するための支援会社。AI業務診断・導入コンサル・IT補助金サポートを提供。まずは無料相談から。" />
+  <title>Emport AI｜山口県の中小企業をAIで強くする</title>
+  <meta name="description" content="山口県の中小企業専門のAI活用支援。業務診断から導入・定着まで伴走。IT補助金サポートで初期費用を大幅に抑えられます。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --navy: #1a2744;
-      --navy-light: #253461;
-      --gold: #c9a84c;
-      --gold-light: #e8c96d;
+      --indigo: #4338ca;
+      --indigo-dark: #312e81;
+      --indigo-light: #6366f1;
+      --amber: #f59e0b;
+      --amber-light: #fbbf24;
       --white: #ffffff;
-      --gray-bg: #f5f6f8;
-      --gray-text: #555;
-      --border: #e0e0e0;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-500: #64748b;
+      --slate-700: #334155;
+      --slate-900: #0f172a;
+      --radius: 12px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
-      color: #333;
+      font-family: 'Noto Sans JP', sans-serif;
+      color: var(--slate-700);
+      background: var(--white);
       line-height: 1.7;
+      font-size: 16px;
     }
 
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
-    /* ヘッダー */
-    .site-header {
-      background: var(--navy);
-      padding: 16px 0;
+    /* ========== HEADER ========== */
+    header {
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--slate-200);
     }
 
-    .nav {
+    .header-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      height: 64px;
     }
 
     .logo {
-      color: var(--white);
-      font-size: 1.3rem;
-      font-weight: 700;
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--indigo-dark);
       text-decoration: none;
-      display: flex;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: var(--indigo-light); }
+
+    nav { display: flex; align-items: center; gap: 32px; }
+
+    nav a {
+      font-size: 0.875rem;
+      color: var(--slate-500);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--indigo); }
+
+    .btn {
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
-    }
-
-    .logo span {
-      color: var(--gold);
-    }
-
-    .btn-cta {
-      background: var(--gold);
-      color: var(--navy);
-      padding: 10px 22px;
-      border-radius: 4px;
-      text-decoration: none;
+      justify-content: center;
+      padding: 10px 24px;
+      border-radius: 8px;
       font-weight: 700;
       font-size: 0.9rem;
-      transition: background 0.2s;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
     }
 
-    .btn-cta:hover { background: var(--gold-light); }
-
-    /* ヒーロー */
-    .hero {
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    .btn-primary {
+      background: var(--indigo);
       color: var(--white);
-      padding: 80px 0 70px;
-      text-align: center;
+    }
+    .btn-primary:hover { background: var(--indigo-dark); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(67,56,202,0.35); }
+
+    .btn-outline {
+      border: 2px solid var(--indigo);
+      color: var(--indigo);
+      background: transparent;
+    }
+    .btn-outline:hover { background: var(--indigo); color: var(--white); }
+
+    .btn-lg { padding: 16px 40px; font-size: 1rem; border-radius: 10px; }
+
+    /* ========== HERO ========== */
+    .hero {
+      background: linear-gradient(160deg, var(--slate-900) 0%, var(--indigo-dark) 60%, #1e1b4b 100%);
+      color: var(--white);
+      padding: 100px 0 90px;
+      position: relative;
+      overflow: hidden;
     }
 
-    .badge {
-      display: inline-block;
-      background: rgba(201,168,76,0.2);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      margin-bottom: 24px;
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -100px; right: -100px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; left: -80px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-inner { position: relative; z-index: 1; text-align: center; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,102,241,0.2);
+      border: 1px solid rgba(99,102,241,0.5);
+      color: #a5b4fc;
+      padding: 6px 18px;
+      border-radius: 100px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 28px;
+      letter-spacing: 0.5px;
     }
 
     .hero h1 {
-      font-size: 2.4rem;
-      line-height: 1.3;
-      margin-bottom: 20px;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900;
+      line-height: 1.25;
+      margin-bottom: 24px;
+      letter-spacing: -1px;
     }
 
-    .hero h1 em {
-      color: var(--gold);
-      font-style: normal;
+    .hero h1 .highlight {
+      color: var(--amber-light);
+      position: relative;
     }
 
-    .lead {
+    .hero-sub {
       font-size: 1.05rem;
-      color: rgba(255,255,255,0.85);
-      max-width: 600px;
-      margin: 0 auto 36px;
+      color: rgba(255,255,255,0.75);
+      max-width: 560px;
+      margin: 0 auto 44px;
+      line-height: 1.8;
     }
 
-    .btn-large {
-      display: inline-block;
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-hero-primary {
+      background: var(--amber);
+      color: var(--slate-900);
+      padding: 18px 44px;
+      border-radius: 10px;
+      font-weight: 900;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 4px 24px rgba(245,158,11,0.4);
+    }
+    .btn-hero-primary:hover { background: var(--amber-light); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(245,158,11,0.5); }
+
+    .btn-hero-outline {
+      border: 2px solid rgba(255,255,255,0.3);
+      color: var(--white);
       padding: 16px 36px;
-      font-size: 1.05rem;
-      border-radius: 4px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.2s;
+      backdrop-filter: blur(4px);
+      background: rgba(255,255,255,0.05);
+    }
+    .btn-hero-outline:hover { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 56px;
+      margin-top: 60px;
+      padding-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      flex-wrap: wrap;
     }
 
-    .sub-note {
-      margin-top: 14px;
-      font-size: 0.82rem;
-      color: rgba(255,255,255,0.6);
+    .stat-item { text-align: center; }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--amber-light);
+      letter-spacing: -1px;
+      display: block;
     }
 
-    /* セクション共通 */
-    .section {
-      padding: 72px 0;
+    .stat-label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.55);
+      margin-top: 4px;
     }
 
-    .section-alt {
-      background: var(--gray-bg);
+    /* ========== PAIN SECTION ========== */
+    .pain {
+      padding: 88px 0;
+      background: var(--slate-50);
     }
 
-    .section h2 {
+    .section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--indigo);
+      letter-spacing: 2px;
+      text-transform: uppercase;
       text-align: center;
-      font-size: 1.8rem;
-      color: var(--navy);
       margin-bottom: 12px;
     }
 
-    .section-lead {
+    .section-title {
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 900;
+      color: var(--slate-900);
       text-align: center;
-      color: var(--gray-text);
-      margin-bottom: 48px;
+      line-height: 1.35;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--slate-500);
+      max-width: 520px;
+      margin: 0 auto 52px;
       font-size: 0.95rem;
     }
 
-    .underline {
-      display: block;
-      width: 48px;
-      height: 3px;
-      background: var(--gold);
-      margin: 12px auto 36px;
-      border-radius: 2px;
+    .pain-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
     }
 
-    /* カードグリッド */
-    .card-grid {
+    .pain-card {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      transition: box-shadow 0.2s;
+    }
+
+    .pain-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .pain-icon {
+      width: 36px;
+      height: 36px;
+      background: #ede9fe;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .pain-text {
+      font-size: 0.88rem;
+      color: var(--slate-700);
+      line-height: 1.6;
+      font-weight: 500;
+    }
+
+    .pain-cta {
+      text-align: center;
+      margin-top: 40px;
+      padding: 24px;
+      background: linear-gradient(135deg, #ede9fe, #e0e7ff);
+      border-radius: var(--radius);
+    }
+
+    .pain-cta p {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--indigo-dark);
+    }
+
+    /* ========== SERVICES ========== */
+    .services { padding: 88px 0; }
+
+    .service-cards {
       display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .service-card {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 16px;
+      padding: 36px 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s;
+    }
+
+    .service-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.1); }
+
+    .service-card.featured {
+      background: linear-gradient(160deg, var(--indigo-dark), var(--indigo));
+      color: var(--white);
+      border-color: transparent;
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--indigo), var(--indigo-light));
+    }
+
+    .service-card.featured::before { background: linear-gradient(90deg, var(--amber), var(--amber-light)); }
+
+    .service-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--indigo);
+      letter-spacing: 1.5px;
+      margin-bottom: 16px;
+    }
+
+    .service-card.featured .service-num { color: var(--amber-light); }
+
+    .service-emoji { font-size: 2.2rem; margin-bottom: 16px; display: block; }
+
+    .service-card h3 {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: var(--slate-900);
+      margin-bottom: 12px;
+    }
+
+    .service-card.featured h3 { color: var(--white); }
+
+    .service-card p {
+      font-size: 0.875rem;
+      color: var(--slate-500);
+      line-height: 1.8;
+    }
+
+    .service-card.featured p { color: rgba(255,255,255,0.75); }
+
+    .service-tag {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 5px 14px;
+      background: #ede9fe;
+      color: var(--indigo);
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .service-card.featured .service-tag { background: rgba(245,158,11,0.2); color: var(--amber-light); }
+
+    /* ========== WHY ========== */
+    .why {
+      padding: 88px 0;
+      background: var(--slate-50);
+    }
+
+    .why-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
 
-    .grid-3 { grid-template-columns: repeat(3, 1fr); }
-    .grid-2 { grid-template-columns: repeat(2, 1fr); }
-
-    .card {
+    .why-item {
       background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 28px 24px;
-    }
-
-    .card-icon {
-      font-size: 2rem;
-      margin-bottom: 12px;
-    }
-
-    .card h3 {
-      font-size: 1.05rem;
-      color: var(--navy);
-      margin-bottom: 8px;
-    }
-
-    .card p {
-      font-size: 0.9rem;
-      color: var(--gray-text);
-    }
-
-    /* 課題セクション */
-    .trouble-list {
-      list-style: none;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-bottom: 36px;
-    }
-
-    .trouble-list li {
-      background: var(--white);
-      border-left: 4px solid var(--gold);
-      padding: 14px 18px;
-      border-radius: 0 6px 6px 0;
-      font-size: 0.95rem;
-    }
-
-    .trouble-list li::before {
-      content: "□ ";
-      color: var(--gold);
-      font-weight: 700;
-    }
-
-    .trouble-note {
-      text-align: center;
-      color: var(--navy);
-      font-weight: 700;
-      font-size: 1.05rem;
-    }
-
-    /* サービスカード */
-    .service-card {
-      border-top: 4px solid var(--gold);
-    }
-
-    .service-card .price-tag {
-      display: inline-block;
-      background: var(--navy);
-      color: var(--gold);
-      font-size: 0.8rem;
-      padding: 3px 10px;
-      border-radius: 3px;
-      margin-bottom: 12px;
-    }
-
-    /* フロー */
-    .flow-steps {
+      border-radius: var(--radius);
+      padding: 28px;
       display: flex;
-      gap: 0;
-      align-items: stretch;
-      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-start;
+      border: 1px solid var(--slate-200);
     }
 
-    .step {
-      flex: 1;
-      min-width: 160px;
-      text-align: center;
-      position: relative;
-      padding: 24px 16px;
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin: 0 4px;
-    }
-
-    .step-num {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      color: var(--gold);
-      border-radius: 50%;
+    .why-num {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--indigo), var(--indigo-light));
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 0.9rem;
-      margin: 0 auto 12px;
+      color: var(--white);
+      font-weight: 900;
+      font-size: 1rem;
+      flex-shrink: 0;
     }
 
-    .step h4 {
-      font-size: 0.9rem;
-      color: var(--navy);
+    .why-item h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--slate-900);
       margin-bottom: 6px;
     }
 
-    .step p {
-      font-size: 0.8rem;
-      color: var(--gray-text);
+    .why-item p {
+      font-size: 0.875rem;
+      color: var(--slate-500);
+      line-height: 1.75;
     }
 
-    /* 補助金 */
-    .subsidy-box {
-      background: var(--white);
-      border: 2px solid var(--gold);
-      border-radius: 10px;
-      padding: 36px 40px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    /* ========== PROCESS ========== */
+    .process { padding: 88px 0; }
+
+    .process-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .process-steps::before {
+      content: '';
+      position: absolute;
+      left: 26px;
+      top: 52px;
+      bottom: 52px;
+      width: 2px;
+      background: linear-gradient(180deg, var(--indigo), var(--indigo-light));
+    }
+
+    .process-step {
+      display: flex;
       gap: 24px;
+      align-items: flex-start;
+      padding: 24px 0;
+    }
+
+    .process-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--white);
+      border: 3px solid var(--indigo);
+      display: flex;
       align-items: center;
-    }
-
-    .subsidy-text h3 {
-      color: var(--navy);
-      font-size: 1.3rem;
-      margin-bottom: 12px;
-    }
-
-    .subsidy-text p {
-      color: var(--gray-text);
-      font-size: 0.92rem;
-    }
-
-    .subsidy-items {
-      list-style: none;
-    }
-
-    .subsidy-items li {
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .subsidy-items li:last-child { border-bottom: none; }
-
-    .subsidy-items .rate {
-      color: var(--gold);
-      font-weight: 700;
-    }
-
-    /* お問い合わせ */
-    .contact-section {
-      background: var(--navy);
-      padding: 72px 0;
-      text-align: center;
-      color: var(--white);
-    }
-
-    .contact-section h2 {
-      color: var(--white);
-      font-size: 1.9rem;
-      margin-bottom: 12px;
-    }
-
-    .contact-section p {
-      color: rgba(255,255,255,0.8);
-      margin-bottom: 36px;
-    }
-
-    .contact-options {
-      display: flex;
-      gap: 16px;
       justify-content: center;
-      flex-wrap: wrap;
-      margin-top: 32px;
+      font-weight: 900;
+      color: var(--indigo);
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
     }
 
-    .contact-option {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      padding: 20px 32px;
-      color: var(--white);
-      text-decoration: none;
+    .process-content {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      flex: 1;
+      transition: box-shadow 0.2s;
     }
 
-    .contact-option .label {
-      font-size: 0.8rem;
-      color: var(--gold);
+    .process-content:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .process-content h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--slate-900);
       margin-bottom: 4px;
     }
 
-    .contact-option .value {
-      font-size: 1.1rem;
-      font-weight: 700;
+    .process-content p {
+      font-size: 0.875rem;
+      color: var(--slate-500);
     }
 
-    /* フッター */
-    .site-footer {
-      background: #0f1a30;
+    .process-time {
+      display: inline-block;
+      font-size: 0.75rem;
+      background: #ede9fe;
+      color: var(--indigo);
+      padding: 2px 10px;
+      border-radius: 100px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    /* ========== SUBSIDY ========== */
+    .subsidy {
+      padding: 88px 0;
+      background: linear-gradient(160deg, var(--indigo-dark) 0%, #1e1b4b 100%);
+      color: var(--white);
+    }
+
+    .subsidy .section-label { color: var(--amber-light); }
+    .subsidy .section-title { color: var(--white); }
+    .subsidy .section-desc { color: rgba(255,255,255,0.65); }
+
+    .subsidy-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .subsidy-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      backdrop-filter: blur(4px);
+    }
+
+    .subsidy-card h4 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+
+    .subsidy-rate {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--amber-light);
+      letter-spacing: -1px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .subsidy-card p {
+      font-size: 0.8rem;
       color: rgba(255,255,255,0.5);
-      padding: 28px 0;
+    }
+
+    .subsidy-note {
+      text-align: center;
+      margin-top: 36px;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.65);
+    }
+
+    .subsidy-note strong { color: var(--amber-light); }
+
+    /* ========== CTA ========== */
+    .cta-section {
+      padding: 100px 0;
+      text-align: center;
+    }
+
+    .cta-section .section-title { margin-bottom: 16px; }
+    .cta-section .section-desc { margin-bottom: 44px; }
+
+    .cta-box {
+      background: var(--white);
+      border: 1px solid var(--slate-200);
+      border-radius: 20px;
+      padding: 56px 48px;
+      max-width: 640px;
+      margin: 0 auto;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.06);
+    }
+
+    .cta-box h3 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--slate-900);
+      margin-bottom: 12px;
+    }
+
+    .cta-box p {
+      color: var(--slate-500);
+      font-size: 0.92rem;
+      margin-bottom: 36px;
+    }
+
+    .contact-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 32px;
+      text-align: left;
+    }
+
+    .contact-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--slate-50);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      color: var(--slate-700);
+      font-weight: 500;
+    }
+
+    .contact-list li .icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--indigo), var(--indigo-light));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .contact-list a { color: var(--indigo); text-decoration: none; font-weight: 700; }
+    .contact-list a:hover { text-decoration: underline; }
+
+    /* ========== FOOTER ========== */
+    footer {
+      background: var(--slate-900);
+      color: rgba(255,255,255,0.45);
+      padding: 32px 0;
       text-align: center;
       font-size: 0.82rem;
     }
 
-    .site-footer a {
-      color: var(--gold);
-      text-decoration: none;
+    footer a { color: rgba(255,255,255,0.6); text-decoration: none; }
+    footer a:hover { color: var(--white); }
+
+    .footer-logo {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--white);
+      margin-bottom: 8px;
+      display: block;
     }
 
-    /* レスポンシブ */
-    @media (max-width: 700px) {
-      .hero h1 { font-size: 1.7rem; }
-      .grid-3, .grid-2 { grid-template-columns: 1fr; }
-      .trouble-list { grid-template-columns: 1fr; }
-      .subsidy-box { grid-template-columns: 1fr; }
-      .flow-steps { flex-direction: column; }
-      .step { margin: 4px 0; }
+    .footer-logo span { color: #818cf8; }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .hero { padding: 72px 0 64px; }
+      .hero-stats { gap: 32px; }
+      .pain-grid { grid-template-columns: 1fr; }
+      .service-cards { grid-template-columns: 1fr; }
+      .why-grid { grid-template-columns: 1fr; }
+      .subsidy-cards { grid-template-columns: 1fr; }
+      nav { display: none; }
+      .cta-box { padding: 36px 24px; }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 1.75rem; }
+      .process-steps::before { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ヘッダー -->
-  <header class="site-header">
-    <div class="container nav">
-      <a href="#" class="logo">Emport <span>AI</span></a>
-      <a href="#contact" class="btn-cta">無料相談はこちら</a>
+  <!-- HEADER -->
+  <header>
+    <div class="container header-inner">
+      <a href="#" class="logo">Emport<span>AI</span></a>
+      <nav>
+        <a href="#services">サービス</a>
+        <a href="#process">導入の流れ</a>
+        <a href="#subsidy">補助金</a>
+      </nav>
+      <a href="#contact" class="btn btn-primary">無料相談する</a>
     </div>
   </header>
 
-  <main>
-
-    <!-- ヒーロー -->
-    <section class="hero">
-      <div class="container">
-        <p class="badge">山口県の中小企業向けAI活用支援</p>
-        <h1>「難しくない・高くない・<em>使えるAI</em>」を<br>地域の経営者へ。</h1>
-        <p class="lead">
-          Emport AIは、山口県の中小企業がAIを現場で活かせる形で導入できるよう、
-          診断・提案・伴走支援まで一貫してサポートします。
-        </p>
-        <a href="#contact" class="btn-cta btn-large">まずは無料相談（30分）</a>
-        <p class="sub-note">電話・メール・オンラインいずれも対応</p>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="hero-badge">&#127981; 山口県の中小企業専門 AI活用支援</div>
+      <h1>
+        AIを導入したいけど、<br>
+        <span class="highlight">何から始めればいい</span>かわからない<br>
+        その悩み、一緒に解決します。
+      </h1>
+      <p class="hero-sub">
+        Emport AIは、山口県の中小企業がAIを「現場で使える形」で導入できるよう、
+        診断・提案・定着まで一貫してサポートします。<br>
+        難しくない。高くない。使えるAIを、あなたの会社へ。
+      </p>
+      <div class="hero-cta">
+        <a href="#contact" class="btn-hero-primary">&#128233; まずは無料相談（30分）</a>
+        <a href="#services" class="btn-hero-outline">&#128269; サービスを見る</a>
       </div>
-    </section>
-
-    <!-- こんな課題ありませんか -->
-    <section class="section section-alt">
-      <div class="container">
-        <h2>こんな課題、ありませんか？</h2>
-        <span class="underline"></span>
-        <ul class="trouble-list">
-          <li>毎日同じメール返信や書類作成に時間がかかっている</li>
-          <li>AIを試したいが、何から始めればいいかわからない</li>
-          <li>人手不足で業務が追いつかなくなってきた</li>
-          <li>ITツールを入れたが使いこなせず放置している</li>
-          <li>他社がDXで進んでいるのに自社だけ取り残される不安</li>
-          <li>補助金でAI導入できると聞いたが手続きが面倒そう</li>
-        </ul>
-        <p class="trouble-note">→ それ、AIで解決できるかもしれません。まずご相談ください。</p>
-      </div>
-    </section>
-
-    <!-- サービス -->
-    <section class="section" id="services">
-      <div class="container">
-        <h2>サービス内容</h2>
-        <span class="underline"></span>
-        <div class="card-grid grid-3">
-          <div class="card service-card">
-            <div class="card-icon">&#128269;</div>
-            <span class="price-tag">5〜10万円</span>
-            <h3>AI業務診断</h3>
-            <p>半日で御社の業務フローを拝見し、AIで改善できるポイントをレポートにまとめてお渡しします。補助金活用で実質負担を抑えられます。</p>
-          </div>
-          <div class="card service-card">
-            <div class="card-icon">&#128200;</div>
-            <span class="price-tag">要お見積り</span>
-            <h3>AI導入コンサルティング</h3>
-            <p>診断結果をもとに最適なAIツールを選定・導入。現場に合わせたカスタマイズで「入れただけ」で終わらない支援をします。</p>
-          </div>
-          <div class="card service-card">
-            <div class="card-icon">&#128176;</div>
-            <span class="price-tag">無料サポート</span>
-            <h3>IT補助金申請サポート</h3>
-            <p>IT導入補助金・持続化補助金など、AI導入に使える補助金の選定から申請書類作成まで並走します。</p>
-          </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-number">5〜10万円</span>
+          <div class="stat-label">AI業務診断の費用</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">最大2/3</span>
+          <div class="stat-label">IT補助金の補助率</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">30分</span>
+          <div class="stat-label">無料初回相談</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number">山口県</span>
+          <div class="stat-label">地域密着で対応</div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <!-- 導入の流れ -->
-    <section class="section section-alt" id="flow">
-      <div class="container">
-        <h2>導入の流れ</h2>
-        <span class="underline"></span>
-        <div class="flow-steps">
-          <div class="step">
-            <div class="step-num">1</div>
-            <h4>無料相談（30分）</h4>
-            <p>現状の課題と目標をヒアリング。オンライン・対面どちらでも対応。</p>
-          </div>
-          <div class="step">
-            <div class="step-num">2</div>
-            <h4>AI業務診断</h4>
-            <p>業務フローを可視化し、AI活用のポイントをレポートに整理。</p>
-          </div>
-          <div class="step">
-            <div class="step-num">3</div>
-            <h4>提案・お見積り</h4>
-            <p>最適なAIツールと導入スケジュールをご提案。補助金も試算。</p>
-          </div>
-          <div class="step">
-            <div class="step-num">4</div>
-            <h4>導入・設定</h4>
-            <p>ツール設定・現場へのレクチャーまで対応。迷ったらすぐ聞けます。</p>
-          </div>
-          <div class="step">
-            <div class="step-num">5</div>
-            <h4>定着・改善支援</h4>
-            <p>導入後も継続的にサポート。使いこなせるまで伴走します。</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 補助金 -->
-    <section class="section" id="subsidy">
-      <div class="container">
-        <h2>補助金を活用してコストを抑える</h2>
-        <span class="underline"></span>
-        <div class="subsidy-box">
-          <div class="subsidy-text">
-            <h3>AI導入費用の<br>最大2/3が補助対象に</h3>
-            <p>
-              国・県のIT補助金を活用すれば、AI導入にかかる費用の大部分を補助金でまかなえる場合があります。
-              申請手続きもEmport AIがサポートします。
-            </p>
-          </div>
-          <ul class="subsidy-items">
-            <li>
-              <span>IT導入補助金（国）</span>
-              <span class="rate">最大2/3補助</span>
-            </li>
-            <li>
-              <span>小規模事業者持続化補助金</span>
-              <span class="rate">最大2/3補助</span>
-            </li>
-            <li>
-              <span>ものづくり補助金</span>
-              <span class="rate">最大1/2補助</span>
-            </li>
-            <li>
-              <span>山口県独自支援策</span>
-              <span class="rate">要確認</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- お問い合わせ -->
-    <section class="contact-section" id="contact">
-      <div class="container">
-        <h2>まずは気軽にご相談ください</h2>
-        <p>「AIって自社には関係ない」と思っていた経営者ほど、<br>実は一番効果が出やすいです。30分だけ話を聞かせてください。</p>
-        <a href="mailto:tsubeyou081@gmail.com" class="btn-cta btn-large">無料メール相談はこちら</a>
-        <div class="contact-options">
-          <div class="contact-option">
-            <div class="label">メール</div>
-            <div class="value">tsubeyou081@gmail.com</div>
-          </div>
-          <div class="contact-option">
-            <div class="label">電話番号</div>
-            <div class="value">（準備中）</div>
-          </div>
-          <a href="https://x.com/AI_chuusyou" target="_blank" class="contact-option">
-            <div class="label">X（旧Twitter）</div>
-            <div class="value">@AI_chuusyou</div>
-          </a>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- フッター -->
-  <footer class="site-footer">
+  <!-- PAIN -->
+  <section class="pain" id="pain">
     <div class="container">
-      <p>Emport AI &nbsp;|&nbsp; 山口県 &nbsp;|&nbsp; <a href="mailto:tsubeyou081@gmail.com">tsubeyou081@gmail.com</a> &nbsp;|&nbsp; <a href="https://x.com/AI_chuusyou" target="_blank">@AI_chuusyou</a></p>
+      <p class="section-label">こんな悩みありませんか？</p>
+      <h2 class="section-title">多くの経営者が<br>同じ壁にぶつかっています</h2>
+      <p class="section-desc">AIに興味はあるけど、一歩踏み出せない。そんな声を毎日聞いています。</p>
+      <div class="pain-grid">
+        <div class="pain-card">
+          <div class="pain-icon">&#128336;</div>
+          <p class="pain-text">毎日同じような作業に追われ、本来の仕事に時間が使えていない</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon">&#129300;</div>
+          <p class="pain-text">AIを使いたいが、どのツールが自社に合うのか全くわからない</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon">&#128176;</div>
+          <p class="pain-text">DX・AI導入は費用が高そうで、中小企業には手が届かないと思っている</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon">&#128104;&#8205;&#128188;</div>
+          <p class="pain-text">人手不足が深刻で、採用してもすぐ辞められて悪循環が続いている</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon">&#128202;</div>
+          <p class="pain-text">以前ITツールを入れたが使いこなせず、費用だけかかって終わった</p>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon">&#128266;</div>
+          <p class="pain-text">競合他社がDXで先行しているのに、自社だけ取り残されそうで焦っている</p>
+        </div>
+      </div>
+      <div class="pain-cta">
+        <p>&#10024; それ、AI導入で解決できるかもしれません。まず30分だけ話を聞かせてください。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="services" id="services">
+    <div class="container">
+      <p class="section-label">サービス</p>
+      <h2 class="section-title">Emport AIの3つの支援</h2>
+      <p class="section-desc">診断から導入・定着まで、必要なフェーズだけ選んで利用できます。</p>
+      <div class="service-cards">
+        <div class="service-card">
+          <span class="service-num">SERVICE 01</span>
+          <span class="service-emoji">&#128269;</span>
+          <h3>AI業務診断</h3>
+          <p>半日で御社の業務フローを拝見し、AIで改善できるポイントを丁寧にレポートにまとめます。「どこから手をつければいいか」が明確になります。</p>
+          <span class="service-tag">5〜10万円 / 補助金対象</span>
+        </div>
+        <div class="service-card featured">
+          <span class="service-num">SERVICE 02</span>
+          <span class="service-emoji">&#128640;</span>
+          <h3>AI導入コンサルティング</h3>
+          <p>診断結果をもとに最適なAIツールを選定・設定・導入。現場スタッフへのレクチャーまで行い、「入れただけ」で終わらない定着を実現します。</p>
+          <span class="service-tag">要お見積り</span>
+        </div>
+        <div class="service-card">
+          <span class="service-num">SERVICE 03</span>
+          <span class="service-emoji">&#128176;</span>
+          <h3>IT補助金申請サポート</h3>
+          <p>IT導入補助金・持続化補助金など、AI導入に使える補助金の選定から申請書類作成まで並走。費用の最大2/3が補助対象になる場合があります。</p>
+          <span class="service-tag">無料でサポート</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section class="why" id="why">
+    <div class="container">
+      <p class="section-label">選ばれる理由</p>
+      <h2 class="section-title">なぜEmport AIが<br>選ばれるのか</h2>
+      <p class="section-desc">大手コンサルとは違う、地域密着型だからできる支援があります。</p>
+      <div class="why-grid">
+        <div class="why-item">
+          <div class="why-num">1</div>
+          <div>
+            <h4>山口県の現場を知っている</h4>
+            <p>地元企業の業種・規模・文化を理解したうえで提案するため、現場にフィットしたAI活用ができます。東京の大手コンサルには真似できない地域密着の強みです。</p>
+          </div>
+        </div>
+        <div class="why-item">
+          <div class="why-num">2</div>
+          <div>
+            <h4>「使えるAI」だけを提案する</h4>
+            <p>難しいシステムや過剰なツールは勧めません。経営者・現場スタッフが実際に使い続けられるシンプルなAI活用を優先します。</p>
+          </div>
+        </div>
+        <div class="why-item">
+          <div class="why-num">3</div>
+          <div>
+            <h4>補助金を最大限に活用</h4>
+            <p>IT導入補助金など、AI導入に使える補助金の申請を無料でサポート。初期費用の大部分を補助金でまかなえるケースも多くあります。</p>
+          </div>
+        </div>
+        <div class="why-item">
+          <div class="why-num">4</div>
+          <div>
+            <h4>導入後も継続的に伴走</h4>
+            <p>「導入して終わり」ではありません。現場に定着するまで継続的にサポートし、成果が出るまで一緒に取り組みます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESS -->
+  <section class="process" id="process">
+    <div class="container">
+      <p class="section-label">導入の流れ</p>
+      <h2 class="section-title">相談から導入まで<br>最短1ヶ月</h2>
+      <p class="section-desc">難しい手続きはありません。まず話を聞くだけでOKです。</p>
+      <div class="process-steps">
+        <div class="process-step">
+          <div class="process-circle">1</div>
+          <div class="process-content">
+            <span class="process-time">30分 / 無料</span>
+            <h4>無料相談</h4>
+            <p>現状の課題や業務フローをヒアリングします。オンライン・対面どちらでも対応。気軽に話すだけでOKです。</p>
+          </div>
+        </div>
+        <div class="process-step">
+          <div class="process-circle">2</div>
+          <div class="process-content">
+            <span class="process-time">半日 / 5〜10万円</span>
+            <h4>AI業務診断</h4>
+            <p>現場の業務フローを可視化し、AIで改善できるポイントをレポートにまとめてお渡しします。補助金で費用を抑えられます。</p>
+          </div>
+        </div>
+        <div class="process-step">
+          <div class="process-circle">3</div>
+          <div class="process-content">
+            <span class="process-time">1週間以内</span>
+            <h4>提案・お見積り</h4>
+            <p>最適なAIツールと導入スケジュール、費用、補助金活用プランをセットで提案します。</p>
+          </div>
+        </div>
+        <div class="process-step">
+          <div class="process-circle">4</div>
+          <div class="process-content">
+            <span class="process-time">2〜4週間</span>
+            <h4>AI導入・設定・レクチャー</h4>
+            <p>ツールの設定・カスタマイズを行い、現場スタッフへの使い方レクチャーまで対応します。</p>
+          </div>
+        </div>
+        <div class="process-step">
+          <div class="process-circle">5</div>
+          <div class="process-content">
+            <span class="process-time">導入後も継続</span>
+            <h4>定着・改善サポート</h4>
+            <p>「使えていない」が起きないよう、定期的なフォローアップで現場に定着させます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUBSIDY -->
+  <section class="subsidy" id="subsidy">
+    <div class="container">
+      <p class="section-label">補助金活用</p>
+      <h2 class="section-title">AI導入費用の大部分が<br>補助金でまかなえます</h2>
+      <p class="section-desc">国・県の補助金を活用すれば、実質負担を大幅に抑えられます。申請もEmport AIがサポートします。</p>
+      <div class="subsidy-cards">
+        <div class="subsidy-card">
+          <h4>IT導入補助金（国）</h4>
+          <span class="subsidy-rate">最大2/3</span>
+          <p>ITツール導入費用の最大2/3（最大450万円）が補助対象。AIツールも対象になるケースが多いです。</p>
+        </div>
+        <div class="subsidy-card">
+          <h4>小規模事業者持続化補助金</h4>
+          <span class="subsidy-rate">最大2/3</span>
+          <p>小規模事業者の販路開拓・業務効率化に使える補助金。AI関連ツールの導入にも活用できます。</p>
+        </div>
+        <div class="subsidy-card">
+          <h4>ものづくり補助金</h4>
+          <span class="subsidy-rate">最大1/2</span>
+          <p>製造業・サービス業の設備・システム投資に使える補助金。AIシステム開発にも対応します。</p>
+        </div>
+      </div>
+      <p class="subsidy-note">&#9888;&#65039; 補助金は申請期限・要件があります。<strong>まず相談してから一緒に最適な補助金を選びます。</strong></p>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section" id="contact">
+    <div class="container">
+      <p class="section-label">お問い合わせ</p>
+      <h2 class="section-title">まずは30分、<br>話を聞かせてください</h2>
+      <p class="section-desc">「AIって難しそう」と思っていた経営者ほど、実は一番効果が出やすいです。気軽にご相談ください。</p>
+      <div class="cta-box">
+        <h3>&#127942; 無料相談を申し込む</h3>
+        <p>費用・見積もりの相談だけでもOKです。<br>オンライン・対面・電話いずれも対応しています。</p>
+        <a href="mailto:tsubeyou081@gmail.com" class="btn btn-primary btn-lg" style="width:100%;display:flex;">&#128233; メールで相談する（無料）</a>
+        <ul class="contact-list">
+          <li>
+            <div class="icon">&#128233;</div>
+            <span>メール：<a href="mailto:tsubeyou081@gmail.com">tsubeyou081@gmail.com</a></span>
+          </li>
+          <li>
+            <div class="icon">&#128222;</div>
+            <span>電話：準備中（近日公開）</span>
+          </li>
+          <li>
+            <div class="icon">&#127756;</div>
+            <span>X（旧Twitter）：<a href="https://x.com/AI_chuusyou" target="_blank">@AI_chuusyou</a>へDM</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <span class="footer-logo">Emport<span>AI</span></span>
+      <p>山口県 | <a href="mailto:tsubeyou081@gmail.com">tsubeyou081@gmail.com</a> | <a href="https://x.com/AI_chuusyou" target="_blank">@AI_chuusyou</a></p>
       <p style="margin-top:8px;">&copy; 2026 Emport AI. All rights reserved.</p>
     </div>
   </footer>

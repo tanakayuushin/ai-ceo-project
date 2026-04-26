@@ -1,54 +1,140 @@
-# AI問い合わせ処理エージェント
+# Emport AI — AI CEO プロジェクト
 
-Claude APIを使って、問い合わせ文を自動分析するPythonスクリプトです。
+山口県の中小企業向けAI活用支援会社「Emport AI」の経営管理リポジトリです。  
+CEO「アレン」（AI）がオーナー（取締役）の指示のもと、日々の経営業務を自律的に遂行します。
 
-## 機能
+---
 
-- 問い合わせの種類を分類
-  - 見積もり依頼
-  - 質問
-  - クレーム
-  - その他
-- 緊急度を判定（高・中・低）
-- 返信文を自動生成
-- 要約を3行で作成
-- 分析結果をターミナルへ表示
+## 会社概要
 
-## ファイル構成
+| 項目 | 内容 |
+|------|------|
+| 会社名 | Emport AI |
+| ターゲット | 山口県の中小企業・小規模事業者 |
+| 主力サービス | AI業務診断、AI導入支援、IT導入補助金サポート |
+| X（旧Twitter） | [@AI_chuusyou](https://x.com/AI_chuusyou) |
+| ランディングページ | [emport-ai-website](https://tanakayuushin.github.io/emport-ai-website/) |
 
-- `main.py` : メインプログラム
-- `.env` : APIキー保存用
-- `requirements.txt` : 必要ライブラリ
-- `README.md` : この説明
+---
 
-## セットアップ
+## ディレクトリ構成
 
-1. Python 3.10以上を用意
-2. 依存ライブラリをインストール
+```
+ai-ceo-project/
+│
+├── company/               # 会社情報
+│   ├── overview/          # 会社概要
+│   ├── strategy/          # 経営戦略
+│   └── policies/          # 社内ポリシー
+│
+├── ceo/                   # CEO（アレン）関連
+│   ├── profile/           # CEOプロフィール・行動ルール
+│   ├── reports/           # 週次・月次レポート（自動生成）
+│   └── decisions/         # 意思決定記録
+│
+├── board/                 # 取締役会
+│   ├── meetings/          # 議事録
+│   ├── directives/        # 取締役からの指示
+│   └── approvals/         # 承認事項
+│
+├── departments/           # 各部門
+│   ├── sales/             # 営業部門
+│   │   ├── 見込み客リスト.md          # 見込み客一覧（自動更新）
+│   │   ├── 営業メールテンプレート.md
+│   │   ├── 業務委託契約書テンプレート.md
+│   │   ├── サービス案内.md
+│   │   ├── セミナー台本.md / スライド概要.md
+│   │   ├── 商工会議所アプローチ計画.md
+│   │   └── outreach-drafts/           # 営業メール下書き（毎週木曜自動生成）
+│   ├── marketing/         # マーケティング部門
+│   │   ├── X初期投稿リスト.md
+│   │   ├── Xプロフィール設定.md
+│   │   └── x-posts/                   # X投稿ファイル（毎日17時自動生成）
+│   ├── operations/        # オペレーション部門
+│   ├── finance/           # 財務部門
+│   └── hr/                # 人事部門
+│
+├── projects/              # プロジェクト管理
+│   ├── active/            # 進行中プロジェクト
+│   └── completed/         # 完了済みプロジェクト
+│
+├── communications/        # 社内コミュニケーション
+│   ├── ceo-to-board/      # CEOから取締役への報告・質問
+│   └── board-to-ceo/      # 取締役からCEOへの指示
+│
+├── data/                  # データ・レポート
+│   ├── reports/           # 市場調査・補助金情報（自動生成）
+│   └── archives/          # 過去データ
+│
+├── tools/                 # 開発ツール・スクリプト
+│   ├── main.py                   # 問い合わせ分析CLI版
+│   ├── generate_slides.py        # セミナースライド生成
+│   ├── generate_contract_pdf.py  # 契約書PDF生成
+│   ├── rag_demo.py               # RAGデモ（山田建設AIアシスタント）
+│   ├── gmail_draft_sync.gs       # Gmail下書き自動同期（Google Apps Script）
+│   └── requirements_rag.txt      # RAGデモ用ライブラリ
+│
+├── templates/             # FlaskテンプレートHTML
+│   └── index.html
+│
+├── app.py                 # Flask Webアプリ（問い合わせ分析 / X投稿生成）
+├── requirements.txt       # Python依存パッケージ
+└── index.html             # ランディングページ（ローカル確認用）
+```
+
+---
+
+## 自動化エージェント一覧
+
+CEOアレンがAnthropicのクラウド上で自動実行します。結果はすべてGitHubにコミットされます。
+
+| エージェント名 | 実行タイミング | 出力先 |
+|--------------|-------------|--------|
+| Allen-Daily-Tweet | 毎日 17:00 JST | `departments/marketing/x-posts/` |
+| Allen-Weekly-Report | 毎週月曜 09:00 JST | `ceo/reports/` |
+| Allen-Lead-Research | 毎週火曜 09:00 JST | `departments/sales/見込み客リスト.md` |
+| Allen-Market-Research | 毎週水曜 09:00 JST | `data/reports/` |
+| Allen-Email-Outreach-Draft | 毎週木曜 09:00 JST | `departments/sales/outreach-drafts/` |
+| Allen-Marketing-Planning | 毎週金曜 09:00 JST | `departments/marketing/` |
+| Allen-Monthly-Summary | 毎月1日 09:00 JST | `ceo/reports/` |
+
+管理画面: https://claude.ai/code/scheduled
+
+---
+
+## Webアプリの起動方法
 
 ```bash
 pip install -r requirements.txt
+python app.py
+# → http://localhost:5000 で起動
 ```
 
-3. `.env` を編集してAPIキーを設定
+**機能：**
+- 問い合わせ分析（カテゴリ・緊急度・返信文・要約を自動生成）
+- X投稿文生成（3パターン自動生成）
 
-```env
-ANTHROPIC_API_KEY=your_api_key_here
-```
+---
 
-## 実行方法
+## ツールの使い方
 
 ```bash
-python main.py
+# 契約書PDFを生成
+python tools/generate_contract_pdf.py
+
+# RAGデモ（山田建設AIアシスタント）
+pip install -r tools/requirements_rag.txt
+python tools/rag_demo.py
+
+# セミナースライドを再生成
+python tools/generate_slides.py
 ```
 
-実行後に問い合わせ内容を入力すると、以下が表示されます。
+---
 
-- 問い合わせ種類
-- 緊急度
-- 自動返信案
-- 3行要約
+## 組織構造
 
-## 使用モデル
-
-- `claude-haiku-4-5-20251001`
+| 役割 | 名前 | 説明 |
+|------|------|------|
+| オーナー / 取締役会 | （ユーザー本人） | 最終意思決定権を持つ取締役 |
+| CEO | アレン（Allen） | 経営トップ。日々の業務を自律的に遂行 |
