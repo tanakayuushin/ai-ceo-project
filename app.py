@@ -4,12 +4,14 @@ from typing import Any
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session, redirect, url_for
 
 MODEL_NAME = "claude-haiku-4-5-20251001"
 
 app = Flask(__name__)
 load_dotenv()
+app.secret_key = os.getenv("SECRET_KEY", "emport-ai-secret-change-in-prod")
+ACCESS_CODE = os.getenv("ACCESS_CODE", "emportai2026")
 
 
 def build_system_prompt() -> str:
@@ -226,8 +228,28 @@ def analyze_manufacturing(form_data: dict[str, Any]) -> dict[str, Any]:
     return validate_manufacturing_result(parsed)
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = ""
+    if request.method == "POST":
+        code = request.form.get("code", "").strip()
+        if code == ACCESS_CODE:
+            session["authenticated"] = True
+            return redirect(url_for("index"))
+        error = "アクセスコードが違います。"
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.pop("authenticated", None)
+    return redirect(url_for("login"))
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
+    if not session.get("authenticated"):
+        return redirect(url_for("login"))
     inquiry_text = ""
     inquiry_result = None
     inquiry_error = ""
@@ -301,4 +323,5 @@ def index():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

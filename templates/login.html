@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ログイン | Emport AI 業務支援ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: #0f1c35;
+      color: #e8eaf0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-box {
+      background: #162040;
+      border: 1px solid #2a3f60;
+      border-radius: 16px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #f0b429;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+
+    .tagline {
+      font-size: 0.82rem;
+      color: #8a9bbf;
+      margin-bottom: 36px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #8a9bbf;
+      margin-bottom: 8px;
+      text-align: left;
+      font-weight: 500;
+    }
+
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
+      border-radius: 8px;
+      color: #e8eaf0;
+      font-size: 1rem;
+      font-family: inherit;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      letter-spacing: 2px;
+      text-align: center;
+    }
+
+    input:focus { border-color: #f0b429; }
+
+    .btn {
+      width: 100%;
+      background: #f0b429;
+      color: #0f1c35;
+      border: none;
+      padding: 13px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 900;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 16px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #fbbf24; }
+
+    .error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fca5a5;
+      font-size: 0.85rem;
+      margin-top: 14px;
+    }
+
+    .footer-note {
+      font-size: 0.75rem;
+      color: #4a5f80;
+      margin-top: 28px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <div class="logo">Emport AI</div>
+    <div class="tagline">AI業務支援ツール — アクセスコードを入力してください</div>
+
+    <form method="POST">
+      <label for="code">アクセスコード</label>
+      <input type="password" id="code" name="code" placeholder="••••••••••••" autofocus />
+      <button type="submit" class="btn">入る</button>
+    </form>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <div class="footer-note">アクセスコードはEmport AIより発行されます</div>
+  </div>
+</body>
+</html>
