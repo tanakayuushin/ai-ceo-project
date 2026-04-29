@@ -196,6 +196,86 @@ def generate_x_posts(work_text: str, learning_text: str) -> list[str]:
     return posts
 
 
+def build_sales_prompt() -> str:
+    return (
+        "あなたはAI営業支援アシスタントです。"
+        "製造業・中小企業への30分AI提案商談をサポートします。"
+        "ヒアリング内容をもとに商談資料を生成してください。"
+        "必ずJSONのみで回答し、以下のスキーマを厳守:"
+        "{"
+        '"summary": "ヒアリング内容の2〜3行まとめ（この会社の状況と課題の核心）",'
+        '"followup_questions": ["デモ前に確認すべき深掘り質問（1文）", "深掘り質問2"],'
+        '"demo_points": ["デモで特に強調すべきポイント1", "ポイント2", "ポイント3"],'
+        '"proposals": ['
+        '{"title": "提案タイトル", "problem": "この会社の課題", "solution": "AIによる解決策", "effect": "具体的な効果", "cost": "概算費用", "subsidy": "補助金活用後の実質負担"},'
+        '{"title": "...", "problem": "...", "solution": "...", "effect": "...", "cost": "...", "subsidy": "..."}'
+        '],'
+        '"closing_script": "クロージングのトークスクリプト（自然な日本語で2〜3文。次の面談や診断の申し込みにつなげる流れで）",'
+        '"next_actions": ["次のアクション1（具体的に）", "次のアクション2", "次のアクション3"]'
+        "}"
+        "proposalsは2件。JSON以外は出力しないでください。"
+    )
+
+
+def validate_sales_result(result: dict[str, Any]) -> dict[str, Any]:
+    proposals = result.get("proposals", [])
+    validated_proposals = []
+    for p in proposals[:2]:
+        if isinstance(p, dict):
+            validated_proposals.append({
+                "title": str(p.get("title", "")),
+                "problem": str(p.get("problem", "")),
+                "solution": str(p.get("solution", "")),
+                "effect": str(p.get("effect", "")),
+                "cost": str(p.get("cost", "")),
+                "subsidy": str(p.get("subsidy", "")),
+            })
+
+    followup = result.get("followup_questions", [])
+    demo_points = result.get("demo_points", [])
+    next_actions = result.get("next_actions", [])
+
+    return {
+        "summary": str(result.get("summary", "")),
+        "followup_questions": [str(q) for q in followup[:3]],
+        "demo_points": [str(p) for p in demo_points[:3]],
+        "proposals": validated_proposals,
+        "closing_script": str(result.get("closing_script", "")),
+        "next_actions": [str(a) for a in next_actions[:3]],
+    }
+
+
+def generate_sales_guide(form_data: dict[str, Any]) -> dict[str, Any]:
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY が .env に設定されていません。")
+
+    content = (
+        f"【商談相手】\n"
+        f"会社名: {form_data.get('company_name', '不明')}\n"
+        f"業種: {form_data.get('industry', '不明')}\n\n"
+        f"【ヒアリング結果】\n"
+        f"Q1. 一番困っている業務・作業は？\n→ {form_data.get('q1', '未回答')}\n\n"
+        f"Q2. その業務にかかる時間・関わる人数は？\n→ {form_data.get('q2', '未回答')}\n\n"
+        f"Q3. 今はどうやって対応しているか？\n→ {form_data.get('q3', '未回答')}\n\n"
+        f"Q4. AI導入を考えたきっかけは？\n→ {form_data.get('q4', '未回答')}\n\n"
+        f"Q5. 導入時期・予算のイメージは？\n→ {form_data.get('q5', '未回答')}"
+    )
+
+    client = Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model=MODEL_NAME,
+        max_tokens=1400,
+        temperature=0.3,
+        system=build_sales_prompt(),
+        messages=[{"role": "user", "content": content}],
+    )
+
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    parsed = parse_response_json("\n".join(text_blocks))
+    return validate_sales_result(parsed)
+
+
 def analyze_manufacturing(form_data: dict[str, Any]) -> dict[str, Any]:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -260,6 +340,9 @@ def index():
     mfg_result = None
     mfg_error = ""
     mfg_form = {}
+    sales_result = None
+    sales_error = ""
+    sales_form = {}
     active_tab = request.args.get("tab", "inquiry")
 
     if request.method == "POST":
@@ -303,6 +386,23 @@ def index():
                     mfg_result = analyze_manufacturing(mfg_form)
                 except Exception as exc:
                     mfg_error = f"分析中にエラーが発生しました: {exc}"
+        elif action == "sales":
+            sales_form = {
+                "company_name": request.form.get("company_name", "").strip(),
+                "industry": request.form.get("industry", "").strip(),
+                "q1": request.form.get("q1", "").strip(),
+                "q2": request.form.get("q2", "").strip(),
+                "q3": request.form.get("q3", "").strip(),
+                "q4": request.form.get("q4", "").strip(),
+                "q5": request.form.get("q5", "").strip(),
+            }
+            if not sales_form["q1"]:
+                sales_error = "Q1（一番困っている業務）は必ず入力してください。"
+            else:
+                try:
+                    sales_result = generate_sales_guide(sales_form)
+                except Exception as exc:
+                    sales_error = f"生成中にエラーが発生しました: {exc}"
         else:
             active_tab = "inquiry"
 
@@ -317,6 +417,9 @@ def index():
         x_posts=x_posts,
         x_error=x_error,
         mfg_result=mfg_result,
+        sales_result=sales_result,
+        sales_error=sales_error,
+        sales_form=sales_form,
         mfg_error=mfg_error,
         mfg_form=mfg_form,
     )

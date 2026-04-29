@@ -355,9 +355,171 @@
       margin: 20px 0;
     }
 
+    /* 商談タイムライン */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 4px;
+    }
+
+    .timeline-step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .timeline-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 56px;
+      flex-shrink: 0;
+    }
+
+    .timeline-badge {
+      background: #f0b429;
+      color: #0f1c35;
+      font-size: 0.7rem;
+      font-weight: 900;
+      padding: 3px 7px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    .timeline-line {
+      width: 2px;
+      flex: 1;
+      min-height: 20px;
+      background: #2a3f60;
+      margin: 4px 0;
+    }
+
+    .timeline-content {
+      flex: 1;
+      padding-bottom: 16px;
+    }
+
+    .timeline-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #e8eaf0;
+      margin-bottom: 4px;
+    }
+
+    .timeline-desc {
+      font-size: 0.82rem;
+      color: #8a9bbf;
+      line-height: 1.6;
+    }
+
+    .timeline-highlight {
+      background: #0f1c35;
+      border-left: 3px solid #f0b429;
+      border-radius: 0 6px 6px 0;
+      padding: 8px 12px;
+      margin-top: 6px;
+      font-size: 0.82rem;
+      color: #c8d4e8;
+      line-height: 1.6;
+    }
+
+    /* 提案カード */
+    .proposal-card {
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
+      border-radius: 10px;
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .proposal-title {
+      font-size: 1rem;
+      font-weight: 900;
+      color: #f0b429;
+      margin-bottom: 12px;
+    }
+
+    .proposal-row {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 6px 12px;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+    }
+
+    .proposal-label {
+      color: #8a9bbf;
+      font-weight: 600;
+    }
+
+    .proposal-value {
+      color: #c8d4e8;
+    }
+
+    .proposal-value.green { color: #6ee7b7; font-weight: 700; }
+
+    /* クロージングスクリプト */
+    .script-box {
+      background: #0f1c35;
+      border: 1px solid #2a3f60;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 0.92rem;
+      line-height: 1.85;
+      color: #e8eaf0;
+      white-space: pre-wrap;
+    }
+
+    /* 次のアクション */
+    .action-list {
+      list-style: none;
+      counter-reset: action-counter;
+    }
+
+    .action-list li {
+      counter-increment: action-counter;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid #1e3050;
+      font-size: 0.9rem;
+      color: #c8d4e8;
+    }
+
+    .action-list li::before {
+      content: counter(action-counter);
+      background: #f0b429;
+      color: #0f1c35;
+      font-size: 0.75rem;
+      font-weight: 900;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ヒアリングサマリー */
+    .summary-box {
+      background: rgba(240, 180, 41, 0.08);
+      border: 1px solid rgba(240, 180, 41, 0.3);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 0.92rem;
+      color: #e8eaf0;
+      line-height: 1.75;
+      margin-bottom: 4px;
+    }
+
     @media (max-width: 600px) {
       .result-grid, .form-row, .checkbox-grid, .solution-meta { grid-template-columns: 1fr; }
-      .tab-btn { font-size: 0.78rem; padding: 10px 4px; }
+      .tab-btn { font-size: 0.75rem; padding: 10px 3px; }
+      .proposal-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -371,6 +533,8 @@
               onclick="location.href='/?tab=inquiry'">問い合わせ分析</button>
       <button class="tab-btn {% if active_tab == 'manufacturing' %}active{% endif %}"
               onclick="location.href='/?tab=manufacturing'">製造業AI診断</button>
+      <button class="tab-btn {% if active_tab == 'sales' %}active{% endif %}"
+              onclick="location.href='/?tab=sales'">商談サポート</button>
       <button class="tab-btn {% if active_tab == 'xpost' %}active{% endif %}"
               onclick="location.href='/?tab=xpost'">X投稿文生成</button>
     </div>
@@ -542,6 +706,172 @@
 
       <h3>次のステップ</h3>
       <div class="next-step-box">&#128204; {{ mfg_result.next_step }}</div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- ========== 商談サポートタブ ========== -->
+    {% if active_tab == 'sales' %}
+    <div class="card">
+      <h2>商談前ヒアリング入力（5問）</h2>
+      <form method="POST">
+        <input type="hidden" name="action" value="sales" />
+
+        <div class="form-row" style="margin-bottom:16px;">
+          <div class="form-group">
+            <label for="s_company">会社名（任意）</label>
+            <input type="text" id="s_company" name="company_name"
+              placeholder="例）山田鉄工所"
+              value="{{ sales_form.get('company_name', '') }}" />
+          </div>
+          <div class="form-group">
+            <label for="s_industry">業種（任意）</label>
+            <input type="text" id="s_industry" name="industry"
+              placeholder="例）金属加工・食品製造など"
+              value="{{ sales_form.get('industry', '') }}" />
+          </div>
+        </div>
+
+        <hr class="section-divider" />
+
+        {% set questions = [
+          ('q1', '一番困っている業務・作業は何ですか？', '例）毎朝のFAX受注処理、検品作業、在庫の棚卸しなど'),
+          ('q2', 'その業務に1日どのくらい時間をかけていますか？何人が関わっていますか？', '例）3人で毎日2時間かかっている、ベテラン1人に依存している など'),
+          ('q3', '今はその課題をどうやって対応していますか？', '例）手書きで転記してExcelに入力、目視で確認、ベテランの勘に頼っている など'),
+          ('q4', 'AI導入を考えたきっかけは何ですか？', '例）人手不足で回らなくなってきた、ベテランが退職予定、競合他社がDXを始めた など'),
+          ('q5', '導入の時期感・予算のイメージはありますか？', '例）できれば今年中に、予算は50万以内、まずは小さく試してみたい など'),
+        ] %}
+
+        {% for key, label, placeholder in questions %}
+        <div class="form-group">
+          <label for="{{ key }}">
+            <span style="color:#f0b429;font-weight:900;">Q{{ loop.index }}.</span> {{ label }}
+            {% if loop.first %}<span style="color:#f87171;"> *</span>{% endif %}
+          </label>
+          <textarea id="{{ key }}" name="{{ key }}" style="min-height:72px;"
+            placeholder="{{ placeholder }}">{{ sales_form.get(key, '') }}</textarea>
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn">&#128203; 商談サポートを生成する</button>
+      </form>
+      {% if sales_error %}<div class="error-box">{{ sales_error }}</div>{% endif %}
+    </div>
+
+    {% if sales_result %}
+    <!-- ヒアリングまとめ -->
+    <div class="card">
+      <h2>ヒアリングまとめ</h2>
+      <div class="summary-box">{{ sales_result.summary }}</div>
+    </div>
+
+    <!-- 30分タイムライン -->
+    <div class="card">
+      <h2>30分商談タイムライン</h2>
+      <div class="timeline">
+
+        <div class="timeline-step">
+          <div class="timeline-left">
+            <div class="timeline-badge">0-5分</div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">アイスブレイク + ヒアリング確認</div>
+            <div class="timeline-desc">訪問のお礼・自己紹介。今日の流れを共有。ヒアリング内容をもとに状況を確認する。</div>
+            {% if sales_result.followup_questions %}
+            <div class="timeline-highlight">
+              <strong>確認すべき追加質問：</strong><br>
+              {% for q in sales_result.followup_questions %}
+              ・{{ q }}<br>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="timeline-step">
+          <div class="timeline-left">
+            <div class="timeline-badge">5-15分</div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">デモ — AIツール実演</div>
+            <div class="timeline-desc">実際のAIツールを画面共有または操作しながら見せる。</div>
+            {% if sales_result.demo_points %}
+            <div class="timeline-highlight">
+              <strong>この会社に合わせた強調ポイント：</strong><br>
+              {% for p in sales_result.demo_points %}
+              ・{{ p }}<br>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="timeline-step">
+          <div class="timeline-left">
+            <div class="timeline-badge">15-23分</div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">提案 — 課題解決プランと費用</div>
+            <div class="timeline-desc">ヒアリング内容に合わせた具体的な解決策と費用・補助金を提示する。</div>
+          </div>
+        </div>
+
+        <div class="timeline-step">
+          <div class="timeline-left">
+            <div class="timeline-badge">23-28分</div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">クロージング</div>
+            <div class="timeline-desc">質問への対応。次のステップを提案する。</div>
+          </div>
+        </div>
+
+        <div class="timeline-step">
+          <div class="timeline-left">
+            <div class="timeline-badge">28-30分</div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">次のアクション確認・名刺交換</div>
+            <div class="timeline-desc">次回の日程・送付資料・診断申込など具体的なネクストを合意して終了。</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 提案内容 -->
+    <div class="card">
+      <h2>提案内容（2案）</h2>
+      {% for p in sales_result.proposals %}
+      <div class="proposal-card">
+        <div class="proposal-title">案{{ loop.index }}. {{ p.title }}</div>
+        <div class="proposal-row"><span class="proposal-label">課題</span><span class="proposal-value">{{ p.problem }}</span></div>
+        <div class="proposal-row"><span class="proposal-label">解決策</span><span class="proposal-value">{{ p.solution }}</span></div>
+        <div class="proposal-row"><span class="proposal-label">期待効果</span><span class="proposal-value">{{ p.effect }}</span></div>
+        <div class="proposal-row"><span class="proposal-label">概算費用</span><span class="proposal-value">{{ p.cost }}</span></div>
+        <div class="proposal-row"><span class="proposal-label">補助金後</span><span class="proposal-value green">{{ p.subsidy }}</span></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- クロージングスクリプト -->
+    <div class="card">
+      <h2>クロージングトーク</h2>
+      <div class="script-box">{{ sales_result.closing_script }}</div>
+    </div>
+
+    <!-- 次のアクション -->
+    <div class="card">
+      <h2>次のアクション</h2>
+      <ul class="action-list">
+        {% for action in sales_result.next_actions %}
+        <li>{{ action }}</li>
+        {% endfor %}
+      </ul>
     </div>
     {% endif %}
     {% endif %}
