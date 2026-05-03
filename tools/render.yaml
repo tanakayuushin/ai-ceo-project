@@ -2,7 +2,7 @@ services:
   - type: web
     name: src-form-discord
     runtime: python
-    buildCommand: "apt-get install -y fonts-noto-cjk && pip install -r tools/requirements_form.txt"
+    buildCommand: "sudo apt-get install -y fonts-noto-cjk && pip install -r tools/requirements_form.txt"
     startCommand: "gunicorn --chdir tools form_discord_web:app"
     envVars:
       - key: SECRET_KEY
