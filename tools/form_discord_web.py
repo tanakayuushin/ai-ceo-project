@@ -10,7 +10,6 @@ import requests
 from flask import Flask, render_template, request
 from fpdf import FPDF
 from google.auth.transport.requests import Request as GoogleRequest
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +29,9 @@ _FONT_CANDIDATES = [
 FONT_PATH = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), _FONT_CANDIDATES[0])
 
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+print("GOOGLE_CREDENTIALS set:", bool(os.environ.get("GOOGLE_CREDENTIALS")))
+print("GOOGLE_TOKEN_B64 set:", bool(os.environ.get("GOOGLE_TOKEN_B64")))
 
 app = Flask(__name__, template_folder="form_templates")
 app.secret_key = os.environ.get("SECRET_KEY", "src-form-discord-2026")
@@ -103,7 +105,6 @@ def parse_timestamp(ts_str: str) -> datetime:
 
 def get_google_creds():
     token_file = _token_file()
-    credentials_file = _credentials_file()
     creds = None
     if os.path.exists(token_file):
         with open(token_file, "rb") as f:
@@ -111,11 +112,12 @@ def get_google_creds():
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(GoogleRequest())
+            with open(token_file, "wb") as f:
+                pickle.dump(creds, f)
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_file, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(token_file, "wb") as f:
-            pickle.dump(creds, f)
+            raise RuntimeError(
+                "Google認証トークンが無効です。GOOGLE_TOKEN_B64 環境変数を再設定してください。"
+            )
     return creds
 
 
