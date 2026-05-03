@@ -105,10 +105,12 @@ def parse_timestamp(ts_str: str) -> datetime:
 
 def get_google_creds():
     token_file = _token_file()
+    print(f"[AUTH] token_file={token_file}, exists={os.path.exists(token_file)}")
     creds = None
     if os.path.exists(token_file):
         with open(token_file, "rb") as f:
             creds = pickle.load(f)
+    print(f"[AUTH] creds={creds}, valid={getattr(creds,'valid',None)}, expired={getattr(creds,'expired',None)}, has_refresh={bool(getattr(creds,'refresh_token',None))}")
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(GoogleRequest())
