@@ -62,7 +62,7 @@ def validate_result(result: dict[str, Any]) -> dict[str, Any]:
 def analyze_inquiry(client: Anthropic, inquiry_text: str) -> dict[str, Any]:
     response = client.messages.create(
         model=MODEL_NAME,
-        max_tokens=700,
+        max_tokens=500,
         temperature=0.2,
         system=build_system_prompt(),
         messages=[

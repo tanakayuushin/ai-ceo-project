@@ -537,6 +537,8 @@
               onclick="location.href='/?tab=sales'">商談サポート</button>
       <button class="tab-btn {% if active_tab == 'xpost' %}active{% endif %}"
               onclick="location.href='/?tab=xpost'">X投稿文生成</button>
+      <button class="tab-btn {% if active_tab == 'minutes' %}active{% endif %}"
+              onclick="location.href='/?tab=minutes'">議事録要約</button>
     </div>
 
     <!-- ========== 問い合わせ分析タブ ========== -->
@@ -909,6 +911,70 @@
         <div class="x-char-count">{{ post | length }}文字</div>
       </div>
       {% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- ========== 議事録要約タブ ========== -->
+    {% if active_tab == 'minutes' %}
+    <div class="card">
+      <h2>議事録入力</h2>
+      <form method="POST">
+        <input type="hidden" name="action" value="minutes" />
+        <label for="minutes">会議の発言録・議事録テキストを貼り付けてください</label>
+        <textarea id="minutes" name="minutes" style="min-height:200px;"
+          placeholder="例）&#10;山田：先月の売上について確認したい。&#10;鈴木：前月比5%増でした。&#10;山田：では来月の目標を10%増に設定しよう。&#10;田中：次回は予算についても話し合いたいです。">{{ minutes_text }}</textarea>
+        <button type="submit" class="btn">&#128196; 要約する</button>
+      </form>
+      {% if minutes_error %}<div class="error-box">{{ minutes_error }}</div>{% endif %}
+    </div>
+
+    {% if minutes_result %}
+    <div class="card">
+      <h2>要約結果</h2>
+
+      <h3>決定事項</h3>
+      {% if minutes_result.decisions %}
+      <ul class="summary-list">
+        {% for d in minutes_result.decisions %}<li>{{ d }}</li>{% endfor %}
+      </ul>
+      {% else %}
+      <p style="font-size:0.88rem;color:#8a9bbf;">記載なし</p>
+      {% endif %}
+
+      <hr class="section-divider" />
+
+      <h3>TODO</h3>
+      {% if minutes_result.todos %}
+      {% for t in minutes_result.todos %}
+      <div class="solution-card" style="padding:14px 18px;">
+        <div style="font-size:0.95rem;font-weight:700;color:#e8eaf0;margin-bottom:8px;">{{ loop.index }}. {{ t.task }}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="meta-item">
+            <div class="meta-label">担当者</div>
+            <div class="meta-value">{{ t.owner }}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">期限</div>
+            <div class="meta-value">{{ t.due }}</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p style="font-size:0.88rem;color:#8a9bbf;">記載なし</p>
+      {% endif %}
+
+      <hr class="section-divider" />
+
+      <h3>次回議題</h3>
+      {% if minutes_result.next_agenda %}
+      <ul class="summary-list">
+        {% for a in minutes_result.next_agenda %}<li>{{ a }}</li>{% endfor %}
+      </ul>
+      {% else %}
+      <p style="font-size:0.88rem;color:#8a9bbf;">記載なし</p>
+      {% endif %}
     </div>
     {% endif %}
     {% endif %}

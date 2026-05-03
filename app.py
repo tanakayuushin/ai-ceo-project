@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from typing import Any
 
@@ -6,68 +7,149 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, session, redirect, url_for
 
+load_dotenv()
+
 MODEL_NAME = "claude-haiku-4-5-20251001"
+MAX_INPUT_LENGTH = 2000  # ユーザー入力の最大文字数
 
 app = Flask(__name__)
-load_dotenv()
 app.secret_key = os.getenv("SECRET_KEY", "emport-ai-secret-change-in-prod")
 ACCESS_CODE = os.getenv("ACCESS_CODE", "emportai2026")
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
-def build_system_prompt() -> str:
-    return (
-        "あなたは企業の問い合わせ一次対応AIです。"
-        "ユーザーの問い合わせ文を読み、必ずJSONのみで回答してください。"
-        "出力スキーマは以下を厳守:"
-        "{"
-        "\"category\": \"見積もり依頼|質問|クレーム|その他\","
-        "\"urgency\": \"高|中|低\","
-        "\"reply\": \"日本語の丁寧な返信文\","
-        "\"summary\": [\"1行目\", \"2行目\", \"3行目\"]"
-        "}"
-        "summaryは必ず3要素。JSON以外のテキストは出力しないでください。"
-    )
+_api_key = os.getenv("ANTHROPIC_API_KEY")
+if not _api_key:
+    raise RuntimeError("ANTHROPIC_API_KEY が .env に設定されていません。")
+client = Anthropic(api_key=_api_key)
 
 
-def build_x_post_system_prompt() -> str:
-    return (
-        "あなたは日本語のX投稿文作成アシスタントです。"
-        "ユーザーの入力（今日やったこと・学んだこと）を基に、"
-        "AIビジネス・中小企業DXに関連する投稿文を3パターン作成してください。"
-        "必ずJSONのみで回答し、以下のスキーマを厳守してください:"
-        "{"
-        "\"posts\": ["
-        "{\"text\": \"投稿文\"},"
-        "{\"text\": \"投稿文\"},"
-        "{\"text\": \"投稿文\"}"
-        "]"
-        "}"
-        "制約:"
-        "1) 各投稿は140文字以内。"
-        "2) 絵文字は使わない。"
-        "3) 各投稿にハッシュタグを3つ含める。"
-        "4) ハッシュタグ以外も自然な日本語にする。"
-        "5) JSON以外は出力しない。"
-    )
+SYSTEM_PROMPT_INQUIRY = """
+<role>
+あなたは企業の問い合わせ一次対応AIです。
+受信した問い合わせを分析し、カテゴリ・緊急度・返信文・要約を返します。
+</role>
 
+<output_format>
+出力はシステムが自動処理するため、JSONのみを返してください。前置きや説明文は不要です。
+{
+  "category": "見積もり依頼|質問|クレーム|その他",
+  "urgency": "高|中|低",
+  "reply": "日本語の丁寧な返信文",
+  "summary": ["1行目", "2行目", "3行目"]
+}
+summaryは必ず3要素。
+</output_format>
 
-def build_manufacturing_prompt() -> str:
-    return (
-        "あなたはEmport AIのAI活用コンサルタントです。"
-        "製造業の中小企業からの相談情報を分析し、最適なAI活用プランを日本語で提案してください。"
-        "必ずJSONのみで回答し、以下のスキーマを厳守してください:"
-        "{"
-        "\"priority_issues\": [\"最優先課題1\", \"最優先課題2\", \"最優先課題3\"],"
-        "\"solutions\": ["
-        "{\"name\": \"ソリューション名\", \"description\": \"60字以内の説明\","
-        " \"effect\": \"期待できる具体的な効果\", \"cost\": \"概算費用\", \"subsidy_cost\": \"補助金活用後の実質負担\"},"
-        "{\"name\": \"...\", \"description\": \"...\", \"effect\": \"...\", \"cost\": \"...\", \"subsidy_cost\": \"...\"}"
-        "],"
-        "\"subsidy_info\": \"活用可能な補助金の説明（IT導入補助金・ものづくり補助金など）\","
-        "\"next_step\": \"今すぐできる具体的な次のアクション（1〜2文）\""
-        "}"
-        "solutionsは2〜3件。priority_issuesは必ず3件。JSON以外のテキストは出力しないでください。"
-    )
+<example>
+入力: 先日注文した商品がまだ届きません。注文番号は12345です。急いでいるので早めに対応してください。
+出力:
+{
+  "category": "クレーム",
+  "urgency": "高",
+  "reply": "このたびはご不便をおかけし、大変申し訳ございません。ご注文番号12345の配送状況を至急確認し、本日中にご連絡いたします。",
+  "summary": ["未着商品に関するクレーム", "注文番号12345・早急対応を要求", "本日中の状況確認と折り返し連絡が必要"]
+}
+</example>
+
+<example>
+入力: 商品が届いていないんですけどどうしたらいいですか
+出力:
+{
+  "category": "質問",
+  "urgency": "中",
+  "reply": "お問い合わせいただきありがとうございます。商品がお手元に届いていないとのこと、大変ご不便をおかけしております。配送状況を確認のうえ、折り返しご連絡いたします。今しばらくお待ちくださいませ。",
+  "summary": ["商品未着に関する問い合わせ", "怒りはなく対処法を聞いている質問トーン", "配送状況確認と折り返し連絡が必要"]
+}
+</example>
+"""
+
+SYSTEM_PROMPT_XPOST = """
+<role>
+あなたは日本語のX投稿文作成アシスタントです。
+エンゲージメントが高い投稿を得意とし、
+「AIを使いたいけど何から始めるべきかわからない」「業務を自動化・効率化したい」中小企業・個人事業主に刺さる投稿を作ります。
+ユーザーの「今日やったこと・学んだこと」を基に、AIビジネス・中小企業DXに関連する投稿文を3パターン作成します。
+</role>
+
+<output_format>
+出力はシステムが自動処理するため、JSONのみを返してください。
+{"posts": [{"text": "投稿文1"}, {"text": "投稿文2"}, {"text": "投稿文3"}]}
+</output_format>
+
+<constraints>
+1. 各投稿は140文字以内
+2. 絵文字は使わない
+3. 各投稿にハッシュタグを3つ含める
+4. ハッシュタグ以外も自然な日本語にする
+5. トーン・切り口を3パターンで変える（例：学び系・実績系・問いかけ系）
+</constraints>
+"""
+
+SYSTEM_PROMPT_MANUFACTURING = """
+<role>
+あなたはEmport AIのAI活用コンサルタントです。
+製造業の中小企業からの相談情報を分析し、実現可能で費用対効果の高いAI活用プランを日本語で提案してください。
+補助金（IT導入補助金・ものづくり補助金・デジタル化・AI導入補助金2026など）を積極的に活用した提案を心がけてください。
+</role>
+
+<thinking_steps>
+回答を作る前に、以下の順序で考えてください：
+1. 会社の規模・IT習熟度・業種を把握する
+2. 挙げられた課題の中で、AIで解決できるものとそうでないものを仕分ける
+3. 費用対効果が最も高い課題から優先順位をつける
+4. 各ソリューションに使える補助金を特定する
+5. 上記を踏まえてJSONを出力する
+</thinking_steps>
+
+<output_format>
+出力はシステムが自動処理するため、JSONのみを返してください。
+{
+  "priority_issues": ["最優先課題1", "最優先課題2", "最優先課題3"],
+  "solutions": [
+    {
+      "name": "ソリューション名",
+      "description": "60字以内の説明",
+      "effect": "期待できる具体的な効果（数値があれば入れる）",
+      "cost": "概算費用",
+      "subsidy_cost": "補助金活用後の実質負担"
+    }
+  ],
+  "subsidy_info": "活用可能な補助金の説明",
+  "next_step": "今すぐできる具体的な次のアクション（1〜2文）"
+}
+solutionsは2〜3件。priority_issuesは必ず3件。
+</output_format>
+
+<constraints>
+入力された相談内容に記載がない情報や、判断できない項目については推測で埋めず「確認が必要です」と記載してください。
+</constraints>
+"""
+
+SYSTEM_PROMPT_MINUTES = """
+<role>
+あなたは会議における書記のスペシャリストです。
+提供された議事録テキストを分析し、決定事項・TODO・次回議題を正確に抽出します。
+</role>
+
+<output_format>
+出力はシステムが自動処理するため、JSONのみを返してください。
+{
+  "decisions": ["決定事項1", "決定事項2"],
+  "todos": [
+    {"task": "タスク内容", "owner": "担当者名（不明の場合は「不明」）", "due": "期限（記載なしの場合は「未定」）"}
+  ],
+  "next_agenda": ["次回議題1", "次回議題2"]
+}
+</output_format>
+
+<constraints>
+1. 議事録に記載されている情報だけを使うこと。
+2. 記載がない・読み取れない項目は「不明」または「無し」とし、推測で補わないこと。
+3. 各配列が空になる場合は空配列 [] を返すこと。
+</constraints>
+"""
 
 
 def parse_response_json(raw_text: str) -> dict[str, Any]:
@@ -75,6 +157,7 @@ def parse_response_json(raw_text: str) -> dict[str, Any]:
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:
+        logger.warning("JSONパース失敗。フォールバック処理を試みます: %s", raw_text[:100])
         start = raw_text.find("{")
         end = raw_text.rfind("}")
         if start != -1 and end != -1 and start < end:
@@ -152,37 +235,36 @@ def validate_manufacturing_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def analyze_inquiry(inquiry_text: str) -> dict[str, Any]:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY が .env に設定されていません。")
-
-    client = Anthropic(api_key=api_key)
+    if len(inquiry_text) > MAX_INPUT_LENGTH:
+        raise ValueError(f"入力が長すぎます（{MAX_INPUT_LENGTH}文字以内にしてください）。")
+    logger.info("analyze_inquiry: %d文字", len(inquiry_text))
     response = client.messages.create(
         model=MODEL_NAME,
-        max_tokens=700,
+        max_tokens=500,
         temperature=0.2,
-        system=build_system_prompt(),
-        messages=[{"role": "user", "content": f"問い合わせ本文:\n{inquiry_text}"}],
+        system=SYSTEM_PROMPT_INQUIRY,
+        messages=[
+            {"role": "user", "content": f"<inquiry>\n{inquiry_text}\n</inquiry>"},
+            {"role": "assistant", "content": "{"},
+        ],
     )
 
     text_blocks = [block.text for block in response.content if hasattr(block, "text")]
-    parsed = parse_response_json("\n".join(text_blocks))
+    parsed = parse_response_json("{" + "\n".join(text_blocks))
     return validate_result(parsed)
 
 
 def generate_x_posts(work_text: str, learning_text: str) -> list[str]:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY が .env に設定されていません。")
-
-    client = Anthropic(api_key=api_key)
+    if len(work_text) + len(learning_text) > MAX_INPUT_LENGTH:
+        raise ValueError(f"入力が長すぎます（合計{MAX_INPUT_LENGTH}文字以内にしてください）。")
     combined = f"今日やったこと:\n{work_text}\n\n学んだこと:\n{learning_text}"
+    logger.info("generate_x_posts: %d文字", len(combined))
 
     response = client.messages.create(
         model=MODEL_NAME,
-        max_tokens=900,
+        max_tokens=500,
         temperature=0.5,
-        system=build_x_post_system_prompt(),
+        system=SYSTEM_PROMPT_XPOST,
         messages=[{"role": "user", "content": combined}],
     )
 
@@ -196,25 +278,35 @@ def generate_x_posts(work_text: str, learning_text: str) -> list[str]:
     return posts
 
 
-def build_sales_prompt() -> str:
-    return (
-        "あなたはAI営業支援アシスタントです。"
-        "製造業・中小企業への30分AI提案商談をサポートします。"
-        "ヒアリング内容をもとに商談資料を生成してください。"
-        "必ずJSONのみで回答し、以下のスキーマを厳守:"
-        "{"
-        '"summary": "ヒアリング内容の2〜3行まとめ（この会社の状況と課題の核心）",'
-        '"followup_questions": ["デモ前に確認すべき深掘り質問（1文）", "深掘り質問2"],'
-        '"demo_points": ["デモで特に強調すべきポイント1", "ポイント2", "ポイント3"],'
-        '"proposals": ['
-        '{"title": "提案タイトル", "problem": "この会社の課題", "solution": "AIによる解決策", "effect": "具体的な効果", "cost": "概算費用", "subsidy": "補助金活用後の実質負担"},'
-        '{"title": "...", "problem": "...", "solution": "...", "effect": "...", "cost": "...", "subsidy": "..."}'
-        '],'
-        '"closing_script": "クロージングのトークスクリプト（自然な日本語で2〜3文。次の面談や診断の申し込みにつなげる流れで）",'
-        '"next_actions": ["次のアクション1（具体的に）", "次のアクション2", "次のアクション3"]'
-        "}"
-        "proposalsは2件。JSON以外は出力しないでください。"
-    )
+SYSTEM_PROMPT_SALES = """
+<role>
+あなたはAI営業支援アシスタントです。
+製造業・中小企業への30分AI提案商談をサポートするため、ヒアリング内容をもとに商談資料を生成します。
+顧客の課題に寄り添い、補助金を活用した費用対効果の高い提案を心がけてください。
+</role>
+
+<output_format>
+出力はシステムが自動処理するため、JSONのみを返してください。
+{
+  "summary": "ヒアリング内容の2〜3行まとめ（この会社の状況と課題の核心）",
+  "followup_questions": ["デモ前に確認すべき深掘り質問1", "深掘り質問2"],
+  "demo_points": ["デモで特に強調すべきポイント1", "ポイント2", "ポイント3"],
+  "proposals": [
+    {
+      "title": "提案タイトル",
+      "problem": "この会社の課題",
+      "solution": "AIによる解決策",
+      "effect": "具体的な効果（数値化できれば入れる）",
+      "cost": "概算費用",
+      "subsidy": "補助金活用後の実質負担"
+    }
+  ],
+  "closing_script": "クロージングのトークスクリプト（自然な日本語で2〜3文。次の面談や診断の申し込みにつなげる流れで）",
+  "next_actions": ["次のアクション1（具体的に）", "次のアクション2", "次のアクション3"]
+}
+proposalsは2件。
+</output_format>
+"""
 
 
 def validate_sales_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -246,28 +338,26 @@ def validate_sales_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def generate_sales_guide(form_data: dict[str, Any]) -> dict[str, Any]:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY が .env に設定されていません。")
-
     content = (
-        f"【商談相手】\n"
+        f"<client>\n"
         f"会社名: {form_data.get('company_name', '不明')}\n"
-        f"業種: {form_data.get('industry', '不明')}\n\n"
-        f"【ヒアリング結果】\n"
+        f"業種: {form_data.get('industry', '不明')}\n"
+        f"</client>\n\n"
+        f"<hearing>\n"
         f"Q1. 一番困っている業務・作業は？\n→ {form_data.get('q1', '未回答')}\n\n"
         f"Q2. その業務にかかる時間・関わる人数は？\n→ {form_data.get('q2', '未回答')}\n\n"
         f"Q3. 今はどうやって対応しているか？\n→ {form_data.get('q3', '未回答')}\n\n"
         f"Q4. AI導入を考えたきっかけは？\n→ {form_data.get('q4', '未回答')}\n\n"
-        f"Q5. 導入時期・予算のイメージは？\n→ {form_data.get('q5', '未回答')}"
+        f"Q5. 導入時期・予算のイメージは？\n→ {form_data.get('q5', '未回答')}\n"
+        f"</hearing>"
     )
 
-    client = Anthropic(api_key=api_key)
+    logger.info("generate_sales_guide: %s", form_data.get("company_name", "不明"))
     response = client.messages.create(
         model=MODEL_NAME,
         max_tokens=1400,
         temperature=0.3,
-        system=build_sales_prompt(),
+        system=SYSTEM_PROMPT_SALES,
         messages=[{"role": "user", "content": content}],
     )
 
@@ -276,11 +366,55 @@ def generate_sales_guide(form_data: dict[str, Any]) -> dict[str, Any]:
     return validate_sales_result(parsed)
 
 
-def analyze_manufacturing(form_data: dict[str, Any]) -> dict[str, Any]:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY が .env に設定されていません。")
+def validate_minutes_result(result: dict[str, Any]) -> dict[str, Any]:
+    decisions = result.get("decisions", [])
+    if not isinstance(decisions, list):
+        decisions = []
 
+    todos = result.get("todos", [])
+    if not isinstance(todos, list):
+        todos = []
+    validated_todos = []
+    for t in todos:
+        if isinstance(t, dict):
+            validated_todos.append({
+                "task": str(t.get("task", "")),
+                "owner": str(t.get("owner", "不明")),
+                "due": str(t.get("due", "未定")),
+            })
+
+    next_agenda = result.get("next_agenda", [])
+    if not isinstance(next_agenda, list):
+        next_agenda = []
+
+    return {
+        "decisions": [str(d).strip() for d in decisions if str(d).strip()],
+        "todos": validated_todos,
+        "next_agenda": [str(a).strip() for a in next_agenda if str(a).strip()],
+    }
+
+
+def analyze_minutes(minutes_text: str) -> dict[str, Any]:
+    if len(minutes_text) > MAX_INPUT_LENGTH:
+        raise ValueError(f"入力が長すぎます（{MAX_INPUT_LENGTH}文字以内にしてください）。")
+    logger.info("analyze_minutes: %d文字", len(minutes_text))
+    response = client.messages.create(
+        model=MODEL_NAME,
+        max_tokens=600,
+        temperature=0.1,
+        system=SYSTEM_PROMPT_MINUTES,
+        messages=[
+            {"role": "user", "content": f"<minutes>\n{minutes_text}\n</minutes>"},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    parsed = parse_response_json("{" + "\n".join(text_blocks))
+    return validate_minutes_result(parsed)
+
+
+def analyze_manufacturing(form_data: dict[str, Any]) -> dict[str, Any]:
     issues = form_data.get("issues", [])
     issues_text = "・" + "\n・".join(issues) if issues else "（未選択）"
 
@@ -294,17 +428,20 @@ def analyze_manufacturing(form_data: dict[str, Any]) -> dict[str, Any]:
         f"【その他・補足】\n{form_data.get('note', '（なし）')}"
     )
 
-    client = Anthropic(api_key=api_key)
+    logger.info("analyze_manufacturing: %s", form_data.get("company_name", "不明"))
     response = client.messages.create(
         model=MODEL_NAME,
-        max_tokens=1200,
+        max_tokens=1000,
         temperature=0.2,
-        system=build_manufacturing_prompt(),
-        messages=[{"role": "user", "content": content}],
+        system=SYSTEM_PROMPT_MANUFACTURING,
+        messages=[
+            {"role": "user", "content": content},
+            {"role": "assistant", "content": "{"},
+        ],
     )
 
     text_blocks = [block.text for block in response.content if hasattr(block, "text")]
-    parsed = parse_response_json("\n".join(text_blocks))
+    parsed = parse_response_json("{" + "\n".join(text_blocks))
     return validate_manufacturing_result(parsed)
 
 
@@ -343,6 +480,9 @@ def index():
     sales_result = None
     sales_error = ""
     sales_form = {}
+    minutes_text = ""
+    minutes_result = None
+    minutes_error = ""
     active_tab = request.args.get("tab", "inquiry")
 
     if request.method == "POST":
@@ -403,6 +543,15 @@ def index():
                     sales_result = generate_sales_guide(sales_form)
                 except Exception as exc:
                     sales_error = f"生成中にエラーが発生しました: {exc}"
+        elif action == "minutes":
+            minutes_text = request.form.get("minutes", "").strip()
+            if not minutes_text:
+                minutes_error = "議事録テキストを入力してください。"
+            else:
+                try:
+                    minutes_result = analyze_minutes(minutes_text)
+                except Exception as exc:
+                    minutes_error = f"分析中にエラーが発生しました: {exc}"
         else:
             active_tab = "inquiry"
 
@@ -422,6 +571,9 @@ def index():
         sales_form=sales_form,
         mfg_error=mfg_error,
         mfg_form=mfg_form,
+        minutes_text=minutes_text,
+        minutes_result=minutes_result,
+        minutes_error=minutes_error,
     )
 
 
