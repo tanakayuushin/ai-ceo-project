@@ -15,14 +15,17 @@ from googleapiclient.discovery import build
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMP_DIR = os.path.join(BASE_DIR, "temp_data")
+SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 # フォント（Windows / Linux 両対応）
 _FONT_CANDIDATES = [
     r"C:\Windows\Fonts\msgothic.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJKjp-Regular.otf",
     "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJKjp-Regular.otf",
 ]
 FONT_PATH = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), _FONT_CANDIDATES[0])
 
