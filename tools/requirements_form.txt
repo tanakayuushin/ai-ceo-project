@@ -1,0 +1,7 @@
+Flask
+gunicorn
+fpdf2
+requests
+google-auth
+google-auth-oauthlib
+google-api-python-client
