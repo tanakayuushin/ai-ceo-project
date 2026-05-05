@@ -1,4 +1,4 @@
-import json
+﻿import json
 import os
 from typing import Any
 
@@ -10,8 +10,8 @@ MODEL_NAME = "claude-haiku-4-5-20251001"
 
 app = Flask(__name__)
 load_dotenv()
-app.secret_key = os.getenv("SECRET_KEY", "emport-ai-secret-change-in-prod")
-ACCESS_CODE = os.getenv("ACCESS_CODE", "emportai2026")
+app.secret_key = os.getenv("SECRET_KEY", "ai-tool-secret-change-in-prod")
+ACCESS_CODE = os.getenv("ACCESS_CODE", "ai-tool-2026")
 
 
 def build_system_prompt() -> str:
@@ -53,7 +53,7 @@ def build_x_post_system_prompt() -> str:
 
 def build_manufacturing_prompt() -> str:
     return (
-        "あなたはEmport AIのAI活用コンサルタントです。"
+        "あなたは（社名）のAI活用コンサルタントです。"
         "製造業の中小企業からの相談情報を分析し、最適なAI活用プランを日本語で提案してください。"
         "必ずJSONのみで回答し、以下のスキーマを厳守してください:"
         "{"

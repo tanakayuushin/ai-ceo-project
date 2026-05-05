@@ -1,4 +1,4 @@
-from pptx import Presentation
+﻿from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
@@ -68,7 +68,7 @@ def header_bar(slide, text, subtitle=None):
                  font_size=16, color=GOLD)
 
 
-def footer(slide, text="Emport AI — 中小企業のためのAI活用入門"):
+def footer(slide, text="（社名） — 中小企業のためのAI活用入門"):
     add_rect(slide, 0, Inches(7.1), W, Inches(0.4), fill_color=NAVY)
     add_text(slide, text, Inches(0.3), Inches(7.12), Inches(10), Inches(0.3),
              font_size=12, color=WHITE)
@@ -113,7 +113,7 @@ add_text(s, "中小企業のためのAI活用入門", Inches(0.8), Inches(1.0), 
 add_text(s, "— 明日から使える業務効率化のヒント —", Inches(0.8), Inches(2.1), Inches(11.5), Inches(0.6),
          font_size=24, color=GOLD, align=PP_ALIGN.CENTER)
 add_rect(s, Inches(5.5), Inches(2.95), Inches(2.3), Inches(0.05), fill_color=GOLD)
-add_text(s, "Emport AI", Inches(0.8), Inches(3.2), Inches(11.5), Inches(0.6),
+add_text(s, "（社名）", Inches(0.8), Inches(3.2), Inches(11.5), Inches(0.6),
          font_size=22, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
 add_text(s, "主催：○○商工会議所", Inches(0.8), Inches(3.8), Inches(11.5), Inches(0.5),
          font_size=18, color=GOLD, align=PP_ALIGN.CENTER)
@@ -445,7 +445,7 @@ add_text(s, "ご参加ありがとうございました", Inches(0.5), Inches(1.
 add_text(s, "「今日が、御社のAI活用のスタートラインになれば嬉しいです。」",
          Inches(0.5), Inches(3.0), Inches(12.3), Inches(0.9),
          font_size=22, color=GOLD, align=PP_ALIGN.CENTER)
-add_text(s, "— Emport AI  CEO アレン", Inches(0.5), Inches(4.0), Inches(12.3), Inches(0.6),
+add_text(s, "— （社名）  CEO アレン", Inches(0.5), Inches(4.0), Inches(12.3), Inches(0.6),
          font_size=20, color=WHITE, align=PP_ALIGN.CENTER)
 add_rect(s, Inches(5.0), Inches(4.9), Inches(3.3), Inches(0.06), fill_color=GOLD)
 add_text(s, "終了後、個別相談受付中。お気軽に声をかけてください。",

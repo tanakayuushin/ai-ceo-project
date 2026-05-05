@@ -1,4 +1,4 @@
-# AI CEO Project — Claude Code Context
+﻿# AI CEO Project — Claude Code Context
 
 ## プロジェクト概要
 
@@ -23,7 +23,7 @@
 ai-ceo-project/
 │
 ├── app.py            # Flaskウェブアプリ（AI業務支援ツール）
-├── index.html        # 会社ウェブサイト（Emport AI）
+├── index.html        # 会社ウェブサイト（（社名））
 ├── Procfile          # Railway デプロイ設定
 ├── requirements.txt  # Pythonパッケージ依存
 │
