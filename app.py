@@ -355,14 +355,17 @@ def generate_sales_guide(form_data: dict[str, Any]) -> dict[str, Any]:
     logger.info("generate_sales_guide: %s", form_data.get("company_name", "不明"))
     response = client.messages.create(
         model=MODEL_NAME,
-        max_tokens=1400,
+        max_tokens=2000,
         temperature=0.3,
         system=SYSTEM_PROMPT_SALES,
-        messages=[{"role": "user", "content": content}],
+        messages=[
+            {"role": "user", "content": content},
+            {"role": "assistant", "content": "{"},
+        ],
     )
 
     text_blocks = [block.text for block in response.content if hasattr(block, "text")]
-    parsed = parse_response_json("\n".join(text_blocks))
+    parsed = parse_response_json("{" + "\n".join(text_blocks))
     return validate_sales_result(parsed)
 
 
