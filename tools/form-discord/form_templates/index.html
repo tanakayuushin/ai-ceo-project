@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SRC 活動記録 送信ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Meiryo', sans-serif;
+      background: #0f1c35; color: #e8eaf0; min-height: 100vh; padding: 32px 16px;
+    }
+    .container { max-width: 680px; margin: 0 auto; }
+    h1 { text-align: center; font-size: 1.5rem; font-weight: 900; color: #f0b429;
+         margin-bottom: 28px; }
+    .card { background: #162040; border: 1px solid #2a3f60; border-radius: 12px;
+            padding: 28px; margin-bottom: 20px; }
+    .card h2 { font-size: 1rem; color: #a8c0e0; margin-bottom: 18px; font-weight: 700; }
+    label { display: block; font-size: 0.85rem; color: #8a9bbf; margin-bottom: 6px; font-weight: 500; }
+    input[type="text"], input[type="password"] {
+      width: 100%; background: #0f1c35; border: 1px solid #2a3f60; border-radius: 8px;
+      color: #e8eaf0; font-size: 0.95rem; font-family: inherit;
+      padding: 10px 12px; outline: none; transition: border-color 0.2s; margin-bottom: 14px;
+    }
+    input:focus { border-color: #f0b429; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #f0b429; color: #0f1c35; border: none;
+      padding: 12px 28px; border-radius: 8px; font-size: 0.95rem;
+      font-weight: 900; cursor: pointer; font-family: inherit;
+      margin-top: 6px; transition: background 0.2s; width: 100%; justify-content: center;
+    }
+    .btn:hover { background: #fbbf24; }
+    .error-box {
+      background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4);
+      border-radius: 8px; padding: 12px 16px; color: #fca5a5;
+      font-size: 0.88rem; margin-top: 14px;
+    }
+    .activity-card {
+      background: #0f1c35; border: 1px solid #2a3f60; border-radius: 10px;
+      padding: 18px; margin-bottom: 14px;
+    }
+    .activity-name { font-size: 1rem; font-weight: 900; color: #f0b429; margin-bottom: 4px; }
+    .activity-count { font-size: 0.8rem; color: #8a9bbf; margin-bottom: 14px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .result-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid #1e3050;
+      font-size: 0.9rem;
+    }
+    .badge-ok { background: rgba(110,231,183,0.15); border: 1px solid rgba(110,231,183,0.4);
+                color: #6ee7b7; border-radius: 6px; padding: 2px 10px; font-size: 0.78rem; font-weight: 700; }
+    .badge-ng { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4);
+                color: #fca5a5; border-radius: 6px; padding: 2px 10px; font-size: 0.78rem; font-weight: 700; }
+    .back-link { display: block; text-align: center; margin-top: 18px;
+                 color: #8a9bbf; font-size: 0.88rem; text-decoration: none; }
+    .back-link:hover { color: #f0b429; }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SRC 活動記録 Discord 送信ツール</h1>
+
+    {% if error %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
+
+    <!-- ===== STEP 1: URL入力 ===== -->
+    {% if step == 'input' %}
+    <div class="card">
+      <h2>接続情報を入力</h2>
+      <form method="POST" action="/fetch">
+        <label>Google スプレッドシートの URL</label>
+        <input type="text" name="spreadsheet_url"
+               value="{{ spreadsheet_url }}"
+               placeholder="https://docs.google.com/spreadsheets/d/..." />
+
+        <label>Discord Webhook URL</label>
+        <input type="password" name="webhook_url"
+               value="{{ webhook_url }}"
+               placeholder="https://discordapp.com/api/webhooks/..." />
+
+        <button type="submit" class="btn">活動データを取得する →</button>
+      </form>
+    </div>
+    {% endif %}
+
+    <!-- ===== STEP 2: 活動ごとに場所・主催を入力 ===== -->
+    {% if step == 'activities' %}
+    <div class="card">
+      <h2>{{ activities|length }}件の活動が見つかりました</h2>
+      <p style="font-size:0.85rem;color:#8a9bbf;margin-bottom:18px;">
+        各活動の場所と主催を入力してください。
+      </p>
+    </div>
+
+    <form method="POST" action="/send">
+      <input type="hidden" name="tid" value="{{ tid }}" />
+
+      {% for act in activities %}
+      <div class="activity-card">
+        <div class="activity-name">■ {{ act.name }}</div>
+        <div class="activity-count">{{ act.count }}名の回答</div>
+        <div class="form-row">
+          <div>
+            <label>場所</label>
+            <input type="text" name="location_{{ act.name }}" placeholder="例）萩市" />
+          </div>
+          <div>
+            <label>主催</label>
+            <input type="text" name="organizer_{{ act.name }}" placeholder="例）山口県支部" />
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <button type="submit" class="btn">PDFを生成してDiscordに送信 →</button>
+    </form>
+    <a href="/" class="back-link">← 最初に戻る</a>
+    {% endif %}
+
+    <!-- ===== STEP 3: 送信結果 ===== -->
+    {% if step == 'result' %}
+    <div class="card">
+      <h2>送信結果</h2>
+      {% for r in results %}
+      <div class="result-item">
+        {% if r.success %}
+        <span class="badge-ok">送信完了</span>
+        {% else %}
+        <span class="badge-ng">失敗</span>
+        {% endif %}
+        <span>{{ r.name }}</span>
+        {% if not r.success and r.error is defined %}
+        <span style="font-size:0.78rem;color:#fca5a5;">{{ r.error }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <a href="/" class="back-link">← 最初に戻る</a>
+    {% endif %}
+
+  </div>
+</body>
+</html>

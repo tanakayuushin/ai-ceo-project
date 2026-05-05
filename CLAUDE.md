@@ -32,12 +32,23 @@ ai-ceo-project/
 │   └── login.html    # アクセスコード認証画面
 │
 ├── tools/            # 社内スクリプト類
-│   ├── main.py       # メインCLIツール
-│   ├── generate_slides.py      # スライド生成
-│   ├── generate_contract_pdf.py # 契約書PDF生成
-│   ├── rag_demo.py   # RAGデモ
-│   ├── gmail_draft_sync.gs     # GAS（Gmail下書き同期）
-│   └── requirements_rag.txt
+│   ├── ai-analysis/              # AI分析系CLIツール
+│   │   ├── main.py               # 問い合わせ分析CLI
+│   │   ├── rag_demo.py           # RAGデモ（山田建設AIアシスタント）
+│   │   └── requirements.txt
+│   ├── content-generator/        # コンテンツ生成ツール
+│   │   ├── generate_slides.py    # セミナースライド生成（pptx）
+│   │   └── generate_contract_pdf.py # 契約書PDF生成
+│   ├── social-media/             # SNS・メール連携
+│   │   ├── post_to_x.py          # X（Twitter）投稿スクリプト
+│   │   └── gmail_draft_sync.gs   # GAS（Gmail下書き同期）
+│   └── form-discord/             # フォーム→PDF→Discord自動化
+│       ├── form_discord_web.py   # Webアプリ版（Render デプロイ済み）
+│       ├── form_to_discord.py    # デスクトップ版（Tkinter）
+│       ├── form_templates/       # Webアプリ用テンプレート
+│       ├── Dockerfile            # Render用Dockerファイル
+│       ├── render.yaml           # Renderデプロイ設定
+│       └── requirements.txt
 │
 ├── company/          # 会社情報（概要・戦略）
 ├── ceo/              # CEO（アレン）プロフィール・レポート・意思決定

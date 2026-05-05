@@ -6,3 +6,7 @@ __pycache__/
 *.pyc
 .cursor/
 .claude/
+credentials.json
+token.pickle
+settings.json
+temp_data/

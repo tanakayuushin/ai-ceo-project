@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: src-form-discord
+    runtime: docker
+    dockerfilePath: tools/form-discord/Dockerfile
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CREDENTIALS
+        sync: false
+      - key: GOOGLE_TOKEN_B64
+        sync: false
