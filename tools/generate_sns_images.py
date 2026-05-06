@@ -98,19 +98,19 @@ def gen_x_header():
         draw.ellipse([cx-r, cy-r, cx+r, cy+r],
                      outline=(*ACCENT, 25), width=2)
 
-    # アクセントライン
-    draw.rectangle([80, 160, 86, 340], fill=ACCENT)
+    # アクセントライン（右寄り）
+    draw.rectangle([530, 160, 536, 340], fill=ACCENT)
 
-    # テキスト
+    # テキスト（右寄り）
     f_main = get_font(80)
     f_sub  = get_font(36)
     f_tag  = get_font(28)
 
-    draw.text((110, 145), "Emport AI", font=f_main, fill=WHITE)
-    draw.text((112, 245), "山口県の中小企業に、AIの力を届ける", font=f_sub, fill=LIGHT)
+    draw.text((560, 145), "Emport AI", font=f_main, fill=WHITE)
+    draw.text((562, 245), "山口県の中小企業に、AIの力を届ける", font=f_sub, fill=LIGHT)
 
     tags = ["#AI活用支援", "#中小企業DX", "#山口県", "#生成AI"]
-    tx = 112
+    tx = 562
     for tag in tags:
         bbox = draw.textbbox((0, 0), tag, font=f_tag)
         tw = bbox[2] - bbox[0]
@@ -119,7 +119,7 @@ def gen_x_header():
         draw.text((tx, 310), tag, font=f_tag, fill=ACCENT)
         tx += tw + 28
 
-    draw.text((112, 370), "yuubisinesu@gmail.com  |  X: @AI_chuusyou", font=f_tag, fill=LIGHT)
+    draw.text((562, 370), "yuubisinesu@gmail.com  |  X: @emport_ai", font=f_tag, fill=LIGHT)
 
     out = os.path.join(OUTPUT_DIR, "01_x_header.png")
     img.save(out)
@@ -141,12 +141,12 @@ def gen_x_icon():
     r = 90
     draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=MID_BLUE)
 
-    f_logo = get_font(100)
+    f_logo = get_font(58)
     f_sub  = get_font(30)
-    bbox = draw.textbbox((0, 0), "EA", font=f_logo)
+    bbox = draw.textbbox((0, 0), "Emport", font=f_logo)
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
-    draw.text((cx - tw//2, cy - th//2 - 5), "EA", font=f_logo, fill=WHITE)
+    draw.text((cx - tw//2, cy - th//2 - 5), "Emport", font=f_logo, fill=WHITE)
 
     draw_centered_text(draw, "Emport AI", S - 80, f_sub, ACCENT, S)
 
@@ -179,13 +179,13 @@ def gen_instagram_icon():
     draw.ellipse([cx-r, cy-r, cx+r, cy+r], fill=(*MID_BLUE, 200))
     draw.ellipse([cx-r+6, cy-r+6, cx+r-6, cy+r-6], outline=ACCENT, width=5)
 
-    f_logo = get_font(260)
+    f_logo = get_font(130)
     f_name = get_font(90)
     f_sub  = get_font(54)
 
-    bbox = draw.textbbox((0, 0), "EA", font=f_logo)
+    bbox = draw.textbbox((0, 0), "Emport", font=f_logo)
     tw, th = bbox[2]-bbox[0], bbox[3]-bbox[1]
-    draw.text((cx - tw//2, cy - th//2 - 10), "EA", font=f_logo, fill=WHITE)
+    draw.text((cx - tw//2, cy - th//2 - 10), "Emport", font=f_logo, fill=WHITE)
 
     draw_centered_text(draw, "Emport AI", cy + r + 40,  f_name, WHITE, S)
     draw_centered_text(draw, "AIで、地方企業を強くする", cy + r + 148, f_sub, ACCENT, S)
@@ -412,7 +412,7 @@ def gen_ig_story():
 
     draw.rounded_rectangle([100, H-230, W-100, H-130], radius=20,
                             outline=ACCENT, width=4)
-    draw_centered_text(draw, "X: @AI_chuusyou", H-200, f_cta, ACCENT, W)
+    draw_centered_text(draw, "X: @emport_ai", H-200, f_cta, ACCENT, W)
 
     draw.rectangle([0, H-68, W, H], fill=MID_BLUE)
     draw_centered_text(draw, "山口県 | Emport AI", H-54, f_foot, LIGHT, W)

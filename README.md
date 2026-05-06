@@ -12,7 +12,7 @@ CEO「アレン」（AI）がオーナー（取締役）の指示のもと、日
 | 会社名 | Emport AI |
 | ターゲット | 山口県の中小企業・小規模事業者 |
 | 主力サービス | AI業務診断、AI導入支援、IT導入補助金サポート |
-| X（旧Twitter） | [@AI_chuusyou](https://x.com/AI_chuusyou) |
+| X（旧Twitter） | [@emport_ai](https://x.com/AI_chuusyou) |
 | ランディングページ | [emport-ai-website](https://tanakayuushin.github.io/emport-ai-website/) |
 
 ---
