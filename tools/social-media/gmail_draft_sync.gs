@@ -6,7 +6,7 @@
 var GITHUB_OWNER = "tanakayuushin";
 var GITHUB_REPO  = "ai-ceo-project";
 var DRAFTS_PATH  = "departments/sales/outreach-drafts";
-var FROM_EMAIL   = "tsubeyou081@gmail.com";
+var FROM_EMAIL   = "yuubisinesu@gmail.com";
 // =================
 
 // メインエントリーポイント（トリガーから呼び出す）
