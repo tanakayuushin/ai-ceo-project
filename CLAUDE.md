@@ -23,7 +23,7 @@
 ai-ceo-project/
 │
 ├── app.py            # Flaskウェブアプリ（AI業務支援ツール）
-├── index.html        # 会社ウェブサイト（（社名））
+├── index.html        # 会社ウェブサイト（Emport AI）
 ├── Procfile          # Railway デプロイ設定
 ├── requirements.txt  # Pythonパッケージ依存
 │

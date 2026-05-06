@@ -1,0 +1,23 @@
+{
+  "name": "ai-ceo-project",
+  "version": "1.0.0",
+  "description": "山口県の中小企業向けAI活用支援会社「Emport AI」の経営管理リポジトリです。  \r CEO「アレン」（AI）がオーナー（取締役）の指示のもと、日々の経営業務を自律的に遂行します。",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tanakayuushin/ai-ceo-project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tanakayuushin/ai-ceo-project/issues"
+  },
+  "homepage": "https://github.com/tanakayuushin/ai-ceo-project#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0"
+  }
+}
