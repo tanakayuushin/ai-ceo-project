@@ -1,0 +1,43 @@
+{
+  "shop_name": "DeskLab",
+  "shop_url": "https://desklab.base.shop",
+  "target_audience": "20代男性学生・社会人、デスク環境に興味がある層",
+  "products": [
+    {
+      "id": "product_001",
+      "name": "折り畳みノートPCスタンド",
+      "price": 1980,
+      "description": "薄型・軽量でどこでも持ち運べる折り畳み式PCスタンド。首・肩の疲れを軽減し、作業効率を向上させる。",
+      "selling_points": [
+        "首や肩への負担を大幅に軽減",
+        "折り畳んでカバンに入る超コンパクト設計",
+        "スタイリッシュなシルバーカラー"
+      ],
+      "image_prompt_en": "A slim silver foldable laptop stand on a clean white desk with a MacBook resting on it, soft natural daylight, camera slowly pulls back to reveal minimal workspace, 9:16 vertical format, cinematic product shot"
+    },
+    {
+      "id": "product_002",
+      "name": "2段式モニタースタンド",
+      "price": 3980,
+      "description": "モニターを上段に置き、下段にキーボードを収納できる2段構造のデスクオーガナイザー。デスクを広く使える。",
+      "selling_points": [
+        "デスクのスペースを2倍に有効活用",
+        "モニターを目線の高さに調整できる",
+        "木目調デザインがどんな部屋にも馴染む"
+      ],
+      "image_prompt_en": "A sleek two-tier desk organizer stand with monitor on top and keyboard underneath, dark wood desk surface, warm ambient lighting, camera slowly zooms in from the side, office productivity aesthetic, 9:16 vertical format"
+    },
+    {
+      "id": "product_003",
+      "name": "ケーブルホルダー（5個セット）",
+      "price": 580,
+      "description": "デスクの縁にUSBや充電ケーブルをスッキリ整理できるシリコン製ケーブルホルダー。5個セットでお得。",
+      "selling_points": [
+        "散らかったケーブルを一瞬で整理",
+        "貼り付け簡単・跡が残らない",
+        "5個セットで全ケーブルをまとめて管理"
+      ],
+      "image_prompt_en": "Cable clips neatly organizing USB and charging cables along the edge of a modern desk, satisfying close-up of cables going from messy to perfectly organized, bright clean background, camera pans left to right, 9:16 vertical format"
+    }
+  ]
+}
