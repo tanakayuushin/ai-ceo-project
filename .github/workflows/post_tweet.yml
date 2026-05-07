@@ -42,7 +42,6 @@ jobs:
           FILE="${{ steps.find.outputs.file }}"
           DATE=$(basename "$FILE" .txt)
           RESULT_FILE="departments/marketing/x-posts/${DATE}.md"
-          TWEET=$(cat "$FILE")
           RESULT="${{ steps.post.outputs.result }}"
 
           if echo "$RESULT" | grep -q "投稿成功"; then
@@ -54,13 +53,17 @@ jobs:
             RESULT_LINE="**投稿結果**: 失敗（${RESULT}）"
           fi
 
-          # 既存のmdファイルを更新
+          # 既存のmdファイルの投稿ステータス行を更新
           if [ -f "$RESULT_FILE" ]; then
-            sed -i "s/\*\*投稿結果\*\*:.*/${RESULT_LINE}/" "$RESULT_FILE"
+            sed -i "s/\*\*投稿ステータス\*\*:.*/${RESULT_LINE}/" "$RESULT_FILE"
+            # 行が見つからない場合は末尾に追記
+            grep -q "投稿結果" "$RESULT_FILE" || echo -e "\n---\n\n${RESULT_LINE}" >> "$RESULT_FILE"
           fi
 
           # pendingファイルを削除
           rm "$FILE"
+          # pendingディレクトリが空なら.gitkeepを置く
+          find departments/marketing/x-posts/pending -maxdepth 0 -empty 2>/dev/null && touch departments/marketing/x-posts/pending/.gitkeep || true
 
           git config user.email "tsubeyou081@gmail.com"
           git config user.name "GitHub Actions"
