@@ -1,0 +1,69 @@
+name: Post Tweet to X
+
+on:
+  push:
+    paths:
+      - 'departments/marketing/x-posts/pending/*.txt'
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get pending tweet file
+        id: find
+        run: |
+          FILE=$(git diff --name-only HEAD~1 HEAD -- 'departments/marketing/x-posts/pending/*.txt' | head -1)
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "Found: $FILE"
+
+      - name: Post to X
+        if: steps.find.outputs.file != ''
+        id: post
+        env:
+          X_CONSUMER_KEY: ${{ secrets.X_CONSUMER_KEY }}
+          X_CONSUMER_SECRET: ${{ secrets.X_CONSUMER_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: |
+          python tools/social-media/post_to_x.py --file "${{ steps.find.outputs.file }}" 2>&1 | tee /tmp/result.txt
+          echo "result=$(cat /tmp/result.txt)" >> $GITHUB_OUTPUT
+
+      - name: Write result back
+        if: steps.find.outputs.file != ''
+        run: |
+          FILE="${{ steps.find.outputs.file }}"
+          DATE=$(basename "$FILE" .txt)
+          RESULT_FILE="departments/marketing/x-posts/${DATE}.md"
+          TWEET=$(cat "$FILE")
+          RESULT="${{ steps.post.outputs.result }}"
+
+          if echo "$RESULT" | grep -q "投稿成功"; then
+            STATUS="成功"
+            ID=$(echo "$RESULT" | grep -oP 'ID = \K[0-9]+')
+            RESULT_LINE="**投稿結果**: 成功（ID: ${ID}）"
+          else
+            STATUS="失敗"
+            RESULT_LINE="**投稿結果**: 失敗（${RESULT}）"
+          fi
+
+          # 既存のmdファイルを更新
+          if [ -f "$RESULT_FILE" ]; then
+            sed -i "s/\*\*投稿結果\*\*:.*/${RESULT_LINE}/" "$RESULT_FILE"
+          fi
+
+          # pendingファイルを削除
+          rm "$FILE"
+
+          git config user.email "tsubeyou081@gmail.com"
+          git config user.name "GitHub Actions"
+          git add -A
+          git diff --staged --quiet || git commit -m "Tweet posted: ${DATE} (${STATUS})"
+          git push
