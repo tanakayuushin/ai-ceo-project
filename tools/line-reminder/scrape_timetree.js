@@ -152,19 +152,71 @@ function todayJST() {
   await page.screenshot({ path: 'debug_calendar.png' });
 
   // ── 来月へ移動 ──────────────────────────────────────
+  // ── ページ上のボタンを全ログ出力（セレクター特定用） ──
+  const allButtons = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('button, [role="button"]'))
+      .filter(el => el.offsetParent !== null)
+      .map(el => ({
+        text:  (el.textContent || '').trim().slice(0, 30),
+        aria:  el.getAttribute('aria-label') || '',
+        cls:   (el.className || '').toString().slice(0, 80),
+      }))
+  );
+  console.log('[ALL BUTTONS]', JSON.stringify(allButtons).slice(0, 2000));
+
+  // ── 現在月 + 翌月 + 翌々月 に移動してイベントを取得 ──
   const nextSelectors = [
     'button[aria-label*="next" i]',
     'button[aria-label*="翌月"]',
+    'button[aria-label*="次の月"]',
+    'button[aria-label*="次"]',
     '[data-testid*="next"]',
+    '[class*="next"] button',
+    'button[class*="next"]',
+    'button[class*="forward"]',
   ];
-  for (const sel of nextSelectors) {
-    const btn = page.locator(sel).first();
-    if (await btn.count() > 0) {
-      await btn.click();
-      console.log('来月へ移動');
-      await page.waitForTimeout(5000);
-      break;
+
+  for (let monthStep = 0; monthStep < 2; monthStep++) {
+    let navigated = false;
+
+    // セレクターで探す
+    for (const sel of nextSelectors) {
+      try {
+        const btn = page.locator(sel).first();
+        if (await btn.count() > 0) {
+          await btn.click();
+          console.log(`[NAV] ${monthStep + 1}ヶ月前進 (${sel})`);
+          await page.waitForTimeout(5000);
+          navigated = true;
+          break;
+        }
+      } catch (_) {}
     }
+
+    // JavaScript 経由で aria-label や text を見てクリック
+    if (!navigated) {
+      const found = await page.evaluate(() => {
+        for (const el of document.querySelectorAll('button, [role="button"]')) {
+          const label = (el.getAttribute('aria-label') || '').toLowerCase();
+          const text  = (el.textContent || '').trim();
+          if (label.includes('next') || label.includes('翌') || label.includes('次') ||
+              text === '>' || text === '›' || text === '→' || text === '▶') {
+            el.click();
+            return true;
+          }
+        }
+        return false;
+      });
+      if (found) {
+        console.log(`[NAV JS] ${monthStep + 1}ヶ月前進`);
+        await page.waitForTimeout(5000);
+      } else {
+        console.log(`[NAV FAIL] ボタンが見つかりません (step ${monthStep + 1})`);
+        break;
+      }
+    }
+
+    await page.screenshot({ path: `debug_month_${monthStep + 1}.png` });
   }
 
   await browser.close();
