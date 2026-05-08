@@ -36,21 +36,20 @@ function todayJST() {
   });
   const page = await context.newPage();
 
-  // ── ログイン後のAPIリクエストから認証ヘッダーを取得 ──
+  // ── ログイン後のAPIリクエストから全ヘッダーをキャプチャ ──
   let capturedHeaders = null;
   page.on('request', (req) => {
     if (capturedHeaders) return;
     const url = req.url();
     if (!url.includes('timetreeapp.com/api')) return;
-    if (url.includes('/auth/email') || url.includes('/signin')) return;
+    if (url.includes('/auth/email') || url.includes('/signin') || url.includes('/public_calendars')) return;
     const h = req.headers();
-    if (!h['authorization']) return;
     capturedHeaders = {};
     for (const [k, v] of Object.entries(h)) {
       if (!['host', 'content-length'].includes(k)) capturedHeaders[k] = v;
     }
-    console.log('[AUTH] キャプチャ完了 from:', url.slice(0, 80));
-    console.log('[AUTH] ヘッダー:', Object.keys(capturedHeaders).join(', '));
+    console.log('[CAPTURED] from:', url.slice(0, 80));
+    console.log('[HEADERS]', Object.keys(capturedHeaders).join(', '));
   });
 
   // ── ログイン ──────────────────────────────────────────
@@ -84,13 +83,16 @@ function todayJST() {
   await page.screenshot({ path: 'debug_calendar.png' });
 
   if (!capturedHeaders) {
-    console.error('[ERROR] 認証ヘッダーを取得できませんでした');
-    await browser.close();
-    process.exit(1);
+    console.warn('[WARN] APIリクエストをキャプチャできませんでした。cookieのみで試みます');
+    capturedHeaders = {
+      'accept': 'application/json',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    };
   }
 
   // Cookie も取得してヘッダーに追加
   const cookies = await context.cookies('https://timetreeapp.com');
+  console.log('Cookie 数:', cookies.length, cookies.map(c => c.name).join(', '));
   if (cookies.length > 0) {
     capturedHeaders['cookie'] = cookies.map(c => `${c.name}=${c.value}`).join('; ');
   }
