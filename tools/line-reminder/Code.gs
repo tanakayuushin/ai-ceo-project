@@ -43,7 +43,7 @@ function doPost(e) {
       if (dateStr < todayStr) continue;
 
       const timeStr = ev.all_day
-        ? '09:00'
+        ? ''
         : String(start.getHours()).padStart(2, '0') + ':' + String(start.getMinutes()).padStart(2, '0');
       const title   = ev.title || '（タイトルなし）';
       const key     = title + '|' + dateStr;
@@ -225,12 +225,13 @@ function sendReminders() {
           : rem.days === 14            ? '2週間後に予定があります！'
           : rem.days + '日後に予定があります！';
 
+        const timeDisplay = formatTimeJapanese(time);
         push(groupId,
           msgDate + '\n\n' +
           '━━━━━━━━━━\n' +
           '【' + name + '】\n' +
-          formatDateJapanese(eventDateObj) + '\n' +
-          formatTimeJapanese(time) + '\n' +
+          formatDateJapanese(eventDateObj) +
+          (timeDisplay ? '\n' + timeDisplay : '') + '\n' +
           '━━━━━━━━━━' +
           memoLine
         );
@@ -315,7 +316,7 @@ function setupValidation(sheet) {
     times.push(String(h).padStart(2,'0') + ':30');
   }
   const timeRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(times, true).setAllowInvalid(false).build();
+    .requireValueInList(times, true).setAllowInvalid(true).build();
   sheet.getRange('C2:C1000').setDataValidation(timeRule);
 
   const repeatRule = SpreadsheetApp.newDataValidation()
