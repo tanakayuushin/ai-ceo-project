@@ -15,6 +15,18 @@ function isBirthdayOrPersonal(title) {
   return SKIP_KEYWORDS.some(kw => title.includes(kw));
 }
 
+// タイムスタンプ → JST の YYYY/MM/DD 文字列に変換
+function toJSTDateStr(start) {
+  const ms = (typeof start === 'number' || /^\d{10,}$/.test(String(start)))
+    ? Number(start) : new Date(start).getTime();
+  return new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '/');
+}
+
+// 今日の JST 日付文字列
+function todayJST() {
+  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '/');
+}
+
 (async () => {
   if (!EMAIL || !PASSWORD || !WEBHOOK_URL) {
     console.error('環境変数が不足しています: TIMETREE_EMAIL, TIMETREE_PASSWORD, GAS_WEBHOOK_URL');
@@ -85,13 +97,10 @@ function isBirthdayOrPersonal(title) {
           continue;
         }
 
-        // 過去の予定はスキップ（今日0時より前）
-        const eventDate = new Date(typeof start === 'number' || /^\d{10,}$/.test(String(start))
-          ? Number(start) : start);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (eventDate < today) {
-          console.log('[SKIP past]', title);
+        // 過去の予定はスキップ（JST基準）
+        const eventDateStr = toJSTDateStr(start);
+        if (eventDateStr < todayJST()) {
+          console.log('[SKIP past]', title, eventDateStr);
           continue;
         }
 
