@@ -28,18 +28,33 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
   // メール入力
   const emailSel = 'input[type="email"], input[name="email"], input[autocomplete="email"]';
   await page.waitForSelector(emailSel, { timeout: 10000 });
+  await page.click(emailSel);
   await page.fill(emailSel, EMAIL);
+  await page.waitForTimeout(500);
 
-  // パスワード入力
-  await page.fill('input[type="password"]', PASSWORD);
+  // パスワード入力欄が出るまで待つ（2ステップログインに対応）
+  await page.press(emailSel, 'Enter');
+  await page.waitForTimeout(1500);
+
+  const pwdSel = 'input[type="password"]';
+  await page.waitForSelector(pwdSel, { timeout: 8000 });
+  await page.fill(pwdSel, PASSWORD);
   await page.screenshot({ path: 'debug_2_filled.png' });
+  await page.waitForTimeout(500);
 
-  // ログインボタン
-  const btnSel = 'button[type="submit"], button:has-text("ログイン"), button:has-text("Sign in"), button:has-text("Log in")';
-  await page.click(btnSel);
+  // Enter キーで送信（ボタンクリックより確実）
+  await page.press(pwdSel, 'Enter');
 
-  // カレンダー読み込み待ち
-  await page.waitForTimeout(8000);
+  // ログイン完了を URL の変化で検知
+  try {
+    await page.waitForURL(url => !url.includes('/signin'), { timeout: 15000 });
+    console.log('ログイン成功！');
+  } catch (_) {
+    console.log('ログインに失敗した可能性があります');
+    await page.screenshot({ path: 'debug_error_login.png' });
+  }
+
+  await page.waitForTimeout(5000);
   await page.screenshot({ path: 'debug_3_after_login.png' });
   console.log('ログイン後 URL:', page.url());
   console.log('ページタイトル:', await page.title());
