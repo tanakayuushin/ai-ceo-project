@@ -42,6 +42,13 @@ function isBirthdayOrPersonal(title) {
 
     console.log('[JSON API]', url.slice(0, 120));
 
+    // カレンダーIDをAPIのURLから自動取得
+    const calIdMatch = url.match(/\/calendar\/(\d+)\//);
+    if (calIdMatch && !clubCalendarId) {
+      clubCalendarId = calIdMatch[1];
+      console.log('[検出] カレンダーID:', clubCalendarId);
+    }
+
     // イベント系エンドポイントのみ処理
     const isEventUrl = url.includes('/events');
     if (!isEventUrl) return;

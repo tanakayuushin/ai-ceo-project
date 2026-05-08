@@ -32,7 +32,10 @@ function doPost(e) {
     let added = 0;
     for (const ev of events) {
       if (!ev.start_at) continue;
-      const start   = new Date(ev.start_at);
+      // ミリ秒タイムスタンプ（数値）と ISO 文字列の両方に対応
+      const start = (typeof ev.start_at === 'number' || /^\d{10,}$/.test(String(ev.start_at)))
+        ? new Date(Number(ev.start_at))
+        : new Date(ev.start_at);
       const dateStr = formatDate(start);
       const timeStr = ev.all_day
         ? '09:00'
