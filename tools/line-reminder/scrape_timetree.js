@@ -105,7 +105,7 @@ function isBirthdayOrPersonal(title) {
     await pwdInput.press('Enter');
   }
 
-  await page.waitForURL(url => !url.includes('/signin'), { timeout: 20000 });
+  await page.waitForURL(url => !url.toString().includes('/signin'), { timeout: 20000 });
 
   // ── カレンダーIDを URL から自動取得 ─────────────────
   const afterLoginUrl = page.url();
