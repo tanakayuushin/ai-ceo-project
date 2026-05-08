@@ -1,193 +1,103 @@
 // =====================================================
 // LINE リマインダーボット - Google Apps Script
 // =====================================================
-// 使えるコマンド（LINEグループで入力）:
-//   /add 定例会 2026/05/10 19:00        → イベント登録
-//   /add 練習 毎週木曜 18:30            → 毎週繰り返し登録
-//   /add 総会 毎月15日 20:00            → 毎月繰り返し登録
-//   /list                               → 予定一覧
-//   /del 1                              → 番号指定で削除
-//   /help                               → ヘルプ表示
+// メニュー「リマインダー」→「イベントを追加」でフォーム入力
+// GASトリガーで sendReminders を1時間ごとに実行
 // =====================================================
 
-// ── 設定（スクリプトプロパティで管理）────────────────
+
+// ── カスタムメニュー ──────────────────────────────────
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('リマインダー')
+    .addItem('イベントを追加', 'showAddForm')
+    .addItem('イベント一覧を確認', 'showList')
+    .addSeparator()
+    .addItem('シートのレイアウトを修正', 'fixSheetLayout')
+    .addToUi();
+}
+
+function showAddForm() {
+  const html = HtmlService.createHtmlOutputFromFile('Form')
+    .setTitle('イベント追加')
+    .setWidth(360);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function showList() {
+  const sheet = getSheet();
+  const data  = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    SpreadsheetApp.getUi().alert('予定はまだ登録されていません');
+    return;
+  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = data.slice(1).filter(row => {
+    const d = parseDate(row[C_DATE - 1]);
+    return d >= today && row[C_REMINDED - 1] !== 'done';
+  });
+  if (upcoming.length === 0) {
+    SpreadsheetApp.getUi().alert('今後の予定はありません');
+    return;
+  }
+  const msg = upcoming.map(row =>
+    '【' + row[C_NAME-1] + '】' +
+    formatDateJapanese(parseDate(row[C_DATE-1])) + ' ' +
+    formatTimeJapanese(row[C_TIME-1])
+  ).join('\n');
+  SpreadsheetApp.getUi().alert('今後の予定\n\n' + msg);
+}
+
+// フォームからイベント登録
+// reminders: "days:hour;days:hour" 形式 (例: "1:20;0:8")
+function addEventFromForm(data) {
+  const sheet = getSheet();
+  sheet.appendRow([
+    data.name,
+    data.date,
+    data.time,
+    data.repeat,
+    data.memo,
+    data.reminders,
+    'false'
+  ]);
+  return '登録しました：' + data.name + ' ' + data.date + ' ' + data.time;
+}
+
+function fixSheetLayout() {
+  const ss    = SpreadsheetApp.openById(getSheetId());
+  let   sheet = ss.getSheetByName('events');
+  if (!sheet) { getSheet(); return; }
+
+  const headers = ['イベント名', '日付', '時間', '繰り返し', 'メモ（任意）', 'リマインド設定', 'リマインド済み'];
+  headers.forEach((h, i) => sheet.getRange(1, i + 1).setValue(h));
+
+  const widths = [160, 120, 80, 110, 200, 180, 120];
+  widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+
+  sheet.setFrozenRows(1);
+  setupValidation(sheet);
+  SpreadsheetApp.getUi().alert('レイアウトを修正しました');
+}
+
+
+// ── プロパティ取得 ────────────────────────────────────
+
 function getToken()   { return PropertiesService.getScriptProperties().getProperty('LINE_TOKEN'); }
 function getSheetId() { return PropertiesService.getScriptProperties().getProperty('SHEET_ID'); }
 function getGroupId() { return PropertiesService.getScriptProperties().getProperty('LINE_GROUP_ID'); }
 
-// スプレッドシートの列番号
-const C_ID       = 1;
-const C_NAME     = 2;
-const C_DATE     = 3;
-const C_TIME     = 4;
-const C_REPEAT   = 5; // none / weekly / monthly
-const C_REMINDED = 6; // false / evening_done / done
+const C_NAME      = 1;
+const C_DATE      = 2;
+const C_TIME      = 3;
+const C_REPEAT    = 4;
+const C_MEMO      = 5;
+const C_REMINDERS = 6; // "1:20;0:8" → 1日前20時と当日8時
+const C_REMINDED  = 7; // "false" / "1:20|0:8" (送信済みキー) / "done"
 
 
-// ── Webhook受信 ──────────────────────────────────────
-
-function doPost(e) {
-  try {
-    const body = JSON.parse(e.postData.contents);
-    body.events.forEach(ev => {
-      if (ev.type !== 'message' || ev.message.type !== 'text') return;
-
-      const text    = ev.message.text.trim();
-      const token   = ev.replyToken;
-      const srcId   = ev.source.groupId || ev.source.roomId || ev.source.userId;
-
-      // グループIDを初回保存
-      if (srcId) saveGroupId(srcId);
-
-      if      (text.match(/^\/add|^\/追加/))    handleAdd(text, token);
-      else if (text.match(/^\/list|^\/一覧/))   handleList(token);
-      else if (text.match(/^\/del|^\/削除/))    handleDelete(text, token);
-      else if (text.match(/^\/help|^\/ヘルプ/)) handleHelp(token);
-    });
-  } catch(err) {
-    Logger.log('doPost error: ' + err);
-  }
-  return ContentService.createTextOutput('OK');
-}
-
-function saveGroupId(id) {
-  const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('LINE_GROUP_ID')) {
-    props.setProperty('LINE_GROUP_ID', id);
-  }
-}
-
-
-// ── コマンドハンドラ ──────────────────────────────────
-
-function handleAdd(text, replyToken) {
-  const raw   = text.replace(/^\/add\s*|^\/追加\s*/i, '').trim();
-  const parts = raw.split(/\s+/);
-
-  if (parts.length < 3) {
-    reply(replyToken,
-      '⚠️ 形式が違います\n\n' +
-      '【使い方】\n' +
-      '/add イベント名 日付 時間\n\n' +
-      '【例】\n' +
-      '/add 定例会 2026/05/10 19:00\n' +
-      '/add 練習 毎週木曜 18:30\n' +
-      '/add 会費集め 毎月1日 12:00'
-    );
-    return;
-  }
-
-  const name    = parts[0];
-  const dateStr = parts[1];
-  const timeStr = parts[2];
-
-  let actualDate = dateStr;
-  let repeatMode = 'none';
-
-  // 毎週パターン
-  if (dateStr.includes('毎週')) {
-    repeatMode = 'weekly';
-    const dayMap = {'月':1,'火':2,'水':3,'木':4,'金':5,'土':6,'日':0};
-    const ch = dateStr.replace('毎週','').replace('曜','');
-    if (dayMap[ch] !== undefined) actualDate = getNextWeekday(dayMap[ch]);
-
-  // 毎月パターン
-  } else if (dateStr.includes('毎月')) {
-    repeatMode = 'monthly';
-    const dayNum = parseInt(dateStr.replace(/毎月|日/g,''));
-    if (!isNaN(dayNum)) actualDate = getNextMonthDay(dayNum);
-  }
-
-  const sheet = getSheet();
-  const id    = new Date().getTime().toString();
-  sheet.appendRow([id, name, actualDate, timeStr, repeatMode, 'false']);
-
-  const rep = repeatMode === 'weekly' ? '（毎週）' : repeatMode === 'monthly' ? '（毎月）' : '';
-  reply(replyToken,
-    `✅ 登録しました！\n\n` +
-    `📅 ${name} ${rep}\n` +
-    `🗓 ${actualDate}  ${timeStr}\n\n` +
-    `⏰ 前日20時・当日8時にリマインドします`
-  );
-}
-
-function handleList(replyToken) {
-  const sheet = getSheet();
-  const data  = sheet.getDataRange().getValues();
-
-  if (data.length <= 1) {
-    reply(replyToken, '📋 予定はまだ登録されていません\n/add で追加できます');
-    return;
-  }
-
-  const today = new Date(); today.setHours(0,0,0,0);
-  const rows  = [];
-
-  for (let i = 1; i < data.length; i++) {
-    const d = parseDate(data[i][C_DATE - 1]);
-    if (d >= today) rows.push({ rowNum: i, data: data[i] });
-  }
-
-  if (rows.length === 0) {
-    reply(replyToken, '📋 今後の予定はありません');
-    return;
-  }
-
-  rows.sort((a, b) => parseDate(a.data[C_DATE-1]) - parseDate(b.data[C_DATE-1]));
-
-  let msg = '📋 今後の予定\n━━━━━━━━━━\n';
-  rows.slice(0, 10).forEach((r, idx) => {
-    const rep = r.data[C_REPEAT-1];
-    const icon = rep === 'weekly' ? '🔄' : rep === 'monthly' ? '🔁' : '📌';
-    msg += `${icon} ${r.rowNum}. ${r.data[C_NAME-1]}\n`;
-    msg += `   ${r.data[C_DATE-1]}  ${r.data[C_TIME-1]}\n`;
-  });
-  msg += '\n🗑 削除: /del 番号';
-
-  reply(replyToken, msg);
-}
-
-function handleDelete(text, replyToken) {
-  const num = parseInt(text.replace(/^\/del\s*|^\/削除\s*/i, '').trim());
-  if (isNaN(num) || num < 1) {
-    reply(replyToken, '削除する番号を指定してください\n例: /del 1');
-    return;
-  }
-
-  const sheet = getSheet();
-  const data  = sheet.getDataRange().getValues();
-
-  if (num >= data.length) {
-    reply(replyToken, '⚠️ その番号のイベントは見つかりません\n/list で確認してください');
-    return;
-  }
-
-  const name = data[num][C_NAME - 1];
-  sheet.deleteRow(num + 1);
-  reply(replyToken, `🗑 「${name}」を削除しました`);
-}
-
-function handleHelp(replyToken) {
-  reply(replyToken,
-    '🤖 リマインダーボット\n' +
-    '━━━━━━━━━━\n' +
-    '📝 登録\n' +
-    '/add イベント名 日付 時間\n\n' +
-    '【例】\n' +
-    '/add 定例会 2026/05/10 19:00\n' +
-    '/add 練習 毎週木曜 18:30\n' +
-    '/add 総会 毎月15日 20:00\n\n' +
-    '📋 一覧\n' +
-    '/list\n\n' +
-    '🗑 削除\n' +
-    '/del 番号\n\n' +
-    '⏰ リマインド\n' +
-    '前日20時 と 当日8時 に自動送信'
-  );
-}
-
-
-// ── 定期実行：リマインド送信（毎時トリガー推奨）────────
+// ── 定期実行：リマインド送信 ─────────────────────────
 
 function sendReminders() {
   const sheet   = getSheet();
@@ -195,39 +105,75 @@ function sendReminders() {
   const groupId = getGroupId();
   if (!groupId || data.length <= 1) return;
 
-  const now      = new Date();
-  const hour     = now.getHours();
-  const today    = formatDate(now);
-  const tomorrow = formatDate(new Date(now.getTime() + 86400000));
+  const now   = new Date();
+  const hour  = now.getHours();
+  const today = formatDate(now);
 
   for (let i = 1; i < data.length; i++) {
-    const row       = data[i];
-    const eventDate = row[C_DATE - 1];
-    const name      = row[C_NAME - 1];
-    const time      = row[C_TIME - 1];
-    const repeat    = row[C_REPEAT - 1];
-    const reminded  = row[C_REMINDED - 1];
+    const row          = data[i];
+    const eventDateObj = parseDate(row[C_DATE - 1]);
+    const eventDate    = formatDate(eventDateObj);
+    const name         = row[C_NAME - 1];
+    const time         = row[C_TIME - 1];
+    const repeat       = row[C_REPEAT - 1];
+    const memo         = row[C_MEMO - 1] || '';
+    const remindersStr = String(row[C_REMINDERS - 1] || '1:20;0:8');
+    const remindedStr  = String(row[C_REMINDED - 1] || 'false');
 
-    // 前日夜20時リマインド
-    if (eventDate === tomorrow && hour >= 20 && reminded === 'false') {
-      push(groupId,
-        `🔔 明日の予定があります！\n\n` +
-        `📅 ${name}\n` +
-        `🕐 ${eventDate}  ${time}\n\n` +
-        `準備しておこう！`
-      );
-      sheet.getRange(i + 1, C_REMINDED).setValue('evening_done');
+    if (remindedStr === 'done') continue;
+
+    // 送信済みキーのセット
+    const sentKeys = remindedStr === 'false' ? [] : remindedStr.split('|');
+
+    // リマインド設定をパース: [{days, hour}]
+    const reminders = remindersStr.split(';').map(r => {
+      const p = r.trim().split(':');
+      return { days: parseInt(p[0]), hour: parseInt(p[1]) };
+    }).filter(r => !isNaN(r.days) && !isNaN(r.hour));
+
+    const memoLine = memo ? '\n\n' + memo : '';
+    let newSentKeys = [...sentKeys];
+    let updated = false;
+
+    for (const rem of reminders) {
+      const remDateObj = new Date(eventDateObj.getTime() - rem.days * 86400000);
+      const remDate    = formatDate(remDateObj);
+      const key        = rem.days + ':' + rem.hour;
+
+      if (remDate === today && hour >= rem.hour && !sentKeys.includes(key)) {
+        const msgDate = rem.days === 0  ? '今日の予定です！'
+          : rem.days === 1             ? '明日の予定です！'
+          : rem.days === 2             ? '明後日の予定です！'
+          : rem.days === 3             ? '3日後に予定があります！'
+          : rem.days === 4             ? '4日後に予定があります！'
+          : rem.days === 5             ? '5日後に予定があります！'
+          : rem.days === 6             ? '6日後に予定があります！'
+          : rem.days === 7             ? '1週間後に予定があります！'
+          : rem.days === 14            ? '2週間後に予定があります！'
+          : rem.days + '日後に予定があります！';
+
+        push(groupId,
+          msgDate + '\n\n' +
+          '━━━━━━━━━━\n' +
+          '【' + name + '】\n' +
+          formatDateJapanese(eventDateObj) + '\n' +
+          formatTimeJapanese(time) + '\n' +
+          '━━━━━━━━━━' +
+          memoLine
+        );
+        newSentKeys.push(key);
+        updated = true;
+      }
     }
 
-    // 当日朝8時リマインド
-    if (eventDate === today && hour >= 8 && reminded !== 'done') {
-      push(groupId,
-        `⏰ 今日の予定！\n\n` +
-        `📅 ${name}\n` +
-        `🕐 ${time}〜\n\n` +
-        `遅刻しないように〜！`
-      );
+    if (!updated) continue;
 
+    // 当日のリマインドがすべて送信済みかチェック
+    const dayOfReminders = reminders.filter(r => r.days === 0);
+    const allDayOfSent   = dayOfReminders.length > 0 &&
+      dayOfReminders.every(r => newSentKeys.includes(r.days + ':' + r.hour));
+
+    if (allDayOfSent && eventDate <= today) {
       if (repeat === 'weekly') {
         sheet.getRange(i + 1, C_DATE).setValue(getNextWeekFromDate(eventDate));
         sheet.getRange(i + 1, C_REMINDED).setValue('false');
@@ -237,25 +183,14 @@ function sendReminders() {
       } else {
         sheet.getRange(i + 1, C_REMINDED).setValue('done');
       }
+    } else {
+      sheet.getRange(i + 1, C_REMINDED).setValue(newSentKeys.join('|'));
     }
   }
 }
 
 
 // ── LINE APIヘルパー ──────────────────────────────────
-
-function reply(replyToken, text) {
-  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'Authorization': 'Bearer ' + getToken() },
-    payload: JSON.stringify({
-      replyToken: replyToken,
-      messages: [{ type: 'text', text: text }]
-    }),
-    muteHttpExceptions: true
-  });
-}
 
 function push(to, text) {
   UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
@@ -278,14 +213,53 @@ function getSheet() {
   let   sheet = ss.getSheetByName('events');
   if (!sheet) {
     sheet = ss.insertSheet('events');
-    sheet.appendRow(['ID', 'イベント名', '日付', '時間', '繰り返し', 'リマインド済み']);
-    sheet.setFrozenRows(1);
+  } else {
+    if (sheet.getLastRow() > 0 && sheet.getRange(1, 1).getValue() === 'イベント名') {
+      setupValidation(sheet);
+      return sheet;
+    }
   }
+
+  sheet.clearContents();
+  sheet.appendRow(['イベント名', '日付', '時間', '繰り返し', 'メモ（任意）', 'リマインド設定', 'リマインド済み']);
+  sheet.setFrozenRows(1);
+
+  const widths = [160, 120, 80, 110, 200, 180, 120];
+  widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
+
+  setupValidation(sheet);
   return sheet;
 }
 
+function setupValidation(sheet) {
+  const dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate().setAllowInvalid(false).build();
+  sheet.getRange('B2:B1000').setDataValidation(dateRule);
+
+  const times = [];
+  for (let h = 0; h < 24; h++) {
+    times.push(String(h).padStart(2,'0') + ':00');
+    times.push(String(h).padStart(2,'0') + ':30');
+  }
+  const timeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(times, true).setAllowInvalid(false).build();
+  sheet.getRange('C2:C1000').setDataValidation(timeRule);
+
+  const repeatRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['none', 'weekly', 'monthly'], true).setAllowInvalid(false).build();
+  sheet.getRange('D2:D1000').setDataValidation(repeatRule);
+
+  const remindedRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['false', 'done'], true).setAllowInvalid(true).build();
+  sheet.getRange('G2:G1000').setDataValidation(remindedRule);
+}
+
+
+// ── 日付・時間ヘルパー ────────────────────────────────
+
 function parseDate(str) {
   if (!str) return new Date(0);
+  if (str instanceof Date) return str;
   const s = str.toString().replace(/年|月/g, '/').replace('日', '');
   const p = s.split('/');
   if (p.length === 3) return new Date(+p[0], +p[1] - 1, +p[2]);
@@ -293,21 +267,36 @@ function parseDate(str) {
 }
 
 function formatDate(d) {
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  return d.getFullYear() + '/' +
+    String(d.getMonth() + 1).padStart(2, '0') + '/' +
+    String(d.getDate()).padStart(2, '0');
 }
 
-function getNextWeekday(target) {
-  const today = new Date();
-  let diff = target - today.getDay();
-  if (diff <= 0) diff += 7;
-  return formatDate(new Date(today.getTime() + diff * 86400000));
+function formatDateJapanese(d) {
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日（' + days[d.getDay()] + '）';
 }
 
-function getNextMonthDay(dayNum) {
-  const today = new Date();
-  let d = new Date(today.getFullYear(), today.getMonth(), dayNum);
-  if (d <= today) d = new Date(today.getFullYear(), today.getMonth() + 1, dayNum);
-  return formatDate(d);
+function formatTimeJapanese(t) {
+  if (!t && t !== 0) return '';
+  let h, m;
+  if (t instanceof Date) {
+    h = t.getHours();
+    m = t.getMinutes();
+  } else if (typeof t === 'number') {
+    const totalMinutes = Math.round(t * 24 * 60);
+    h = Math.floor(totalMinutes / 60);
+    m = totalMinutes % 60;
+  } else {
+    const parts = t.toString().split(':');
+    if (parts.length >= 2) {
+      h = parseInt(parts[0]);
+      m = parseInt(parts[1]);
+    } else {
+      return t + 'から';
+    }
+  }
+  return m === 0 ? h + '時から' : h + '時' + m + '分から';
 }
 
 function getNextWeekFromDate(str) {

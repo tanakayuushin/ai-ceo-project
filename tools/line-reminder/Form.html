@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: sans-serif; padding: 16px; font-size: 14px; color: #333; }
+  h2 { font-size: 16px; margin: 0 0 16px; color: #06c755; }
+  label { display: block; margin: 12px 0 4px; font-weight: bold; font-size: 13px; }
+  input, select, textarea {
+    width: 100%; padding: 8px; box-sizing: border-box;
+    border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+  }
+  textarea { resize: vertical; height: 60px; }
+
+  /* リマインド行 */
+  .remind-row {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 6px;
+  }
+  .remind-row select { flex: 1; padding: 7px 4px; }
+  .remind-row button {
+    width: 32px; min-width: 32px; height: 34px; padding: 0;
+    background: #e0e0e0; color: #555; border: none;
+    border-radius: 6px; font-size: 16px; cursor: pointer; margin: 0;
+  }
+  .remind-row button:hover { background: #f44336; color: white; }
+  #add-remind {
+    margin-top: 4px; width: 100%; padding: 7px;
+    background: #f0f0f0; color: #333; border: 1px dashed #aaa;
+    border-radius: 6px; font-size: 13px; cursor: pointer;
+  }
+  #add-remind:hover { background: #e8f5e9; border-color: #06c755; }
+
+  button[onclick="submitForm()"] {
+    margin-top: 20px; width: 100%; padding: 12px;
+    background: #06c755; color: white; border: none;
+    border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer;
+  }
+  button[onclick="submitForm()"]:hover { background: #05a847; }
+  #result { margin-top: 12px; padding: 10px; border-radius: 6px; display: none; font-size: 13px; }
+  .success { background: #e6f9ee; color: #06c755; }
+  .error   { background: #fdecea; color: #d32f2f; }
+</style>
+</head>
+<body>
+  <h2>イベントを追加</h2>
+
+  <label>イベント名 *</label>
+  <input type="text" id="name" placeholder="例：定例会、サークル練習">
+
+  <label>日付 *</label>
+  <input type="date" id="date">
+
+  <label>時間 *</label>
+  <input type="time" id="time">
+
+  <label>繰り返し</label>
+  <select id="repeat">
+    <option value="none">繰り返しなし（1回限り）</option>
+    <option value="weekly">毎週</option>
+    <option value="monthly">毎月</option>
+  </select>
+
+  <label>メモ（任意）</label>
+  <textarea id="memo" placeholder="例：持ち物：ユニフォーム&#10;場所：○○公園"></textarea>
+
+  <label>リマインドを送るタイミング</label>
+  <div id="remind-list"></div>
+  <button id="add-remind" onclick="addRemindRow()">＋ リマインドを追加</button>
+
+  <button onclick="submitForm()">登録する</button>
+  <div id="result"></div>
+
+<script>
+  // 今日の日付をデフォルトに
+  const today = new Date();
+  document.getElementById('date').value =
+    today.getFullYear() + '-' +
+    String(today.getMonth()+1).padStart(2,'0') + '-' +
+    String(today.getDate()).padStart(2,'0');
+
+  const DAY_OPTIONS = [
+    { label: '当日',    value: 0 },
+    { label: '1日前',   value: 1 },
+    { label: '2日前',   value: 2 },
+    { label: '3日前',   value: 3 },
+    { label: '4日前',   value: 4 },
+    { label: '5日前',   value: 5 },
+    { label: '6日前',   value: 6 },
+    { label: '1週間前', value: 7 },
+    { label: '2週間前', value: 14 },
+  ];
+
+  function makeSelect(type, selectedVal) {
+    const sel = document.createElement('select');
+    if (type === 'day') {
+      DAY_OPTIONS.forEach(opt => {
+        const o = new Option(opt.label, opt.value);
+        if (opt.value === selectedVal) o.selected = true;
+        sel.appendChild(o);
+      });
+    } else {
+      for (let h = 0; h < 24; h++) {
+        const o = new Option(h + '時', h);
+        if (h === selectedVal) o.selected = true;
+        sel.appendChild(o);
+      }
+    }
+    return sel;
+  }
+
+  function addRemindRow(dayVal, hourVal) {
+    const row = document.createElement('div');
+    row.className = 'remind-row';
+
+    const daySel  = makeSelect('day',  dayVal  !== undefined ? dayVal  : 1);
+    const hourSel = makeSelect('hour', hourVal !== undefined ? hourVal : 20);
+    const btn = document.createElement('button');
+    btn.textContent = '×';
+    btn.onclick = () => row.remove();
+
+    row.appendChild(daySel);
+    row.appendChild(hourSel);
+    row.appendChild(btn);
+    document.getElementById('remind-list').appendChild(row);
+  }
+
+  // デフォルト：1日前20時 と 当日8時
+  addRemindRow(1, 20);
+  addRemindRow(0, 8);
+
+  function submitForm() {
+    const name = document.getElementById('name').value.trim();
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    if (!name || !date || !time) {
+      showResult('イベント名・日付・時間は必須です', false);
+      return;
+    }
+
+    const rows = document.querySelectorAll('#remind-list .remind-row');
+    if (rows.length === 0) {
+      showResult('リマインドを1つ以上追加してください', false);
+      return;
+    }
+
+    // "days:hour;days:hour" 形式に変換
+    const reminders = Array.from(rows).map(row => {
+      const sels = row.querySelectorAll('select');
+      return sels[0].value + ':' + sels[1].value;
+    }).join(';');
+
+    google.script.run
+      .withSuccessHandler(msg => {
+        showResult(msg, true);
+        document.getElementById('name').value = '';
+        document.getElementById('memo').value = '';
+        document.getElementById('repeat').value = 'none';
+        document.getElementById('remind-list').innerHTML = '';
+        addRemindRow(1, 20);
+        addRemindRow(0, 8);
+      })
+      .withFailureHandler(err => showResult('エラー：' + err.message, false))
+      .addEventFromForm({
+        name,
+        date: date.replace(/-/g, '/'),
+        time,
+        repeat: document.getElementById('repeat').value,
+        memo:   document.getElementById('memo').value.trim(),
+        reminders
+      });
+  }
+
+  function showResult(msg, ok) {
+    const el = document.getElementById('result');
+    el.textContent = msg;
+    el.className = ok ? 'success' : 'error';
+    el.style.display = 'block';
+  }
+</script>
+</body>
+</html>
