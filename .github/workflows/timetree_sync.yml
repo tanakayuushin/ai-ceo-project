@@ -1,0 +1,33 @@
+name: TimeTree → LINE リマインダー 自動同期
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # 6時間おきに実行（0時・6時・12時・18時 UTC）
+  workflow_dispatch:         # 手動実行ボタンも有効
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js をセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: パッケージをインストール
+        run: npm install
+
+      - name: Playwright ブラウザをインストール
+        run: npx playwright install chromium --with-deps
+
+      - name: TimeTree をスクレイピングして GAS に送信
+        run: node tools/line-reminder/scrape_timetree.js
+        env:
+          TIMETREE_EMAIL:    ${{ secrets.TIMETREE_EMAIL }}
+          TIMETREE_PASSWORD: ${{ secrets.TIMETREE_PASSWORD }}
+          GAS_WEBHOOK_URL:   ${{ secrets.GAS_WEBHOOK_URL }}
