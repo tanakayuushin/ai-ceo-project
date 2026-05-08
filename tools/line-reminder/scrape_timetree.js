@@ -1,9 +1,19 @@
-// TimeTree スクレイパー
+// TimeTree スクレイパー（サークルカレンダー専用）
 const { chromium } = require('playwright');
 
 const EMAIL       = process.env.TIMETREE_EMAIL;
 const PASSWORD    = process.env.TIMETREE_PASSWORD;
 const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
+
+// 除外ワード（誕生日・個人イベント）
+const SKIP_KEYWORDS = [
+  'birthday', 'Birthday', 'BIRTHDAY',
+  '誕生日', 'バースデー', 'お誕生日',
+];
+
+function isBirthdayOrPersonal(title) {
+  return SKIP_KEYWORDS.some(kw => title.includes(kw));
+}
 
 (async () => {
   if (!EMAIL || !PASSWORD || !WEBHOOK_URL) {
@@ -20,79 +30,65 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
   });
   const page = await context.newPage();
 
+  let clubCalendarId = null; // ログイン後にURLから自動取得
   const capturedEvents = [];
 
-  // ── 全レスポンスを監視してイベントデータを探す ──────
+  // ── 全JSONレスポンスを監視 ─────────────────────────
   page.on('response', async (response) => {
     const url = response.url();
     const ct  = response.headers()['content-type'] || '';
-    if (!ct.includes('json')) return;
-    if (response.status() !== 200) return;
+    if (!ct.includes('json') || response.status() !== 200) return;
 
     try {
       const text = await response.text();
       if (!text.includes('start_at') && !text.includes('startAt')) return;
 
-      console.log('[JSON API]', url);
-      const json = JSON.parse(text);
+      // サークルカレンダーのAPIのみ対象（IDが確定してから）
+      if (clubCalendarId && !url.includes(clubCalendarId)) return;
 
-      // JSON:API 形式 { data: [...] }
+      const json = JSON.parse(text);
       const items = json.data
         ? (Array.isArray(json.data) ? json.data : [json.data])
-        : [];
+        : (Array.isArray(json) ? json : []);
 
       for (const item of items) {
-        const attrs = item.attributes || item;
-        const start = attrs.start_at || attrs.startAt || attrs.start;
-        if (!start) continue;
+        const attrs  = item.attributes || item;
+        const start  = attrs.start_at || attrs.startAt || attrs.start;
+        const title  = attrs.title || attrs.name || '';
+        if (!start || !title) continue;
         if (item.type && item.type !== 'event') continue;
 
-        console.log('[EVENT]', attrs.title || attrs.name, start);
+        // 誕生日・個人イベントをスキップ
+        if (isBirthdayOrPersonal(title)) {
+          console.log('[SKIP]', title);
+          continue;
+        }
+
+        console.log('[EVENT]', title, start);
         capturedEvents.push({
-          title:       attrs.title || attrs.name || '（タイトルなし）',
+          title,
           start_at:    start,
           all_day:     attrs.all_day || attrs.allDay || false,
           description: attrs.description || attrs.note || '',
         });
       }
-
-      // フラット配列形式 [{ start_at, title, ... }]
-      if (Array.isArray(json)) {
-        for (const item of json) {
-          const start = item.start_at || item.startAt;
-          if (!start) continue;
-          console.log('[EVENT]', item.title || item.name, start);
-          capturedEvents.push({
-            title:       item.title || item.name || '（タイトルなし）',
-            start_at:    start,
-            all_day:     item.all_day || item.allDay || false,
-            description: item.description || item.note || '',
-          });
-        }
-      }
     } catch (_) {}
   });
 
   // ── ログイン ────────────────────────────────────────
-  console.log('=== ログイン開始 ===');
+  console.log('=== ログイン ===');
   await page.goto('https://timetreeapp.com/signin', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.screenshot({ path: 'debug_1_signin.png' });
 
-  // メール入力
   const emailInput = page.locator('input[type="email"]').first();
   await emailInput.waitFor({ timeout: 10000 });
   await emailInput.click();
   await emailInput.type(EMAIL, { delay: 50 });
-  await page.waitForTimeout(500);
 
-  // パスワード入力
   const pwdInput = page.locator('input[type="password"]').first();
   await pwdInput.click();
   await pwdInput.type(PASSWORD, { delay: 50 });
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: 'debug_2_filled.png' });
+  await page.waitForTimeout(300);
 
-  // 送信
   const submitBtn = page.locator('button[type="submit"]').first();
   if (await submitBtn.count() > 0) {
     await submitBtn.click();
@@ -100,38 +96,38 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
     await pwdInput.press('Enter');
   }
 
-  // カレンダーページへの遷移を待つ
   await page.waitForURL(url => !url.includes('/signin'), { timeout: 20000 });
-  console.log('ログイン成功！URL:', page.url());
 
-  // カレンダーのデータ読み込みを待つ
-  await page.waitForTimeout(6000);
-  await page.screenshot({ path: 'debug_3_calendar.png' });
+  // ── カレンダーIDを URL から自動取得 ─────────────────
+  const afterLoginUrl = page.url();
+  const match = afterLoginUrl.match(/\/calendars\/([A-Za-z0-9_-]+)/);
+  clubCalendarId = process.env.TIMETREE_CALENDAR_ID || (match ? match[1] : null);
+  console.log('サークルカレンダーID:', clubCalendarId);
+  console.log('ログイン成功！URL:', afterLoginUrl);
 
-  // ── 来月へ移動して追加のデータを取得 ───────────────
-  try {
-    const nextSelectors = [
-      'button[aria-label*="next" i]',
-      'button[aria-label*="翌月"]',
-      'button[aria-label*="Next"]',
-      '[data-testid*="next"]',
-    ];
-    for (const sel of nextSelectors) {
-      const btn = page.locator(sel).first();
-      if (await btn.count() > 0) {
-        await btn.click();
-        console.log('来月へ移動:', sel);
-        await page.waitForTimeout(4000);
-        break;
-      }
+  // カレンダーデータ読み込み待ち
+  await page.waitForTimeout(8000);
+  await page.screenshot({ path: 'debug_calendar.png' });
+
+  // ── 来月へ移動 ──────────────────────────────────────
+  const nextSelectors = [
+    'button[aria-label*="next" i]',
+    'button[aria-label*="翌月"]',
+    '[data-testid*="next"]',
+  ];
+  for (const sel of nextSelectors) {
+    const btn = page.locator(sel).first();
+    if (await btn.count() > 0) {
+      await btn.click();
+      console.log('来月へ移動');
+      await page.waitForTimeout(5000);
+      break;
     }
-  } catch (_) {
-    console.log('来月ボタンが見つかりませんでした');
   }
 
   await browser.close();
 
-  // ── 重複除去 ────────────────────────────────────────
+  // ── 重複除去して送信 ────────────────────────────────
   const seen = new Set();
   const uniqueEvents = capturedEvents.filter(ev => {
     const key = ev.title + '|' + ev.start_at;
@@ -141,13 +137,14 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
   });
 
   console.log(`\n取得した予定: ${uniqueEvents.length} 件`);
+  uniqueEvents.forEach(ev => console.log(' -', ev.title, ev.start_at));
+
   if (uniqueEvents.length === 0) {
     console.log('予定が取得できませんでした');
     process.exit(0);
   }
 
-  // ── GAS に送信 ──────────────────────────────────────
-  console.log('GAS に送信中...');
+  console.log('\nGAS に送信中...');
   const response = await fetch(WEBHOOK_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
