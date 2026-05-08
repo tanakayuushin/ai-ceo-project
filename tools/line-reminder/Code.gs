@@ -82,6 +82,54 @@ function fixSheetLayout() {
 }
 
 
+// ── スマホ向けWebアプリ ───────────────────────────────
+// ウェブアプリとしてデプロイすると、このURLをスマホで開いて
+// イベントの追加・一覧・削除ができる（ホーム画面に追加でアプリ風）。
+
+function doGet(e) {
+  return HtmlService.createHtmlOutputFromFile('MobileApp')
+    .setTitle('LINEリマインダー')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// 一覧取得（今後の予定のみ、日付昇順）
+function getEventList() {
+  const sheet = getSheet();
+  const data  = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const events = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const d   = parseDate(row[C_DATE - 1]);
+    if (d < today || row[C_REMINDED - 1] === 'done') continue;
+    events.push({
+      row:       i + 1,
+      name:      row[C_NAME - 1],
+      date:      formatDate(d),
+      dateLabel: formatDateJapanese(d),
+      time:      row[C_TIME - 1],
+      timeLabel: formatTimeJapanese(row[C_TIME - 1]),
+      repeat:    row[C_REPEAT - 1] || 'none',
+      memo:      row[C_MEMO - 1] || ''
+    });
+  }
+  events.sort((a, b) => a.date.localeCompare(b.date));
+  return events;
+}
+
+function deleteEvent(rowIndex) {
+  const sheet = getSheet();
+  if (rowIndex < 2 || rowIndex > sheet.getLastRow()) {
+    throw new Error('無効な行番号です');
+  }
+  sheet.deleteRow(rowIndex);
+  return 'ok';
+}
+
+
 // ── プロパティ取得 ────────────────────────────────────
 
 function getToken()   { return PropertiesService.getScriptProperties().getProperty('LINE_TOKEN'); }
