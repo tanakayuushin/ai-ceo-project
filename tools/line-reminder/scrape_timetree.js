@@ -33,43 +33,48 @@ function isBirthdayOrPersonal(title) {
   let clubCalendarId = null; // ログイン後にURLから自動取得
   const capturedEvents = [];
 
-  // ── 全JSONレスポンスを監視 ─────────────────────────
+  // ── イベントAPIのレスポンスを監視 ──────────────────
   page.on('response', async (response) => {
     const url = response.url();
     const ct  = response.headers()['content-type'] || '';
     if (!ct.includes('json') || response.status() !== 200) return;
+    if (!url.includes('timetreeapp.com/api')) return;
+
+    console.log('[JSON API]', url.slice(0, 120));
+
+    // イベント系エンドポイントのみ処理
+    const isEventUrl = url.includes('/events');
+    if (!isEventUrl) return;
 
     try {
       const text = await response.text();
-      if (!text.includes('start_at') && !text.includes('startAt')) return;
-
-      // URLログ（デバッグ用）
-      console.log('[JSON API]', url.slice(0, 120));
+      // レスポンスの先頭300文字をログして形式を確認
+      console.log('[BODY PREVIEW]', text.slice(0, 300));
 
       const json = JSON.parse(text);
-      const items = json.data
-        ? (Array.isArray(json.data) ? json.data : [json.data])
-        : (Array.isArray(json) ? json : []);
 
-      for (const item of items) {
-        const attrs  = item.attributes || item;
-        const start  = attrs.start_at || attrs.startAt || attrs.start;
-        const title  = attrs.title || attrs.name || '';
+      // 配列・オブジェクト両対応でイベントを探す
+      const candidates = [
+        ...(Array.isArray(json)        ? json        : []),
+        ...(Array.isArray(json.data)   ? json.data   : []),
+        ...(Array.isArray(json.events) ? json.events : []),
+        ...(json.data && !Array.isArray(json.data) ? [json.data] : []),
+      ];
+
+      for (const item of candidates) {
+        const attrs = item.attributes || item;
+
+        // 日付フィールドを複数候補で探す
+        const start = attrs.start_at  || attrs.startAt   || attrs.start ||
+                      attrs.dt_start  || attrs.begin_at   || attrs.date  || '';
+        const title = attrs.title     || attrs.name       || attrs.summary || '';
+
         if (!start || !title) continue;
-        if (item.type && item.type !== 'event') continue;
-
-        // サークルカレンダー以外をスキップ（calendar_id で判定）
-        const eventCalId = attrs.calendar_id || attrs.calendarId ||
-          (item.relationships && item.relationships.calendar &&
-           item.relationships.calendar.data && item.relationships.calendar.data.id);
-        if (clubCalendarId && eventCalId && eventCalId !== clubCalendarId) {
-          console.log('[SKIP other calendar]', title);
-          continue;
-        }
+        if (item.type && !['event', 'activity', 'schedule'].includes(item.type)) continue;
 
         // 誕生日・個人イベントをスキップ
         if (isBirthdayOrPersonal(title)) {
-          console.log('[SKIP]', title);
+          console.log('[SKIP birthday]', title);
           continue;
         }
 
@@ -77,11 +82,13 @@ function isBirthdayOrPersonal(title) {
         capturedEvents.push({
           title,
           start_at:    start,
-          all_day:     attrs.all_day || attrs.allDay || false,
-          description: attrs.description || attrs.note || '',
+          all_day:     attrs.all_day   || attrs.allDay   || attrs.is_all_day || false,
+          description: attrs.description || attrs.note   || attrs.memo || '',
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      console.log('[PARSE ERROR]', e.message);
+    }
   });
 
   // ── ログイン ────────────────────────────────────────
