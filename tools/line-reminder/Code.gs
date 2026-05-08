@@ -25,15 +25,18 @@ function doPost(e) {
       ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues()
       : [];
 
-    const existingKeys = new Set(
-      rows.map(r => r[C_NAME - 1] + '|' + formatDate(parseDate(r[C_DATE - 1])))
-    );
+    // 既存行マップ: "タイトル|日付" → 行番号（1始まり、ヘッダー込み）
+    const existingMap = new Map();
+    rows.forEach((r, i) => {
+      const key = r[C_NAME - 1] + '|' + formatDate(parseDate(r[C_DATE - 1]));
+      existingMap.set(key, i + 2); // +2 = ヘッダー行(1) + 0インデックス補正(1)
+    });
 
     const todayStr = formatDate(new Date());
-    let added = 0;
+    let added = 0, updated = 0;
+
     for (const ev of events) {
       if (!ev.start_at) continue;
-      // ミリ秒タイムスタンプ（数値）と ISO 文字列の両方に対応
       const start = (typeof ev.start_at === 'number' || /^\d{10,}$/.test(String(ev.start_at)))
         ? new Date(Number(ev.start_at))
         : new Date(ev.start_at);
@@ -45,24 +48,37 @@ function doPost(e) {
       const timeStr = ev.all_day
         ? ''
         : String(start.getHours()).padStart(2, '0') + ':' + String(start.getMinutes()).padStart(2, '0');
-      const title   = ev.title || '（タイトルなし）';
-      const key     = title + '|' + dateStr;
+      const title = ev.title || '（タイトルなし）';
+      const desc  = ev.description || '';
+      const key   = title + '|' + dateStr;
 
-      if (existingKeys.has(key)) continue;
-
-      sheet.appendRow([title, dateStr, timeStr, 'none', ev.description || '', '1:20;0:8', 'false']);
-      existingKeys.add(key);
-      added++;
+      if (existingMap.has(key)) {
+        // 同じタイトル＋日付が既にある場合は時刻・メモだけ更新（リマインド済みフラグは保持）
+        const rowIdx  = existingMap.get(key);
+        const oldRow  = rows[rowIdx - 2];
+        const oldTime = String(oldRow[C_TIME - 1] || '');
+        const oldMemo = String(oldRow[C_MEMO - 1] || '');
+        if (oldTime !== timeStr || oldMemo !== desc) {
+          sheet.getRange(rowIdx, C_TIME).setValue(timeStr);
+          sheet.getRange(rowIdx, C_MEMO).setValue(desc);
+          updated++;
+        }
+      } else {
+        // 新規追加
+        sheet.appendRow([title, dateStr, timeStr, 'none', desc, '1:20;0:8', 'false']);
+        existingMap.set(key, sheet.getLastRow());
+        added++;
+      }
     }
 
-    // 日付順に並び替え（B列 = 日付列、YYYY/MM/DD形式なので文字列ソートで正確）
+    // 日付順に並び替え
     const lastRow = sheet.getLastRow();
     if (lastRow > 1) {
       sheet.getRange(2, 1, lastRow - 1, 7).sort({ column: 2, ascending: true });
     }
 
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok', added: added }))
+      .createTextOutput(JSON.stringify({ status: 'ok', added: added, updated: updated }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
