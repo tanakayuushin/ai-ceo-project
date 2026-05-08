@@ -1,28 +1,22 @@
-// TimeTree スクレイパー（サークルカレンダー専用）
+// TimeTree スクレイパー（全カレンダー対応）
 const { chromium } = require('playwright');
 
 const EMAIL       = process.env.TIMETREE_EMAIL;
 const PASSWORD    = process.env.TIMETREE_PASSWORD;
 const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
 
-// 除外ワード（誕生日・個人イベント）
-const SKIP_KEYWORDS = [
-  'birthday', 'Birthday', 'BIRTHDAY',
-  '誕生日', 'バースデー', 'お誕生日',
-];
+const SKIP_KEYWORDS = ['birthday', 'Birthday', 'BIRTHDAY', '誕生日', 'バースデー', 'お誕生日'];
 
 function isBirthdayOrPersonal(title) {
   return SKIP_KEYWORDS.some(kw => title.includes(kw));
 }
 
-// タイムスタンプ → JST の YYYY/MM/DD 文字列に変換
 function toJSTDateStr(start) {
   const ms = (typeof start === 'number' || /^\d{10,}$/.test(String(start)))
     ? Number(start) : new Date(start).getTime();
   return new Date(ms + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '/');
 }
 
-// 今日の JST 日付文字列
 function todayJST() {
   return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '/');
 }
@@ -42,82 +36,7 @@ function todayJST() {
   });
   const page = await context.newPage();
 
-  let clubCalendarId = null; // ログイン後にURLから自動取得
-  const capturedEvents = [];
-
-  // ── イベントAPIのレスポンスを監視 ──────────────────
-  page.on('response', async (response) => {
-    const url = response.url();
-    const ct  = response.headers()['content-type'] || '';
-    if (!ct.includes('json') || response.status() !== 200) return;
-    if (!url.includes('timetreeapp.com/api')) return;
-
-    console.log('[JSON API]', url.slice(0, 120));
-
-    // カレンダーIDをAPIのURLから自動取得
-    const calIdMatch = url.match(/\/calendar\/(\d+)\//);
-    if (calIdMatch && !clubCalendarId) {
-      clubCalendarId = calIdMatch[1];
-      console.log('[検出] カレンダーID:', clubCalendarId);
-    }
-
-    // イベント系エンドポイントのみ処理
-    const isEventUrl = url.includes('/events');
-    if (!isEventUrl) return;
-
-    try {
-      const text = await response.text();
-      // レスポンスの先頭300文字をログして形式を確認
-      console.log('[BODY PREVIEW]', text.slice(0, 300));
-
-      const json = JSON.parse(text);
-
-      // 配列・オブジェクト両対応でイベントを探す
-      const candidates = [
-        ...(Array.isArray(json)        ? json        : []),
-        ...(Array.isArray(json.data)   ? json.data   : []),
-        ...(Array.isArray(json.events) ? json.events : []),
-        ...(json.data && !Array.isArray(json.data) ? [json.data] : []),
-      ];
-
-      for (const item of candidates) {
-        const attrs = item.attributes || item;
-
-        // 日付フィールドを複数候補で探す
-        const start = attrs.start_at  || attrs.startAt   || attrs.start ||
-                      attrs.dt_start  || attrs.begin_at   || attrs.date  || '';
-        const title = attrs.title     || attrs.name       || attrs.summary || '';
-
-        if (!start || !title) continue;
-        if (item.type && !['event', 'activity', 'schedule'].includes(item.type)) continue;
-
-        // 誕生日・個人イベントをスキップ
-        if (isBirthdayOrPersonal(title)) {
-          console.log('[SKIP birthday]', title);
-          continue;
-        }
-
-        // 過去の予定はスキップ（JST基準）
-        const eventDateStr = toJSTDateStr(start);
-        if (eventDateStr < todayJST()) {
-          console.log('[SKIP past]', title, eventDateStr);
-          continue;
-        }
-
-        console.log('[EVENT]', title, start);
-        capturedEvents.push({
-          title,
-          start_at:    start,
-          all_day:     attrs.all_day   || attrs.allDay   || attrs.is_all_day || false,
-          description: attrs.description || attrs.note   || attrs.memo || '',
-        });
-      }
-    } catch (e) {
-      console.log('[PARSE ERROR]', e.message);
-    }
-  });
-
-  // ── ログイン ────────────────────────────────────────
+  // ── ログイン ──────────────────────────────────────────
   console.log('=== ログイン ===');
   await page.goto('https://timetreeapp.com/signin', { waitUntil: 'networkidle', timeout: 30000 });
 
@@ -139,110 +58,119 @@ function todayJST() {
   }
 
   await page.waitForURL(url => !url.toString().includes('/signin'), { timeout: 20000 });
+  console.log('ログイン成功！URL:', page.url());
 
-  // ── カレンダーIDを URL から自動取得 ─────────────────
-  const afterLoginUrl = page.url();
-  const match = afterLoginUrl.match(/\/calendars\/([A-Za-z0-9_-]+)/);
-  clubCalendarId = process.env.TIMETREE_CALENDAR_ID || (match ? match[1] : null);
-  console.log('サークルカレンダーID:', clubCalendarId);
-  console.log('ログイン成功！URL:', afterLoginUrl);
-
-  // カレンダーデータ読み込み待ち
+  // セッション確立を待つ
   await page.waitForTimeout(8000);
   await page.screenshot({ path: 'debug_calendar.png' });
 
-  // ── 来月へ移動 ──────────────────────────────────────
-  // ── ページ上のボタンを全ログ出力（セレクター特定用） ──
-  const allButtons = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('button, [role="button"]'))
-      .filter(el => el.offsetParent !== null)
-      .map(el => ({
-        text:  (el.textContent || '').trim().slice(0, 30),
-        aria:  el.getAttribute('aria-label') || '',
-        cls:   (el.className || '').toString().slice(0, 80),
-      }))
-  );
-  console.log('[ALL BUTTONS]', JSON.stringify(allButtons).slice(0, 2000));
+  // ── 全カレンダーのイベントをAPIで直接取得 ─────────────
+  // ブラウザのセッション（Cookie）をそのまま使うので認証不要
+  console.log('=== 全カレンダーAPI取得 ===');
+  const apiResult = await page.evaluate(async () => {
+    const logs   = [];
+    const events = [];
 
-  // ── 現在月 + 翌月 + 翌々月 に移動してイベントを取得 ──
-  const nextSelectors = [
-    'button[aria-label*="next" i]',
-    'button[aria-label*="翌月"]',
-    'button[aria-label*="次の月"]',
-    'button[aria-label*="次"]',
-    '[data-testid*="next"]',
-    '[class*="next"] button',
-    'button[class*="next"]',
-    'button[class*="forward"]',
-  ];
-
-  for (let monthStep = 0; monthStep < 2; monthStep++) {
-    let navigated = false;
-
-    // セレクターで探す
-    for (const sel of nextSelectors) {
-      try {
-        const btn = page.locator(sel).first();
-        if (await btn.count() > 0) {
-          await btn.click();
-          console.log(`[NAV] ${monthStep + 1}ヶ月前進 (${sel})`);
-          await page.waitForTimeout(5000);
-          navigated = true;
-          break;
-        }
-      } catch (_) {}
-    }
-
-    // JavaScript 経由で aria-label や text を見てクリック
-    if (!navigated) {
-      const found = await page.evaluate(() => {
-        for (const el of document.querySelectorAll('button, [role="button"]')) {
-          const label = (el.getAttribute('aria-label') || '').toLowerCase();
-          const text  = (el.textContent || '').trim();
-          if (label.includes('next') || label.includes('翌') || label.includes('次') ||
-              text === '>' || text === '›' || text === '→' || text === '▶') {
-            el.click();
-            return true;
-          }
-        }
-        return false;
+    try {
+      // カレンダー一覧を取得
+      const calRes = await fetch('/api/v2/calendars', {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
       });
-      if (found) {
-        console.log(`[NAV JS] ${monthStep + 1}ヶ月前進`);
-        await page.waitForTimeout(5000);
-      } else {
-        console.log(`[NAV FAIL] ボタンが見つかりません (step ${monthStep + 1})`);
-        break;
+      logs.push('calendars status: ' + calRes.status);
+      if (!calRes.ok) {
+        logs.push('preview: ' + (await calRes.text()).slice(0, 200));
+        return { logs, events };
       }
+
+      const calJson  = await calRes.json();
+      const calendars = calJson.data || [];
+      logs.push('calendars found: ' + calendars.length);
+
+      for (const cal of calendars) {
+        const calId   = cal.id;
+        const calName = (cal.attributes && cal.attributes.name) || String(calId);
+        logs.push('[CAL] ' + calId + ' : ' + calName);
+
+        // そのカレンダーのイベントを同期取得
+        const evRes = await fetch('/api/v1/calendar/' + calId + '/events/sync', {
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' },
+        });
+        if (!evRes.ok) {
+          logs.push('  → error: ' + evRes.status);
+          continue;
+        }
+
+        const evJson = await evRes.json();
+        const evList = Array.isArray(evJson)       ? evJson
+                     : Array.isArray(evJson.data)  ? evJson.data
+                     : [];
+        logs.push('  → events: ' + evList.length);
+
+        for (const ev of evList) {
+          const a = ev.attributes || ev;
+          events.push({
+            calName,
+            title:       a.title || a.name || a.summary || '',
+            start_at:    a.start_at || a.startAt || a.start || a.dt_start || '',
+            all_day:     a.all_day  || a.allDay  || a.is_all_day || false,
+            description: a.description || a.note || a.memo || '',
+          });
+        }
+      }
+    } catch (err) {
+      logs.push('ERROR: ' + err.message);
     }
 
-    await page.screenshot({ path: `debug_month_${monthStep + 1}.png` });
-  }
+    return { logs, events };
+  });
+
+  apiResult.logs.forEach(l => console.log('[API]', l));
+  console.log('API取得イベント総数:', (apiResult.events || []).length);
 
   await browser.close();
 
-  // ── 重複除去して送信 ────────────────────────────────
-  const seen = new Set();
-  const uniqueEvents = capturedEvents.filter(ev => {
+  // ── フィルタリング & 重複除去 ──────────────────────────
+  const seen   = new Set();
+  const today  = todayJST();
+  const output = [];
+
+  for (const ev of (apiResult.events || [])) {
+    if (!ev.start_at || !ev.title) continue;
+
+    if (isBirthdayOrPersonal(ev.title)) {
+      console.log('[SKIP birthday]', ev.title);
+      continue;
+    }
+
+    const dateStr = toJSTDateStr(ev.start_at);
+    if (dateStr < today) {
+      console.log('[SKIP past]', ev.title, dateStr);
+      continue;
+    }
+
     const key = ev.title + '|' + ev.start_at;
-    if (seen.has(key)) return false;
+    if (seen.has(key)) continue;
     seen.add(key);
-    return true;
-  });
 
-  console.log(`\n取得した予定: ${uniqueEvents.length} 件`);
-  uniqueEvents.forEach(ev => console.log(' -', ev.title, ev.start_at));
+    console.log('[EVENT]', ev.title, dateStr, '(' + ev.calName + ')');
+    output.push(ev);
+  }
 
-  if (uniqueEvents.length === 0) {
+  console.log('\n取得した予定:', output.length, '件');
+  output.forEach(ev => console.log(' -', ev.title, toJSTDateStr(ev.start_at)));
+
+  if (output.length === 0) {
     console.log('予定が取得できませんでした');
     process.exit(0);
   }
 
   console.log('\nGAS に送信中...');
   const response = await fetch(WEBHOOK_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ events: uniqueEvents }),
+    method:   'POST',
+    headers:  { 'Content-Type': 'application/json' },
+    body:     JSON.stringify({ events: output }),
     redirect: 'follow',
   });
   const result = await response.text();
