@@ -50,6 +50,11 @@ function doPost(e) {
       added++;
     }
 
+    // 日付順に並び替え（B列 = 日付列）
+    if (added > 0 && sheet.getLastRow() > 2) {
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).sort({ column: 2, ascending: true });
+    }
+
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'ok', added: added }))
       .setMimeType(ContentService.MimeType.JSON);
