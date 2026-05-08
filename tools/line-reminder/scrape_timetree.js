@@ -43,8 +43,8 @@ function isBirthdayOrPersonal(title) {
       const text = await response.text();
       if (!text.includes('start_at') && !text.includes('startAt')) return;
 
-      // サークルカレンダーのAPIのみ対象（IDが確定してから）
-      if (clubCalendarId && !url.includes(clubCalendarId)) return;
+      // URLログ（デバッグ用）
+      console.log('[JSON API]', url.slice(0, 120));
 
       const json = JSON.parse(text);
       const items = json.data
@@ -57,6 +57,15 @@ function isBirthdayOrPersonal(title) {
         const title  = attrs.title || attrs.name || '';
         if (!start || !title) continue;
         if (item.type && item.type !== 'event') continue;
+
+        // サークルカレンダー以外をスキップ（calendar_id で判定）
+        const eventCalId = attrs.calendar_id || attrs.calendarId ||
+          (item.relationships && item.relationships.calendar &&
+           item.relationships.calendar.data && item.relationships.calendar.data.id);
+        if (clubCalendarId && eventCalId && eventCalId !== clubCalendarId) {
+          console.log('[SKIP other calendar]', title);
+          continue;
+        }
 
         // 誕生日・個人イベントをスキップ
         if (isBirthdayOrPersonal(title)) {
