@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="リマインダー">
+<meta name="theme-color" content="#06c755">
+<title>LINEリマインダー</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+    margin: 0; padding: 0; background: #f5f5f5; color: #333; font-size: 15px;
+  }
+  header {
+    background: #06c755; color: white; padding: 14px 16px;
+    position: sticky; top: 0; z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; }
+  nav {
+    display: flex; background: white;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky; top: 50px; z-index: 9;
+  }
+  nav button {
+    flex: 1; padding: 12px 0; background: none; border: none;
+    font-size: 14px; color: #666; cursor: pointer;
+    border-bottom: 3px solid transparent;
+  }
+  nav button.active { color: #06c755; border-bottom-color: #06c755; font-weight: 600; }
+
+  main { padding: 16px; padding-bottom: 80px; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  label { display: block; margin: 14px 0 6px; font-weight: 600; font-size: 13px; color: #555; }
+  input, select, textarea {
+    width: 100%; padding: 11px; border: 1px solid #ddd;
+    border-radius: 8px; font-size: 16px; background: white;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+
+  .remind-row {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 8px;
+  }
+  .remind-row select { flex: 1; padding: 10px 6px; }
+  .remind-row button {
+    width: 38px; min-width: 38px; height: 40px; padding: 0;
+    background: #f5f5f5; color: #999; border: 1px solid #ddd;
+    border-radius: 8px; font-size: 18px; cursor: pointer;
+  }
+  #add-remind {
+    margin-top: 6px; width: 100%; padding: 10px;
+    background: white; color: #06c755; border: 1px dashed #06c755;
+    border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600;
+  }
+
+  .submit-btn {
+    margin-top: 24px; width: 100%; padding: 14px;
+    background: #06c755; color: white; border: none;
+    border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(6,199,85,0.3);
+  }
+  .submit-btn:active { background: #05a847; transform: translateY(1px); }
+  .submit-btn:disabled { background: #aaa; box-shadow: none; }
+
+  #result {
+    margin-top: 14px; padding: 12px; border-radius: 8px;
+    display: none; font-size: 14px;
+  }
+  .success { background: #e6f9ee; color: #06c755; border: 1px solid #b8e6c9; }
+  .error   { background: #fdecea; color: #d32f2f; border: 1px solid #f5c6c1; }
+
+  /* イベント一覧 */
+  .event-card {
+    background: white; border-radius: 10px; padding: 14px;
+    margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .event-name { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .event-meta { color: #666; font-size: 13px; line-height: 1.5; }
+  .event-memo { color: #888; font-size: 12px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #eee; white-space: pre-wrap; }
+  .event-actions { margin-top: 10px; display: flex; gap: 8px; }
+  .delete-btn {
+    padding: 6px 12px; background: white; color: #d32f2f;
+    border: 1px solid #d32f2f; border-radius: 6px;
+    font-size: 12px; cursor: pointer;
+  }
+  .empty {
+    text-align: center; color: #999; padding: 40px 16px; font-size: 14px;
+  }
+  .loading { text-align: center; color: #999; padding: 30px; font-size: 14px; }
+  .badge {
+    display: inline-block; background: #06c755; color: white;
+    padding: 2px 8px; border-radius: 10px; font-size: 11px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .badge.repeat { background: #ff9800; }
+</style>
+</head>
+<body>
+  <header><h1>📅 LINEリマインダー</h1></header>
+  <nav>
+    <button id="tab-add-btn"  class="active" onclick="switchTab('add')">＋ 追加</button>
+    <button id="tab-list-btn" onclick="switchTab('list')">📋 一覧</button>
+  </nav>
+
+  <main>
+    <!-- 追加タブ -->
+    <section id="tab-add" class="tab active">
+      <label>イベント名 *</label>
+      <input type="text" id="name" placeholder="例：定例会、サークル練習">
+
+      <label>日付 *</label>
+      <input type="date" id="date">
+
+      <label>時間 *</label>
+      <input type="time" id="time">
+
+      <label>繰り返し</label>
+      <select id="repeat">
+        <option value="none">繰り返しなし（1回限り）</option>
+        <option value="weekly">毎週</option>
+        <option value="monthly">毎月</option>
+      </select>
+
+      <label>メモ（任意）</label>
+      <textarea id="memo" placeholder="例：持ち物：ユニフォーム&#10;場所：○○公園"></textarea>
+
+      <label>リマインドを送るタイミング</label>
+      <div id="remind-list"></div>
+      <button id="add-remind" onclick="addRemindRow()">＋ リマインドを追加</button>
+
+      <button class="submit-btn" id="submit-btn" onclick="submitForm()">登録する</button>
+      <div id="result"></div>
+    </section>
+
+    <!-- 一覧タブ -->
+    <section id="tab-list" class="tab">
+      <div id="event-list" class="loading">読み込み中...</div>
+    </section>
+  </main>
+
+<script>
+  // ── タブ切り替え ──
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('tab-' + name + '-btn').classList.add('active');
+    if (name === 'list') loadEvents();
+  }
+
+  // ── 初期化：今日の日付セット ──
+  const today = new Date();
+  document.getElementById('date').value =
+    today.getFullYear() + '-' +
+    String(today.getMonth()+1).padStart(2,'0') + '-' +
+    String(today.getDate()).padStart(2,'0');
+
+  const DAY_OPTIONS = [
+    { label: '当日',    value: 0 },
+    { label: '1日前',   value: 1 },
+    { label: '2日前',   value: 2 },
+    { label: '3日前',   value: 3 },
+    { label: '4日前',   value: 4 },
+    { label: '5日前',   value: 5 },
+    { label: '6日前',   value: 6 },
+    { label: '1週間前', value: 7 },
+    { label: '2週間前', value: 14 },
+  ];
+
+  function makeSelect(type, selectedVal) {
+    const sel = document.createElement('select');
+    if (type === 'day') {
+      DAY_OPTIONS.forEach(opt => {
+        const o = new Option(opt.label, opt.value);
+        if (opt.value === selectedVal) o.selected = true;
+        sel.appendChild(o);
+      });
+    } else {
+      for (let h = 0; h < 24; h++) {
+        const o = new Option(h + '時', h);
+        if (h === selectedVal) o.selected = true;
+        sel.appendChild(o);
+      }
+    }
+    return sel;
+  }
+
+  function addRemindRow(dayVal, hourVal) {
+    const row = document.createElement('div');
+    row.className = 'remind-row';
+    const daySel  = makeSelect('day',  dayVal  !== undefined ? dayVal  : 1);
+    const hourSel = makeSelect('hour', hourVal !== undefined ? hourVal : 20);
+    const btn = document.createElement('button');
+    btn.textContent = '×';
+    btn.onclick = () => row.remove();
+    row.appendChild(daySel);
+    row.appendChild(hourSel);
+    row.appendChild(btn);
+    document.getElementById('remind-list').appendChild(row);
+  }
+
+  addRemindRow(1, 20);
+  addRemindRow(0, 8);
+
+  // ── 登録 ──
+  function submitForm() {
+    const name = document.getElementById('name').value.trim();
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    if (!name || !date || !time) {
+      showResult('イベント名・日付・時間は必須です', false);
+      return;
+    }
+    const rows = document.querySelectorAll('#remind-list .remind-row');
+    if (rows.length === 0) {
+      showResult('リマインドを1つ以上追加してください', false);
+      return;
+    }
+    const reminders = Array.from(rows).map(row => {
+      const sels = row.querySelectorAll('select');
+      return sels[0].value + ':' + sels[1].value;
+    }).join(';');
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = '登録中...';
+
+    google.script.run
+      .withSuccessHandler(msg => {
+        showResult(msg, true);
+        document.getElementById('name').value = '';
+        document.getElementById('memo').value = '';
+        document.getElementById('repeat').value = 'none';
+        document.getElementById('remind-list').innerHTML = '';
+        addRemindRow(1, 20);
+        addRemindRow(0, 8);
+        btn.disabled = false;
+        btn.textContent = '登録する';
+      })
+      .withFailureHandler(err => {
+        showResult('エラー：' + err.message, false);
+        btn.disabled = false;
+        btn.textContent = '登録する';
+      })
+      .addEventFromForm({
+        name,
+        date: date.replace(/-/g, '/'),
+        time,
+        repeat: document.getElementById('repeat').value,
+        memo:   document.getElementById('memo').value.trim(),
+        reminders
+      });
+  }
+
+  function showResult(msg, ok) {
+    const el = document.getElementById('result');
+    el.textContent = msg;
+    el.className = ok ? 'success' : 'error';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
+
+  // ── 一覧ロード ──
+  function loadEvents() {
+    const container = document.getElementById('event-list');
+    container.innerHTML = '<div class="loading">読み込み中...</div>';
+
+    google.script.run
+      .withSuccessHandler(events => renderEvents(events))
+      .withFailureHandler(err => {
+        container.innerHTML = '<div class="empty">読み込みに失敗しました：' + err.message + '</div>';
+      })
+      .getEventList();
+  }
+
+  function renderEvents(events) {
+    const container = document.getElementById('event-list');
+    if (!events || events.length === 0) {
+      container.innerHTML = '<div class="empty">今後の予定はありません</div>';
+      return;
+    }
+    container.innerHTML = '';
+    events.forEach(ev => {
+      const card = document.createElement('div');
+      card.className = 'event-card';
+      const repeatBadge = ev.repeat === 'weekly' ? '<span class="badge repeat">毎週</span>'
+                       : ev.repeat === 'monthly' ? '<span class="badge repeat">毎月</span>' : '';
+      const memoHtml = ev.memo ? '<div class="event-memo">' + escapeHtml(ev.memo) + '</div>' : '';
+      card.innerHTML =
+        '<div class="event-name">' + escapeHtml(ev.name) + repeatBadge + '</div>' +
+        '<div class="event-meta">📅 ' + escapeHtml(ev.dateLabel) + '<br>🕐 ' + escapeHtml(ev.timeLabel) + '</div>' +
+        memoHtml +
+        '<div class="event-actions"><button class="delete-btn" data-row="' + ev.row + '">🗑 削除</button></div>';
+      card.querySelector('.delete-btn').onclick = () => deleteEvent(ev.row, ev.name);
+      container.appendChild(card);
+    });
+  }
+
+  function deleteEvent(rowIndex, name) {
+    if (!confirm('「' + name + '」を削除しますか？')) return;
+    google.script.run
+      .withSuccessHandler(() => loadEvents())
+      .withFailureHandler(err => alert('削除に失敗：' + err.message))
+      .deleteEvent(rowIndex);
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+</script>
+</body>
+</html>
