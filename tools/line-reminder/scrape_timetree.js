@@ -1,12 +1,6 @@
-// TimeTree スクレイパー
-// GitHub Actions から定期実行し、予定を GAS webhook に送信する
-//
-// 必要な環境変数:
-//   TIMETREE_EMAIL      - TimeTree ログインメールアドレス
-//   TIMETREE_PASSWORD   - TimeTree ログインパスワード
-//   GAS_WEBHOOK_URL     - GAS ウェブアプリの URL
-
+// TimeTree スクレイパー（デバッグ強化版）
 const { chromium } = require('playwright');
+const fs = require('fs');
 
 const EMAIL       = process.env.TIMETREE_EMAIL;
 const PASSWORD    = process.env.TIMETREE_PASSWORD;
@@ -27,93 +21,154 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
   const page = await context.newPage();
 
   const capturedEvents = [];
+  const seenUrls = new Set();
 
-  // TimeTree 内部 API のレスポンスを横取りしてイベントデータを取得
+  // ── 全レスポンスを監視してデバッグ ──────────────────
   page.on('response', async (response) => {
     const url = response.url();
-    const isEventApi =
-      url.includes('timetreeapis.com') ||
-      url.includes('timetreeapp.com/api') ||
-      (url.includes('timetreeapp.com') && url.includes('event'));
 
-    if (!isEventApi || response.status() !== 200) return;
-
-    try {
-      const text = await response.text();
-      if (!text.startsWith('{') && !text.startsWith('[')) return;
-
-      const json = JSON.parse(text);
-      const items = json.data
-        ? (Array.isArray(json.data) ? json.data : [json.data])
-        : [];
-
-      for (const item of items) {
-        if (item.type === 'event' && item.attributes && item.attributes.start_at) {
-          const attrs = item.attributes;
-          capturedEvents.push({
-            title:       attrs.title       || '（タイトルなし）',
-            start_at:    attrs.start_at,
-            end_at:      attrs.end_at      || '',
-            all_day:     attrs.all_day     || false,
-            description: attrs.description || attrs.note || '',
-          });
-        }
+    // timetree 関連の URL をすべてログ出力
+    if (url.includes('timetree')) {
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        console.log('[API]', response.status(), url);
       }
-    } catch (_) {}
+
+      if (response.status() !== 200) return;
+
+      try {
+        const text = await response.text();
+        if (!text.startsWith('{') && !text.startsWith('[')) return;
+
+        const json = JSON.parse(text);
+        const items = json.data
+          ? (Array.isArray(json.data) ? json.data : [json.data])
+          : [];
+
+        for (const item of items) {
+          if (item.type === 'event' && item.attributes && item.attributes.start_at) {
+            const attrs = item.attributes;
+            console.log('[EVENT]', attrs.title, attrs.start_at);
+            capturedEvents.push({
+              title:       attrs.title       || '（タイトルなし）',
+              start_at:    attrs.start_at,
+              end_at:      attrs.end_at      || '',
+              all_day:     attrs.all_day     || false,
+              description: attrs.description || attrs.note || '',
+            });
+          }
+        }
+      } catch (_) {}
+    }
   });
 
   // ── ログイン ────────────────────────────────────────
-  console.log('TimeTree にログイン中...');
+  console.log('=== ログイン開始 ===');
   await page.goto('https://timetreeapp.com/signin', { waitUntil: 'networkidle', timeout: 30000 });
+  await page.screenshot({ path: 'debug_1_signin.png' });
+  console.log('サインインページを開きました');
 
-  // メールアドレスを入力
-  const emailSelector = [
+  // メールアドレス入力
+  const emailSelectors = [
     'input[type="email"]',
     'input[name="email"]',
     'input[placeholder*="メール"]',
     'input[placeholder*="mail" i]',
-  ].join(', ');
-  await page.fill(emailSelector, EMAIL);
+    'input[autocomplete="email"]',
+  ];
+  let emailFilled = false;
+  for (const sel of emailSelectors) {
+    try {
+      await page.fill(sel, EMAIL, { timeout: 3000 });
+      console.log('メール入力成功:', sel);
+      emailFilled = true;
+      break;
+    } catch (_) {}
+  }
+  if (!emailFilled) {
+    console.error('メール入力欄が見つかりません');
+    await page.screenshot({ path: 'debug_error_no_email.png' });
+  }
 
-  // パスワードを入力
-  await page.fill('input[type="password"]', PASSWORD);
+  // パスワード入力
+  try {
+    await page.fill('input[type="password"]', PASSWORD, { timeout: 5000 });
+    console.log('パスワード入力成功');
+  } catch (_) {
+    console.error('パスワード入力欄が見つかりません');
+  }
+
+  await page.screenshot({ path: 'debug_2_filled.png' });
 
   // ログインボタンをクリック
-  const loginBtn = [
+  const loginSelectors = [
     'button[type="submit"]',
     'button:has-text("ログイン")',
     'button:has-text("Sign in")',
+    'button:has-text("Log in")',
     'input[type="submit"]',
-  ].join(', ');
-  await page.click(loginBtn);
+  ];
+  let clicked = false;
+  for (const sel of loginSelectors) {
+    try {
+      await page.click(sel, { timeout: 3000 });
+      console.log('ログインボタンクリック成功:', sel);
+      clicked = true;
+      break;
+    } catch (_) {}
+  }
+  if (!clicked) {
+    console.error('ログインボタンが見つかりません');
+    await page.screenshot({ path: 'debug_error_no_button.png' });
+  }
 
   // カレンダー画面が表示されるまで待つ
-  await page.waitForTimeout(5000);
-  console.log('ログイン完了');
+  await page.waitForTimeout(6000);
+  await page.screenshot({ path: 'debug_3_after_login.png' });
+  console.log('ログイン後のURL:', page.url());
+  console.log('=== ログイン完了 ===');
 
-  // ── 今月＋来月の予定を取得 ──────────────────────────
-  // ページ遷移で内部 API が叩かれるため、少し待ちながら画面操作する
+  // ── 来月へ移動 ──────────────────────────────────────
   await page.waitForTimeout(3000);
+  console.log('現在のURL:', page.url());
 
-  // 来月へ移動（来月分のイベントも取得）
   try {
-    const nextBtn = await page.$([
+    const nextSelectors = [
       '[aria-label="next month"]',
       '[aria-label="翌月"]',
       'button:has-text(">")',
       '.navigation-next',
       '[data-testid="next-month"]',
-    ].join(', '));
-    if (nextBtn) {
-      await nextBtn.click();
-      await page.waitForTimeout(3000);
-      console.log('来月に移動して予定を取得');
+      'button[aria-label*="next"]',
+      'button[aria-label*="Next"]',
+    ];
+    for (const sel of nextSelectors) {
+      try {
+        await page.click(sel, { timeout: 2000 });
+        console.log('来月ボタンクリック成功:', sel);
+        await page.waitForTimeout(3000);
+        break;
+      } catch (_) {}
     }
-  } catch (_) {}
+  } catch (_) {
+    console.log('来月ボタンが見つかりませんでした（スキップ）');
+  }
+
+  await page.screenshot({ path: 'debug_4_calendar.png' });
 
   await browser.close();
 
-  // ── 重複除去 ────────────────────────────────────────
+  // ── 結果サマリー ────────────────────────────────────
+  console.log('=== 取得結果 ===');
+  console.log('確認した API URL 数:', seenUrls.size);
+  console.log('取得した予定数:', capturedEvents.length);
+
+  if (capturedEvents.length === 0) {
+    console.log('予定が取得できませんでした。スクリーンショットを確認してください。');
+    process.exit(0);
+  }
+
+  // 重複除去
   const seen = new Set();
   const uniqueEvents = capturedEvents.filter(ev => {
     const key = ev.title + '|' + ev.start_at;
@@ -122,15 +177,10 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
     return true;
   });
 
-  console.log(`取得した予定: ${uniqueEvents.length} 件`);
+  console.log('ユニーク予定数:', uniqueEvents.length);
 
-  if (uniqueEvents.length === 0) {
-    console.log('予定が見つかりませんでした。終了します。');
-    process.exit(0);
-  }
-
-  // ── GAS webhook に送信 ──────────────────────────────
-  console.log('GAS に送信中...');
+  // ── GAS に送信 ──────────────────────────────────────
+  console.log('=== GAS に送信 ===');
   const payload = JSON.stringify({ events: uniqueEvents });
 
   const response = await fetch(WEBHOOK_URL, {

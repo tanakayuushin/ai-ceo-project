@@ -2,8 +2,8 @@ name: TimeTree → LINE リマインダー 自動同期
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # 6時間おきに実行（0時・6時・12時・18時 UTC）
-  workflow_dispatch:         # 手動実行ボタンも有効
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -31,3 +31,11 @@ jobs:
           TIMETREE_EMAIL:    ${{ secrets.TIMETREE_EMAIL }}
           TIMETREE_PASSWORD: ${{ secrets.TIMETREE_PASSWORD }}
           GAS_WEBHOOK_URL:   ${{ secrets.GAS_WEBHOOK_URL }}
+
+      - name: スクリーンショットをアップロード（デバッグ用）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: debug_*.png
+          retention-days: 3
