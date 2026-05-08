@@ -36,6 +36,23 @@ function todayJST() {
   });
   const page = await context.newPage();
 
+  // ── ログイン後のAPIリクエストから認証ヘッダーを取得 ──
+  let capturedHeaders = null;
+  page.on('request', (req) => {
+    if (capturedHeaders) return;
+    const url = req.url();
+    if (!url.includes('timetreeapp.com/api')) return;
+    if (url.includes('/auth/email') || url.includes('/signin')) return;
+    const h = req.headers();
+    if (!h['authorization']) return;
+    capturedHeaders = {};
+    for (const [k, v] of Object.entries(h)) {
+      if (!['host', 'content-length'].includes(k)) capturedHeaders[k] = v;
+    }
+    console.log('[AUTH] キャプチャ完了 from:', url.slice(0, 80));
+    console.log('[AUTH] ヘッダー:', Object.keys(capturedHeaders).join(', '));
+  });
+
   // ── ログイン ──────────────────────────────────────────
   console.log('=== ログイン ===');
   await page.goto('https://timetreeapp.com/signin', { waitUntil: 'networkidle', timeout: 30000 });
@@ -60,100 +77,94 @@ function todayJST() {
   await page.waitForURL(url => !url.toString().includes('/signin'), { timeout: 20000 });
   console.log('ログイン成功！URL:', page.url());
 
-  // セッション確立を待つ
-  await page.waitForTimeout(8000);
+  // 認証ヘッダーがキャプチャされるまで待つ（最大15秒）
+  for (let i = 0; i < 30 && !capturedHeaders; i++) {
+    await page.waitForTimeout(500);
+  }
   await page.screenshot({ path: 'debug_calendar.png' });
 
-  // ── 全カレンダーのイベントをAPIで直接取得 ─────────────
-  // ブラウザのセッション（Cookie）をそのまま使うので認証不要
-  console.log('=== 全カレンダーAPI取得 ===');
-  const apiResult = await page.evaluate(async () => {
-    const logs   = [];
-    const events = [];
+  if (!capturedHeaders) {
+    console.error('[ERROR] 認証ヘッダーを取得できませんでした');
+    await browser.close();
+    process.exit(1);
+  }
 
-    try {
-      // カレンダー一覧を取得
-      const calRes = await fetch('/api/v2/calendars', {
-        credentials: 'include',
-        headers: { 'Accept': 'application/json' },
-      });
-      logs.push('calendars status: ' + calRes.status);
-      if (!calRes.ok) {
-        logs.push('preview: ' + (await calRes.text()).slice(0, 200));
-        return { logs, events };
-      }
-
-      const calJson  = await calRes.json();
-      const calendars = calJson.data || [];
-      logs.push('calendars found: ' + calendars.length);
-
-      for (const cal of calendars) {
-        const calId   = cal.id;
-        const calName = (cal.attributes && cal.attributes.name) || String(calId);
-        logs.push('[CAL] ' + calId + ' : ' + calName);
-
-        // そのカレンダーのイベントを同期取得
-        const evRes = await fetch('/api/v1/calendar/' + calId + '/events/sync', {
-          credentials: 'include',
-          headers: { 'Accept': 'application/json' },
-        });
-        if (!evRes.ok) {
-          logs.push('  → error: ' + evRes.status);
-          continue;
-        }
-
-        const evJson = await evRes.json();
-        const evList = Array.isArray(evJson)       ? evJson
-                     : Array.isArray(evJson.data)  ? evJson.data
-                     : [];
-        logs.push('  → events: ' + evList.length);
-
-        for (const ev of evList) {
-          const a = ev.attributes || ev;
-          events.push({
-            calName,
-            title:       a.title || a.name || a.summary || '',
-            start_at:    a.start_at || a.startAt || a.start || a.dt_start || '',
-            all_day:     a.all_day  || a.allDay  || a.is_all_day || false,
-            description: a.description || a.note || a.memo || '',
-          });
-        }
-      }
-    } catch (err) {
-      logs.push('ERROR: ' + err.message);
-    }
-
-    return { logs, events };
-  });
-
-  apiResult.logs.forEach(l => console.log('[API]', l));
-  console.log('API取得イベント総数:', (apiResult.events || []).length);
+  // Cookie も取得してヘッダーに追加
+  const cookies = await context.cookies('https://timetreeapp.com');
+  if (cookies.length > 0) {
+    capturedHeaders['cookie'] = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+  }
 
   await browser.close();
+
+  // ── Node.js から直接 API を呼び出す ──────────────────
+  const reqHeaders = { ...capturedHeaders, 'accept': 'application/json' };
+
+  console.log('=== カレンダー一覧取得 ===');
+  const calRes = await fetch('https://timetreeapp.com/api/v2/calendars', { headers: reqHeaders });
+  console.log('status:', calRes.status);
+  if (!calRes.ok) {
+    console.error('calendars error:', (await calRes.text()).slice(0, 300));
+    process.exit(1);
+  }
+
+  const calJson   = await calRes.json();
+  const calendars = calJson.data || [];
+  console.log('カレンダー数:', calendars.length);
+  calendars.forEach(c => console.log(' -', c.id, (c.attributes && c.attributes.name) || ''));
+
+  // ── 各カレンダーのイベントを取得 ──────────────────────
+  const allRawEvents = [];
+  for (const cal of calendars) {
+    const calId   = cal.id;
+    const calName = (cal.attributes && cal.attributes.name) || String(calId);
+
+    const evRes = await fetch(
+      `https://timetreeapp.com/api/v1/calendar/${calId}/events/sync`,
+      { headers: reqHeaders }
+    );
+    if (!evRes.ok) {
+      console.log(`[SKIP CAL] ${calName}: status ${evRes.status}`);
+      continue;
+    }
+
+    const evJson = await evRes.json();
+    const evList = Array.isArray(evJson)       ? evJson
+                 : Array.isArray(evJson.data)  ? evJson.data : [];
+    console.log(`[CAL] ${calName}: ${evList.length} イベント`);
+
+    for (const ev of evList) {
+      const a = ev.attributes || ev;
+      allRawEvents.push({
+        calName,
+        title:       a.title || a.name || a.summary || '',
+        start_at:    a.start_at || a.startAt || a.start || a.dt_start || '',
+        all_day:     a.all_day  || a.allDay  || a.is_all_day || false,
+        description: a.description || a.note || a.memo || '',
+      });
+    }
+  }
+  console.log('全イベント総数:', allRawEvents.length);
 
   // ── フィルタリング & 重複除去 ──────────────────────────
   const seen   = new Set();
   const today  = todayJST();
   const output = [];
 
-  for (const ev of (apiResult.events || [])) {
+  for (const ev of allRawEvents) {
     if (!ev.start_at || !ev.title) continue;
-
     if (isBirthdayOrPersonal(ev.title)) {
       console.log('[SKIP birthday]', ev.title);
       continue;
     }
-
     const dateStr = toJSTDateStr(ev.start_at);
     if (dateStr < today) {
       console.log('[SKIP past]', ev.title, dateStr);
       continue;
     }
-
     const key = ev.title + '|' + ev.start_at;
     if (seen.has(key)) continue;
     seen.add(key);
-
     console.log('[EVENT]', ev.title, dateStr, '(' + ev.calName + ')');
     output.push(ev);
   }
@@ -167,13 +178,13 @@ function todayJST() {
   }
 
   console.log('\nGAS に送信中...');
-  const response = await fetch(WEBHOOK_URL, {
+  const gasRes = await fetch(WEBHOOK_URL, {
     method:   'POST',
     headers:  { 'Content-Type': 'application/json' },
     body:     JSON.stringify({ events: output }),
     redirect: 'follow',
   });
-  const result = await response.text();
+  const result = await gasRes.text();
   console.log('GAS レスポンス:', result);
   console.log('完了！');
 })();
