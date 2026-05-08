@@ -36,13 +36,16 @@ function todayJST() {
   });
   const page = await context.newPage();
 
-  // ── ログイン後のAPIリクエストから全ヘッダーをキャプチャ ──
+  // ── ログイン後の認証済みAPIリクエストからヘッダーをキャプチャ ──
+  // user_agreements / public_calendars / setting はログイン処理中の事前認証呼び出しなので除外
   let capturedHeaders = null;
   page.on('request', (req) => {
     if (capturedHeaders) return;
     const url = req.url();
     if (!url.includes('timetreeapp.com/api')) return;
-    if (url.includes('/auth/email') || url.includes('/signin') || url.includes('/public_calendars')) return;
+    if (url.includes('/auth/email')     || url.includes('/signin')          ||
+        url.includes('/user_agreements')|| url.includes('/public_calendars') ||
+        url.includes('/user/setting'))   return;
     const h = req.headers();
     capturedHeaders = {};
     for (const [k, v] of Object.entries(h)) {
@@ -103,17 +106,21 @@ function todayJST() {
   const reqHeaders = { ...capturedHeaders, 'accept': 'application/json' };
 
   console.log('=== カレンダー一覧取得 ===');
-  const calRes = await fetch('https://timetreeapp.com/api/v2/calendars', { headers: reqHeaders });
+  const calRes  = await fetch('https://timetreeapp.com/api/v2/calendars', { headers: reqHeaders });
+  const calText = await calRes.text();
   console.log('status:', calRes.status);
+  console.log('response preview:', calText.slice(0, 400));
+
   if (!calRes.ok) {
-    console.error('calendars error:', (await calRes.text()).slice(0, 300));
+    console.error('calendars error');
     process.exit(1);
   }
 
-  const calJson   = await calRes.json();
-  const calendars = calJson.data || [];
+  const calJson   = JSON.parse(calText);
+  // data 配列 または calendars 配列の両方に対応
+  const calendars = calJson.data || calJson.calendars || [];
   console.log('カレンダー数:', calendars.length);
-  calendars.forEach(c => console.log(' -', c.id, (c.attributes && c.attributes.name) || ''));
+  calendars.forEach(c => console.log(' -', c.id, (c.attributes && c.attributes.name) || (c.name) || ''));
 
   // ── 各カレンダーのイベントを取得 ──────────────────────
   const allRawEvents = [];
