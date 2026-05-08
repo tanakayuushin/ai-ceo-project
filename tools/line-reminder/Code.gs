@@ -29,6 +29,7 @@ function doPost(e) {
       rows.map(r => r[C_NAME - 1] + '|' + formatDate(parseDate(r[C_DATE - 1])))
     );
 
+    const todayStr = formatDate(new Date());
     let added = 0;
     for (const ev of events) {
       if (!ev.start_at) continue;
@@ -37,6 +38,10 @@ function doPost(e) {
         ? new Date(Number(ev.start_at))
         : new Date(ev.start_at);
       const dateStr = formatDate(start);
+
+      // 今日より前の予定はスキップ
+      if (dateStr < todayStr) continue;
+
       const timeStr = ev.all_day
         ? '09:00'
         : String(start.getHours()).padStart(2, '0') + ':' + String(start.getMinutes()).padStart(2, '0');
@@ -50,8 +55,8 @@ function doPost(e) {
       added++;
     }
 
-    // 日付順に並び替え（B列 = 日付列）
-    if (added > 0 && sheet.getLastRow() > 2) {
+    // 日付順に並び替え（B列 = 日付列、YYYY/MM/DD形式なので文字列ソートで正確）
+    if (sheet.getLastRow() > 2) {
       sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).sort({ column: 2, ascending: true });
     }
 

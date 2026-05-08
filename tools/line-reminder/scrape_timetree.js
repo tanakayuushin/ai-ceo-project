@@ -85,6 +85,16 @@ function isBirthdayOrPersonal(title) {
           continue;
         }
 
+        // 過去の予定はスキップ（今日0時より前）
+        const eventDate = new Date(typeof start === 'number' || /^\d{10,}$/.test(String(start))
+          ? Number(start) : start);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (eventDate < today) {
+          console.log('[SKIP past]', title);
+          continue;
+        }
+
         console.log('[EVENT]', title, start);
         capturedEvents.push({
           title,
