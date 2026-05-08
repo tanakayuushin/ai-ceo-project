@@ -137,8 +137,9 @@ function todayJST() {
         let evJson;
         try { evJson = JSON.parse(evText); } catch(e) { logs.push('  parse err'); continue; }
 
-        const evList = Array.isArray(evJson)       ? evJson
-                     : Array.isArray(evJson.data)  ? evJson.data : [];
+        const evList = Array.isArray(evJson)          ? evJson
+                     : Array.isArray(evJson.events) ? evJson.events
+                     : Array.isArray(evJson.data)   ? evJson.data : [];
         logs.push('  events: ' + evList.length);
 
         for (const ev of evList) {
