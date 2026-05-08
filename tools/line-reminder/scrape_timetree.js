@@ -25,32 +25,74 @@ const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
   await page.goto('https://timetreeapp.com/signin', { waitUntil: 'networkidle', timeout: 30000 });
   await page.screenshot({ path: 'debug_1_signin.png' });
 
-  // メール入力
-  const emailSel = 'input[type="email"], input[name="email"], input[autocomplete="email"]';
-  await page.waitForSelector(emailSel, { timeout: 10000 });
-  await page.click(emailSel);
-  await page.fill(emailSel, EMAIL);
+  // ── フォーム要素を確認 ─────────────────────────────
+  // ページ上の全 input を列挙してデバッグ
+  const inputs = await page.evaluate(() =>
+    [...document.querySelectorAll('input')].map(el => ({
+      type: el.type, name: el.name, id: el.id,
+      placeholder: el.placeholder, autocomplete: el.autocomplete
+    }))
+  );
+  console.log('input 要素:', JSON.stringify(inputs));
+
+  // ページ上の全 button を列挙
+  const buttons = await page.evaluate(() =>
+    [...document.querySelectorAll('button')].map(el => ({
+      type: el.type, text: el.innerText.trim().slice(0, 40), id: el.id
+    }))
+  );
+  console.log('button 要素:', JSON.stringify(buttons));
+
+  // ── メール入力 ──────────────────────────────────────
+  const emailInput = page.locator('input[type="email"]').first();
+  const emailCount = await emailInput.count();
+  console.log('メール input 数:', emailCount);
+
+  if (emailCount > 0) {
+    await emailInput.click();
+    await emailInput.fill('');
+    await page.waitForTimeout(300);
+    await emailInput.type(EMAIL, { delay: 50 });
+    console.log('メールアドレスを入力しました');
+  }
+
   await page.waitForTimeout(500);
+  await page.screenshot({ path: 'debug_2_email_filled.png' });
 
-  // パスワード入力欄が出るまで待つ（2ステップログインに対応）
-  await page.press(emailSel, 'Enter');
-  await page.waitForTimeout(1500);
+  // ── パスワード入力 ──────────────────────────────────
+  const pwdInput = page.locator('input[type="password"]').first();
+  const pwdCount = await pwdInput.count();
+  console.log('パスワード input 数:', pwdCount);
 
-  const pwdSel = 'input[type="password"]';
-  await page.waitForSelector(pwdSel, { timeout: 8000 });
-  await page.fill(pwdSel, PASSWORD);
+  if (pwdCount > 0) {
+    await pwdInput.click();
+    await pwdInput.fill('');
+    await page.waitForTimeout(300);
+    await pwdInput.type(PASSWORD, { delay: 50 });
+    console.log('パスワードを入力しました');
+  }
+
   await page.screenshot({ path: 'debug_2_filled.png' });
   await page.waitForTimeout(500);
 
-  // Enter キーで送信（ボタンクリックより確実）
-  await page.press(pwdSel, 'Enter');
+  // ── 送信：複数の方法を順番に試す ───────────────────
+  // 方法1: type="submit" のボタンをクリック
+  const submitBtn = page.locator('button[type="submit"]').first();
+  if (await submitBtn.count() > 0) {
+    console.log('submitボタンをクリック');
+    await submitBtn.click();
+  } else {
+    // 方法2: Enter キーで送信
+    console.log('Enter キーで送信');
+    await pwdInput.press('Enter');
+  }
 
-  // ログイン完了を URL の変化で検知
+  // ログイン完了を URL の変化で検知（最大20秒待つ）
   try {
-    await page.waitForURL(url => !url.includes('/signin'), { timeout: 15000 });
+    await page.waitForURL(url => !url.includes('/signin'), { timeout: 20000 });
     console.log('ログイン成功！');
   } catch (_) {
-    console.log('ログインに失敗した可能性があります');
+    console.log('ログインできませんでした。認証情報を確認してください。');
     await page.screenshot({ path: 'debug_error_login.png' });
   }
 
