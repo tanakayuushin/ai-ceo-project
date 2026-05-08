@@ -188,6 +188,13 @@ function todayJST() {
     output.push(ev);
   }
 
+  // 日付順にソートしてから送信
+  output.sort((a, b) => {
+    const da = toJSTDateStr(a.start_at);
+    const db = toJSTDateStr(b.start_at);
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+
   console.log('\n取得した予定:', output.length, '件');
   output.forEach(ev => console.log(' -', ev.title, toJSTDateStr(ev.start_at)));
 

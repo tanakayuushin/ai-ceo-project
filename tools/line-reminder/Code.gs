@@ -56,8 +56,9 @@ function doPost(e) {
     }
 
     // 日付順に並び替え（B列 = 日付列、YYYY/MM/DD形式なので文字列ソートで正確）
-    if (sheet.getLastRow() > 2) {
-      sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).sort({ column: 2, ascending: true });
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, 7).sort({ column: 2, ascending: true });
     }
 
     return ContentService
