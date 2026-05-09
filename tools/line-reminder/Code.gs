@@ -6,6 +6,89 @@
 // =====================================================
 
 
+// ── Web アプリエントリーポイント ──────────────────────
+
+// スマホ・PC からフォームを開く
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('Form')
+    .setTitle('LINEリマインダー')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Playwright スクレイパーから予定データを受け取る
+function doPost(e) {
+  try {
+    const data   = JSON.parse(e.postData.contents);
+    const events = data.events || [];
+    const sheet  = getSheet();
+    const rows   = sheet.getLastRow() > 1
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues()
+      : [];
+
+    // 既存行マップ: "タイトル|日付" → 行番号（1始まり、ヘッダー込み）
+    const existingMap = new Map();
+    rows.forEach((r, i) => {
+      const key = r[C_NAME - 1] + '|' + formatDate(parseDate(r[C_DATE - 1]));
+      existingMap.set(key, i + 2); // +2 = ヘッダー行(1) + 0インデックス補正(1)
+    });
+
+    const todayStr = formatDate(new Date());
+    let added = 0, updated = 0;
+
+    for (const ev of events) {
+      if (!ev.start_at) continue;
+      const start = (typeof ev.start_at === 'number' || /^\d{10,}$/.test(String(ev.start_at)))
+        ? new Date(Number(ev.start_at))
+        : new Date(ev.start_at);
+      const dateStr = formatDate(start);
+
+      // 今日より前の予定はスキップ
+      if (dateStr < todayStr) continue;
+
+      const timeStr = ev.all_day
+        ? ''
+        : String(start.getHours()).padStart(2, '0') + ':' + String(start.getMinutes()).padStart(2, '0');
+      const title = ev.title || '（タイトルなし）';
+      const desc  = ev.description || '';
+      const key   = title + '|' + dateStr;
+
+      if (existingMap.has(key)) {
+        // 同じタイトル＋日付が既にある場合は時刻・メモだけ更新（リマインド済みフラグは保持）
+        const rowIdx  = existingMap.get(key);
+        const oldRow  = rows[rowIdx - 2];
+        const oldTime = String(oldRow[C_TIME - 1] || '');
+        const oldMemo = String(oldRow[C_MEMO - 1] || '');
+        if (oldTime !== timeStr || oldMemo !== desc) {
+          sheet.getRange(rowIdx, C_TIME).setValue(timeStr);
+          sheet.getRange(rowIdx, C_MEMO).setValue(desc);
+          updated++;
+        }
+      } else {
+        // 新規追加
+        sheet.appendRow([title, dateStr, timeStr, 'none', desc, '1:20;0:8', 'false']);
+        existingMap.set(key, sheet.getLastRow());
+        added++;
+      }
+    }
+
+    // 日付順に並び替え
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.getRange(2, 1, lastRow - 1, 7).sort({ column: 2, ascending: true });
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok', added: added, updated: updated }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+
 // ── カスタムメニュー ──────────────────────────────────
 
 function onOpen() {
@@ -13,6 +96,10 @@ function onOpen() {
     .createMenu('リマインダー')
     .addItem('イベントを追加', 'showAddForm')
     .addItem('イベント一覧を確認', 'showList')
+    .addSeparator()
+    .addItem('TimeTree から同期', 'syncFromTimeTree')
+    .addItem('TimeTree カレンダーID を確認', 'listTimeTreeCalendars')
+    .addItem('TimeTree 自動同期トリガーを設定', 'setupTimeTreeTrigger')
     .addSeparator()
     .addItem('シートのレイアウトを修正', 'fixSheetLayout')
     .addToUi();
@@ -84,9 +171,11 @@ function fixSheetLayout() {
 
 // ── プロパティ取得 ────────────────────────────────────
 
-function getToken()   { return PropertiesService.getScriptProperties().getProperty('LINE_TOKEN'); }
-function getSheetId() { return PropertiesService.getScriptProperties().getProperty('SHEET_ID'); }
-function getGroupId() { return PropertiesService.getScriptProperties().getProperty('LINE_GROUP_ID'); }
+function getToken()          { return PropertiesService.getScriptProperties().getProperty('LINE_TOKEN'); }
+function getSheetId()        { return PropertiesService.getScriptProperties().getProperty('SHEET_ID'); }
+function getGroupId()        { return PropertiesService.getScriptProperties().getProperty('LINE_GROUP_ID'); }
+function getTimetreeToken()  { return PropertiesService.getScriptProperties().getProperty('TIMETREE_TOKEN'); }
+function getTimetreeCalId()  { return PropertiesService.getScriptProperties().getProperty('TIMETREE_CALENDAR_ID'); }
 
 const C_NAME      = 1;
 const C_DATE      = 2;
@@ -152,12 +241,13 @@ function sendReminders() {
           : rem.days === 14            ? '2週間後に予定があります！'
           : rem.days + '日後に予定があります！';
 
+        const timeDisplay = formatTimeJapanese(time);
         push(groupId,
           msgDate + '\n\n' +
           '━━━━━━━━━━\n' +
           '【' + name + '】\n' +
-          formatDateJapanese(eventDateObj) + '\n' +
-          formatTimeJapanese(time) + '\n' +
+          formatDateJapanese(eventDateObj) +
+          (timeDisplay ? '\n' + timeDisplay : '') + '\n' +
           '━━━━━━━━━━' +
           memoLine
         );
@@ -242,7 +332,7 @@ function setupValidation(sheet) {
     times.push(String(h).padStart(2,'0') + ':30');
   }
   const timeRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(times, true).setAllowInvalid(false).build();
+    .requireValueInList(times, true).setAllowInvalid(true).build();
   sheet.getRange('C2:C1000').setDataValidation(timeRule);
 
   const repeatRule = SpreadsheetApp.newDataValidation()
@@ -306,4 +396,97 @@ function getNextWeekFromDate(str) {
 function getNextMonthFromDate(str) {
   const d = parseDate(str);
   return formatDate(new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()));
+}
+
+
+// ── TimeTree 連携 ─────────────────────────────────────
+
+const TIMETREE_BASE = 'https://timetreeapis.com';
+
+// TimeTree のカレンダー一覧を表示（TIMETREE_CALENDAR_ID 確認用）
+function listTimeTreeCalendars() {
+  const token = getTimetreeToken();
+  if (!token) { SpreadsheetApp.getUi().alert('TIMETREE_TOKEN が未設定です'); return; }
+
+  const res = UrlFetchApp.fetch(TIMETREE_BASE + '/calendars', {
+    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.timetree.v1+json' },
+    muteHttpExceptions: true
+  });
+  if (res.getResponseCode() !== 200) {
+    SpreadsheetApp.getUi().alert('API エラー: ' + res.getResponseCode() + '\n' + res.getContentText());
+    return;
+  }
+  const calendars = JSON.parse(res.getContentText()).data || [];
+  const msg = calendars.length === 0
+    ? 'カレンダーが見つかりませんでした'
+    : calendars.map(c => 'ID: ' + c.id + '\n名前: ' + c.attributes.name).join('\n\n');
+  SpreadsheetApp.getUi().alert('TimeTree カレンダー一覧\n\n' + msg);
+}
+
+// TimeTree の今後の予定をスプレッドシートに同期する
+function syncFromTimeTree() {
+  const token = getTimetreeToken();
+  const calId = getTimetreeCalId();
+  if (!token || !calId) {
+    SpreadsheetApp.getUi().alert('TIMETREE_TOKEN または TIMETREE_CALENDAR_ID が未設定です\n\n' +
+      'スクリプトプロパティに登録してください');
+    return;
+  }
+
+  const res = UrlFetchApp.fetch(
+    TIMETREE_BASE + '/calendars/' + calId + '/upcoming_events?timezone=Asia%2FTokyo&days=7',
+    {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.timetree.v1+json' },
+      muteHttpExceptions: true
+    }
+  );
+  if (res.getResponseCode() !== 200) {
+    Logger.log('TimeTree sync error: ' + res.getContentText());
+    return;
+  }
+
+  const events = JSON.parse(res.getContentText()).data || [];
+  const sheet  = getSheet();
+  const rows   = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues() : [];
+
+  // 重複チェック用キー（イベント名 + 日付）
+  const existingKeys = new Set(
+    rows.map(r => r[C_NAME - 1] + '|' + formatDate(parseDate(r[C_DATE - 1])))
+  );
+
+  let added = 0;
+  for (const ev of events) {
+    const attrs = ev.attributes;
+    if (!attrs || !attrs.start_at) continue;
+
+    // 終日イベントはデフォルト時刻 09:00 で登録
+    const start   = new Date(attrs.start_at);
+    const dateStr = formatDate(start);
+    const timeStr = attrs.all_day
+      ? '09:00'
+      : String(start.getHours()).padStart(2, '0') + ':' + String(start.getMinutes()).padStart(2, '0');
+    const title   = attrs.title || '（タイトルなし）';
+    const key     = title + '|' + dateStr;
+
+    if (existingKeys.has(key)) continue;
+
+    sheet.appendRow([title, dateStr, timeStr, 'none', attrs.description || '', '1:20;0:8', 'false']);
+    existingKeys.add(key);
+    added++;
+  }
+
+  const msg = added > 0 ? added + ' 件の予定を追加しました' : '新しい予定はありませんでした';
+  Logger.log('TimeTree sync: ' + msg);
+  // メニューから手動実行した場合のみダイアログ表示
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) { /* トリガー実行時はスキップ */ }
+}
+
+// 1時間おきの自動同期トリガーを登録（1回だけ実行すればOK）
+function setupTimeTreeTrigger() {
+  // 既存トリガーの重複登録を防ぐ
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'syncFromTimeTree') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('syncFromTimeTree').timeBased().everyHours(1).create();
+  SpreadsheetApp.getUi().alert('自動同期トリガーを設定しました（1時間おき）');
 }
