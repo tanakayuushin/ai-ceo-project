@@ -310,6 +310,45 @@ def create_weekly_summary_text(entries):
     return result or "(週次要約の生成に失敗しました)"
 
 
+def save_weekly_report_locally(week_key, date_range, recordings, weekly_summary):
+    """Save weekly summary as a markdown file for Allen to learn from."""
+    reports_dir = Path(__file__).parent.parent.parent / "ceo" / "weekly-reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    lines = [
+        f"# 週次レポート {week_key} ({date_range})",
+        f"",
+        f"**生成日**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        f"",
+        f"---",
+        f"",
+        f"## 週全体のまとめ",
+        f"",
+        weekly_summary,
+        f"",
+        f"---",
+        f"",
+        f"## 各録音の要約",
+        f"",
+    ]
+    for _, info in recordings:
+        title = info.get("title", "")
+        summary = info.get("summary", "")
+        if title:
+            lines.append(f"### {title}")
+            lines.append("")
+        lines.append(summary if summary else "(要約なし)")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("")
+    lines.append("*自動生成: Soundcore録音 → Whisper文字起こし → Claude Haiku要約*")
+
+    report_path = reports_dir / f"{week_key}.md"
+    report_path.write_text("\n".join(lines), encoding="utf-8")
+    p(f"  [OK] Weekly report saved: {report_path}")
+
+
 def create_weekly_page(monthly_page_id, date_range, week_key, recordings, weekly_summary):
     title = f"週まとめ {date_range}"
     p(f"  Creating weekly page: {title}")
@@ -337,6 +376,8 @@ def create_weekly_page(monthly_page_id, date_range, week_key, recordings, weekly
     if r.status_code == 200:
         page_id = r.json()["id"]
         p(f"  [OK] Weekly page created: {title}")
+        # Also save locally for Allen to learn from
+        save_weekly_report_locally(week_key, date_range, recordings, weekly_summary)
         return page_id
     p(f"  [FAIL] {r.status_code} -- {r.text[:200]}")
     return None
