@@ -1,10 +1,11 @@
 ﻿# -*- coding: utf-8 -*-
 """
-Notion audio block -> Whisper transcription -> Claude Haiku summary -> Notion child page
+Soundcore Notion audio pipeline:
+  child_page (per recording) -> file block (.ogg) -> Whisper -> Claude Haiku -> append summary to child page
 Usage:
-  python notion_audio_processor.py --test     # connection test only
-  python notion_audio_processor.py            # run once
-  python notion_audio_processor.py --watch    # auto-monitor every 5 minutes
+  python notion_audio_processor.py --test
+  python notion_audio_processor.py
+  python notion_audio_processor.py --watch
 """
 
 import os
@@ -54,6 +55,10 @@ def notion_get(url):
     return requests.get(url, headers=NOTION_HEADERS, verify=False)
 
 
+def notion_patch(url, data):
+    return requests.patch(url, headers=NOTION_HEADERS, json=data, verify=False)
+
+
 def notion_post(url, data):
     return requests.post(url, headers=NOTION_HEADERS, json=data, verify=False)
 
@@ -67,12 +72,13 @@ def test_connection():
         p(f"[OK] Connected: {name}")
         return True
     else:
-        p(f"[FAIL] Connection failed: {r.status_code} -- {r.text[:200]}")
+        p(f"[FAIL] {r.status_code} -- {r.text[:200]}")
         return False
 
 
-def get_audio_blocks():
-    blocks = []
+def get_child_pages():
+    """Get all child_page blocks at the top level."""
+    pages = []
     cursor = None
     while True:
         url = f"https://api.notion.com/v1/blocks/{NOTION_PAGE_ID}/children?page_size=100"
@@ -80,42 +86,47 @@ def get_audio_blocks():
             url += f"&start_cursor={cursor}"
         r = notion_get(url)
         if r.status_code != 200:
-            p(f"[FAIL] Block fetch failed: {r.status_code} -- {r.text[:200]}")
+            p(f"[FAIL] {r.status_code}")
             return []
         data = r.json()
         for block in data.get("results", []):
-            if block.get("type") in ("audio", "file", "video"):
-                blocks.append(block)
+            if block.get("type") == "child_page":
+                pages.append(block)
         cursor = data.get("next_cursor")
         if not cursor:
             break
-    return blocks
+    return pages
 
 
-def download_audio(block):
-    btype = block.get("type")
-    info = block.get(btype, {})
-    file_info = info.get("file") or info.get("external")
-    if not file_info:
+def get_file_block_in_page(page_id):
+    """Find the first file block inside a child page."""
+    r = notion_get(f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100")
+    if r.status_code != 200:
         return None
-    url = file_info.get("url")
-    if not url:
-        return None
-    p(f"  Downloading: {url[:80]}...")
+    for block in r.json().get("results", []):
+        if block.get("type") == "file":
+            info = block.get("file", {})
+            file_info = info.get("file") or info.get("external")
+            if file_info and file_info.get("url"):
+                return file_info["url"]
+    return None
+
+
+def download_audio(url):
+    """Download audio from URL to temp file."""
+    p(f"  Downloading audio...")
     r = requests.get(url, verify=False, timeout=60)
     if r.status_code != 200:
-        p(f"  [FAIL] Download failed: {r.status_code}")
+        p(f"  [FAIL] Download {r.status_code}")
         return None
-    suffix = ".m4a"
+    suffix = ".ogg"
     ct = r.headers.get("content-type", "")
     if "wav" in ct:
         suffix = ".wav"
     elif "mp3" in ct or "mpeg" in ct:
         suffix = ".mp3"
-    elif "ogg" in ct:
-        suffix = ".ogg"
-    elif "webm" in ct:
-        suffix = ".webm"
+    elif "m4a" in ct or "mp4" in ct:
+        suffix = ".m4a"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     tmp.write(r.content)
     tmp.close()
@@ -124,22 +135,24 @@ def download_audio(block):
 
 
 def transcribe(audio_path):
+    """Local transcription with Whisper (free)."""
     try:
         import whisper
     except ImportError:
         p("  [WARN] whisper not installed. Run: pip install openai-whisper")
         return ""
-    p("  Transcribing with Whisper...")
+    p("  Transcribing with Whisper (base model)...")
     model = whisper.load_model("base")
     result = model.transcribe(audio_path, language="ja")
     text = result.get("text", "").strip()
-    p(f"  Transcription done: {len(text)} chars")
+    p(f"  Done: {len(text)} chars")
     return text
 
 
 def summarize(transcript):
+    """Summarize with Claude Haiku."""
     if not transcript:
-        return "(Transcription was empty, cannot summarize)"
+        return "(文字起こし結果が空のため要約できませんでした)"
     p("  Summarizing with Claude Haiku...")
     r = requests.post(
         "https://api.anthropic.com/v1/messages",
@@ -151,77 +164,93 @@ def summarize(transcript):
         json={
             "model": "claude-haiku-4-5-20251001",
             "max_tokens": 500,
-            "messages": [{"role": "user", "content": "以下の音声文字起こしを日本語で3〜5行に要約してください。重要なポイントと決定事項があれば箇条書きにしてください。\n\n" + transcript[:3000]}],
+            "messages": [{"role": "user", "content": (
+                "以下の音声文字起こしを日本語で3〜5行に要約してください。"
+                "重要なポイントと決定事項があれば箇条書きにしてください。\n\n"
+                + transcript[:3000]
+            )}],
         },
         verify=False,
         timeout=30,
     )
     if r.status_code == 200:
         summary = r.json()["content"][0]["text"].strip()
-        p(f"  Summary done: {len(summary)} chars")
+        p(f"  Done: {len(summary)} chars")
         return summary
     else:
         p(f"  [WARN] Summary failed: {r.status_code}")
-        return "(Summary generation failed)"
+        return "(要約の生成に失敗しました)"
 
 
-def create_notion_page(block_id, transcript, summary, block_created):
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    title = f"Recording Note {timestamp}"
+def append_to_page(page_id, transcript, summary):
+    """Append transcription and summary blocks to existing child page."""
 
-    def text_blocks(content, btype="paragraph"):
+    def make_text_blocks(content, btype="paragraph"):
         lines = [content[i:i+1900] for i in range(0, len(content), 1900)]
-        return [{"object": "block", "type": btype, btype: {"rich_text": [{"type": "text", "text": {"content": line}}]}} for line in lines]
+        return [{"object": "block", "type": btype,
+                 btype: {"rich_text": [{"type": "text", "text": {"content": line}}]}}
+                for line in lines]
 
     children = (
-        [{"object": "block", "type": "heading_2", "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Summary"}}]}}]
-        + text_blocks(summary)
-        + [{"object": "block", "type": "divider", "divider": {}}]
-        + [{"object": "block", "type": "heading_2", "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Full Transcription"}}]}}]
-        + text_blocks(transcript if transcript else "(No transcription result)")
+        [{"object": "block", "type": "divider", "divider": {}}]
+        + [{"object": "block", "type": "heading_2", "heading_2": {
+            "rich_text": [{"type": "text", "text": {"content": "要約"}}]}}]
+        + make_text_blocks(summary)
+        + [{"object": "block", "type": "heading_2", "heading_2": {
+            "rich_text": [{"type": "text", "text": {"content": "文字起こし（全文）"}}]}}]
+        + make_text_blocks(transcript if transcript else "(文字起こし結果なし)")
     )
 
-    payload = {
-        "parent": {"page_id": NOTION_PAGE_ID},
-        "properties": {"title": {"title": [{"text": {"content": title}}]}},
-        "children": children[:100],
-    }
-    r = notion_post("https://api.notion.com/v1/pages", payload)
+    r = notion_patch(
+        f"https://api.notion.com/v1/blocks/{page_id}/children",
+        {"children": children[:50]}
+    )
     if r.status_code == 200:
-        page_url = r.json().get("url", "")
-        p(f"  [OK] Notion page created: {page_url}")
+        p(f"  [OK] Added to Notion page")
         return True
     else:
-        p(f"  [FAIL] Page creation failed: {r.status_code} -- {r.text[:300]}")
+        p(f"  [FAIL] {r.status_code} -- {r.text[:300]}")
         return False
 
 
 def process_once():
     p(f"\n{'='*50}")
-    p(f"Run time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    p(f"Run: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     p("="*50)
+
     processed = load_processed()
-    blocks = get_audio_blocks()
-    if not blocks:
-        p("No audio blocks found")
-        return
+    child_pages = get_child_pages()
+    p(f"Found {len(child_pages)} child page(s) in AppSoundcore")
+
     new_count = 0
-    for block in blocks:
-        bid = block["id"]
-        if bid in processed:
+    for page_block in child_pages:
+        pid = page_block["id"]
+        title = page_block.get("child_page", {}).get("title", "")
+
+        if pid in processed:
+            p(f"  [skip] {title}")
             continue
-        p(f"\nNew audio block found: {bid}")
-        audio_path = download_audio(block)
-        if not audio_path:
-            p("  [FAIL] Could not download audio (URL may have expired)")
-            processed.add(bid)
+
+        p(f"\nProcessing: {title} (id={pid})")
+        audio_url = get_file_block_in_page(pid)
+        if not audio_url:
+            p("  No audio file found inside this page")
+            processed.add(pid)
             save_processed(processed)
             continue
+
+        audio_path = download_audio(audio_url)
+        if not audio_path:
+            p("  [FAIL] Could not download (URL may have expired)")
+            processed.add(pid)
+            save_processed(processed)
+            continue
+
         try:
             transcript = transcribe(audio_path)
             summary = summarize(transcript)
-            create_notion_page(bid, transcript, summary, block.get("created_time", ""))
-            processed.add(bid)
+            append_to_page(pid, transcript, summary)
+            processed.add(pid)
             save_processed(processed)
             new_count += 1
         finally:
@@ -229,10 +258,11 @@ def process_once():
                 os.unlink(audio_path)
             except Exception:
                 pass
+
     if new_count == 0:
-        p("No new audio blocks to process")
+        p("No new recordings to process")
     else:
-        p(f"\n[OK] Processed {new_count} audio file(s)")
+        p(f"\n[OK] Processed {new_count} recording(s)")
 
 
 def main():
@@ -242,15 +272,18 @@ def main():
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--watch", action="store_true")
     args = parser.parse_args()
+
     if not test_connection():
         sys.exit(1)
+
     if args.test:
         return
+
     if args.watch:
-        p("\nWatch mode started (checking every 5 minutes). Press Ctrl+C to stop.")
+        p("\nWatch mode: checking every 5 minutes. Ctrl+C to stop.")
         while True:
             process_once()
-            p("\nWaiting 5 minutes until next check...")
+            p("\nWaiting 5 minutes...")
             time.sleep(300)
     else:
         process_once()
