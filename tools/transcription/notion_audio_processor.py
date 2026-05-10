@@ -10,6 +10,7 @@ Usage:
 
 import os
 import sys
+import ssl
 import json
 import time
 import argparse
@@ -18,6 +19,9 @@ import datetime
 import requests
 import urllib3
 from pathlib import Path
+
+# Windows SSL workaround for urllib (used by Whisper model download)
+ssl._create_default_https_context = ssl._create_unverified_context
 from dotenv import load_dotenv
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
