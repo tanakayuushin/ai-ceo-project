@@ -1,0 +1,5 @@
+- Fact Base (drawing management SaaS for SMEs) raised ¥4.4B in Series C led by Insight Partners — their first-ever investment in a Japanese startup — earmarked for European expansion and new product lines in 2026.
+- SUPWAT (manufacturing DX SaaS, Tokyo) closed ~¥200M in a pre-Series A round focused on factory digitalization tools.
+- H2 Corporation (construction-tech SaaS, Tokyo) secured a pre-Series A extension led by NEA, with Spiral Capital, JAFCO, MetaProp, One Capital, and Boost Capital participating.
+- Active Japan VCs in 2026 include CyberAgent Capital (~300 investments), Samurai Incubate (~180 funded companies), YJ Capital, and Dentsu Ventures, covering seed through growth stages.
+- Key accelerator programs open in 2026: Google for Startups Accelerator Japan (seed to growth), Open Network Lab (AI/HealthTech/Mobility focus), JETRO GSAP for cross-border expansion, and Founder Institute Japan cohort.

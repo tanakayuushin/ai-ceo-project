@@ -1,0 +1,5 @@
+- Sierra (Bret Taylor's AI agent startup) raised $950M led by Tiger Global and GV, pushing its valuation above $15B just months after its previous $350M round.
+- Project Prometheus, Jeff Bezos's stealth AI manufacturing startup, launched publicly with $6.2B in funding and is reportedly in line for an additional $10B.
+- Rhoda AI emerged from 18 months of stealth with $450M in Series A funding, unveiling its FutureVision robotic intelligence platform built on video-predictive control.
+- Q1 2026 shattered venture funding records with global startup investment reaching $300B, driven primarily by AI mega-rounds totaling $18.8B for startups founded since early 2025.
+- Nvidia crossed $40B in equity investment commitments in 2026, accelerating its role as a dominant strategic investor across the AI ecosystem.

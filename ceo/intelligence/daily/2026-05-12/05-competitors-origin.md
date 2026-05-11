@@ -1,0 +1,5 @@
+- 株式会社デジライズは2023年創業、toB向けAI研修・コンサルを特化型で展開し、2年2ヶ月で約350社・3.5万人の顧客を獲得——まずニッチ（研修）から入り横展開する戦略が成功の核心
+- Japan's most successful AI consulting SMB entrants started with a single vertical (e.g., construction, healthcare, logistics), solved one high-frequency pain point with measurable 30–90 day ROI, then expanded scope after proving value
+- 株式会社ユーティルは「中小企業のポテンシャルを開放する」というビジョンを軸にBPaaS型DXから参入し、サービスをパッケージ化（「できるくんシリーズ」）することでスケールを実現——コンサル×SaaSのハイブリッドモデルが初期収益を安定化
+- ExaWizards grew by combining consulting engagements with proprietary AI platforms, winning early clients through government-backed projects and regulated-sector partnerships (healthcare, finance), then leveraging those case studies to enter the broader SMB market
+- 日本のSMB市場はSaaS普及率約37%・FAX発注が70%超と残存しており、先行者はアナログ業務の「デジタル化」から切り口を作り、そこにAIを後乗せする2段階アプローチで参入障壁を下げながら受注を積み上げた
