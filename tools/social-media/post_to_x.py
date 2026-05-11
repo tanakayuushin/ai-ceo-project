@@ -23,6 +23,7 @@ import string
 import urllib.parse
 import urllib.request
 import urllib.error
+import ssl
 
 
 def pct(s):
@@ -79,8 +80,12 @@ def post_tweet(text):
     req.add_header('Authorization', auth)
     req.add_header('Content-Type', 'application/json')
 
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
     try:
-        with urllib.request.urlopen(req) as res:
+        with urllib.request.urlopen(req, context=ctx) as res:
             result = json.loads(res.read().decode())
             tweet_id = result.get('data', {}).get('id', '')
             print('投稿成功: ID = ' + tweet_id)
