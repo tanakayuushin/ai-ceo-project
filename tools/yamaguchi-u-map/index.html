@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>山口大学 自販機・ごみ箱マップ</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    header {
+      background: #1a3a6b;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,.3);
+    }
+    header h1 { font-size: 1.05rem; font-weight: 700; }
+    header p  { font-size: 0.72rem; opacity: .75; margin-top: 2px; }
+
+    .controls {
+      background: white;
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+      border-bottom: 1px solid #dde3ea;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .btn-vend  { background: #fff3cd; border-color: #f59e0b; color: #92400e; }
+    .btn-trash { background: #d1fae5; border-color: #10b981; color: #065f46; }
+    .btn-osm   { background: #dbeafe; border-color: #3b82f6; color: #1e3a8a; }
+    .btn.off   { opacity: .38; }
+    .btn:hover { transform: scale(1.04); }
+
+    .count-badge {
+      background: rgba(0,0,0,.12);
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: .75rem;
+    }
+
+    .legend {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+      font-size: .75rem;
+      color: #555;
+      align-items: center;
+    }
+    .legend span { display: flex; align-items: center; gap: 3px; }
+
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+
+    .info-panel {
+      position: absolute;
+      bottom: 20px;
+      right: 10px;
+      background: white;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: .78rem;
+      color: #444;
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+      z-index: 1000;
+      max-width: 200px;
+      display: none;
+    }
+    .info-panel.visible { display: block; }
+    .info-panel h3 { font-size: .85rem; margin-bottom: 4px; color: #1a3a6b; }
+    .info-panel .tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: .7rem;
+      margin-bottom: 5px;
+    }
+    .tag-vend  { background: #fef3c7; color: #92400e; }
+    .tag-trash { background: #d1fae5; color: #065f46; }
+    .tag-osm   { background: #dbeafe; color: #1e3a8a; }
+
+    .add-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 10px;
+      z-index: 1000;
+      background: #1a3a6b;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      font-size: 1.4rem;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .15s;
+    }
+    .add-btn:hover { transform: scale(1.1); }
+
+    /* Leaflet popup 日本語フォント */
+    .leaflet-popup-content { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      width: 320px;
+      max-width: 92vw;
+      box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    }
+    .modal h2 { font-size: 1rem; margin-bottom: 14px; color: #1a3a6b; }
+    .modal label { display: block; font-size: .8rem; color: #555; margin-bottom: 3px; margin-top: 10px; }
+    .modal input, .modal select, .modal textarea {
+      width: 100%; padding: 7px 10px; border: 1.5px solid #cbd5e1;
+      border-radius: 7px; font-size: .85rem;
+    }
+    .modal textarea { resize: vertical; min-height: 60px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-actions button {
+      flex: 1; padding: 9px; border-radius: 8px; border: none;
+      font-size: .85rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-cancel { background: #f1f5f9; color: #64748b; }
+    .btn-save   { background: #1a3a6b; color: white; }
+
+    @media (max-width: 480px) {
+      header h1 { font-size: .9rem; }
+      .legend   { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🗺️ 山口大学 自販機・ごみ箱マップ</h1>
+    <p>吉田キャンパス｜クリックで詳細 · ＋で場所を追加</p>
+  </div>
+</header>
+
+<div class="controls">
+  <button class="btn btn-vend"  id="btn-vend"  onclick="toggleLayer('vend')">
+    🥤 自動販売機 <span class="count-badge" id="cnt-vend">0</span>
+  </button>
+  <button class="btn btn-trash" id="btn-trash" onclick="toggleLayer('trash')">
+    🗑️ ごみ箱 <span class="count-badge" id="cnt-trash">0</span>
+  </button>
+  <button class="btn btn-osm"  id="btn-osm"  onclick="loadOSM()">
+    🌐 OSMから取得
+  </button>
+  <div class="legend">
+    <span>🟡 自販機</span>
+    <span>🟢 ごみ箱</span>
+    <span>🔵 OSM</span>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div class="info-panel" id="info-panel">
+  <span class="tag" id="info-tag"></span>
+  <h3 id="info-name"></h3>
+  <p id="info-note"></p>
+</div>
+
+<button class="add-btn" onclick="openModal()" title="場所を追加">＋</button>
+
+<!-- 追加モーダル -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>📍 新しい場所を追加</h2>
+    <label>種類</label>
+    <select id="m-type">
+      <option value="vend">🥤 自動販売機</option>
+      <option value="trash">🗑️ ごみ箱</option>
+    </select>
+    <label>名前・場所の説明</label>
+    <input id="m-name" type="text" placeholder="例: 理学部棟1F入口">
+    <label>メモ（販売品・分別方法など）</label>
+    <textarea id="m-note" placeholder="例: 飲料・温冷両対応"></textarea>
+    <label>緯度 / 経度（地図をクリックして自動入力も可）</label>
+    <div style="display:flex;gap:6px">
+      <input id="m-lat" type="number" step="0.00001" placeholder="緯度">
+      <input id="m-lng" type="number" step="0.00001" placeholder="経度">
+    </div>
+    <p style="font-size:.72rem;color:#888;margin-top:6px">※ 地図をクリックすると緯度・経度が自動入力されます</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-save"   onclick="saveNew()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ---------- 地図初期化 ----------
+const CAMPUS = [34.1867, 131.4709];
+const map = L.map('map').setView(CAMPUS, 17);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 20
+}).addTo(map);
+
+// ---------- アイコン定義 ----------
+const icon = (emoji, color) => L.divIcon({
+  html: `<div style="background:${color};border:2.5px solid white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,.3)">${emoji}</div>`,
+  iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20], className: ''
+});
+const vendIcon  = icon('🥤', '#f59e0b');
+const trashIcon = icon('🗑️', '#10b981');
+const osmIcon   = icon('📌', '#3b82f6');
+
+// ---------- レイヤー ----------
+const layers = { vend: L.layerGroup().addTo(map), trash: L.layerGroup().addTo(map), osm: L.layerGroup().addTo(map) };
+const visible = { vend: true, trash: true, osm: false };
+
+function toggleLayer(type) {
+  visible[type] = !visible[type];
+  visible[type] ? layers[type].addTo(map) : map.removeLayer(layers[type]);
+  document.getElementById('btn-' + type).classList.toggle('off', !visible[type]);
+}
+
+// ---------- マーカー追加 ----------
+function addMarker(lat, lng, name, note, type) {
+  const ic = type === 'vend' ? vendIcon : (type === 'osm' ? osmIcon : trashIcon);
+  const tagLabel = type === 'vend' ? '🥤 自動販売機' : (type === 'osm' ? '🌐 OSM' : '🗑️ ごみ箱');
+  const m = L.marker([lat, lng], { icon: ic })
+    .bindPopup(`<b>${name}</b><br><small>${tagLabel}</small><br>${note || ''}`)
+    .on('click', () => showInfo(name, note, type));
+  layers[type].addLayer(m);
+  updateCount();
+  return m;
+}
+
+function updateCount() {
+  document.getElementById('cnt-vend').textContent  = layers.vend.getLayers().length;
+  document.getElementById('cnt-trash').textContent = layers.trash.getLayers().length;
+}
+
+// ---------- info パネル ----------
+function showInfo(name, note, type) {
+  const panel = document.getElementById('info-panel');
+  const tag = document.getElementById('info-tag');
+  panel.classList.add('visible');
+  document.getElementById('info-name').textContent = name;
+  document.getElementById('info-note').textContent = note || '';
+  tag.textContent = type === 'vend' ? '🥤 自動販売機' : (type === 'osm' ? '🌐 OSM' : '🗑️ ごみ箱');
+  tag.className = 'tag ' + (type === 'vend' ? 'tag-vend' : type === 'osm' ? 'tag-osm' : 'tag-trash');
+}
+map.on('click', () => document.getElementById('info-panel').classList.remove('visible'));
+
+// ---------- ローカルデータ読み込み ----------
+fetch('data.json')
+  .then(r => r.json())
+  .then(data => {
+    data.vending_machines.forEach(v => addMarker(v.lat, v.lng, v.name, v.note, 'vend'));
+    data.trash_cans.forEach(t       => addMarker(t.lat, t.lng, t.name, t.note, 'trash'));
+    // localStorage の追加データも読み込み
+    loadLocal();
+  })
+  .catch(() => loadLocal());
+
+// ---------- Overpass API（OSMデータ取得）----------
+function loadOSM() {
+  const btn = document.getElementById('btn-osm');
+  btn.textContent = '読み込み中…';
+  btn.disabled = true;
+
+  const b = map.getBounds();
+  const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
+  const q = `[out:json][timeout:20];(node["amenity"="vending_machine"](${bbox});node["amenity"="waste_basket"](${bbox});node["amenity"="waste_disposal"](${bbox}););out body;`;
+
+  fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(data => {
+      layers.osm.clearLayers();
+      data.elements.forEach(e => {
+        const isVend = e.tags.amenity === 'vending_machine';
+        const name = e.tags.name || (isVend ? '自動販売機（OSM）' : 'ごみ箱（OSM）');
+        const note = isVend
+          ? (e.tags['vending'] || '') + (e.tags['payment:PayPay'] === 'yes' ? ' · PayPay対応' : '')
+          : (e.tags['waste'] || '');
+        addMarker(e.lat, e.lon, name, note, 'osm');
+      });
+      if (!visible.osm) toggleLayer('osm');
+      btn.innerHTML = '🌐 OSMから取得';
+      btn.disabled = false;
+      document.getElementById('cnt-vend').textContent  = layers.vend.getLayers().length;
+    })
+    .catch(() => {
+      btn.innerHTML = '🌐 再取得';
+      btn.disabled = false;
+    });
+}
+
+// ---------- 追加モーダル ----------
+let clickedLatLng = null;
+map.on('click', e => {
+  if (document.getElementById('modal').classList.contains('open')) {
+    document.getElementById('m-lat').value = e.latlng.lat.toFixed(6);
+    document.getElementById('m-lng').value = e.latlng.lng.toFixed(6);
+  }
+});
+
+function openModal()  { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function saveNew() {
+  const type = document.getElementById('m-type').value;
+  const name = document.getElementById('m-name').value.trim();
+  const note = document.getElementById('m-note').value.trim();
+  const lat  = parseFloat(document.getElementById('m-lat').value);
+  const lng  = parseFloat(document.getElementById('m-lng').value);
+
+  if (!name || isNaN(lat) || isNaN(lng)) {
+    alert('名前・緯度・経度を入力してください');
+    return;
+  }
+
+  addMarker(lat, lng, name, note, type);
+
+  // localStorageに保存
+  const saved = JSON.parse(localStorage.getItem('yu_map_data') || '[]');
+  saved.push({ lat, lng, name, note, type });
+  localStorage.setItem('yu_map_data', JSON.stringify(saved));
+
+  closeModal();
+  map.setView([lat, lng], 18);
+}
+
+function loadLocal() {
+  const saved = JSON.parse(localStorage.getItem('yu_map_data') || '[]');
+  saved.forEach(s => addMarker(s.lat, s.lng, s.name, s.note, s.type));
+}
+
+// ---------- キャンパス境界（大まかな範囲表示）----------
+const campusBox = L.rectangle(
+  [[34.1830, 131.4670], [34.1920, 131.4760]],
+  { color: '#1a3a6b', weight: 2, fill: false, dashArray: '6 4', opacity: .5 }
+).addTo(map);
+</script>
+</body>
+</html>
