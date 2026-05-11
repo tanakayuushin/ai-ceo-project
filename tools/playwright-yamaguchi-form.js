@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 
 const formData = {
   name:     '田中悠清',
-  furigana: 'タナカ ユウセイ',
+  furigana: 'タナカユウシン',
   company:  'Emport AI',
   tel:      '080-2947-0736',
   email:    'yuubisinesu@gmail.com',
