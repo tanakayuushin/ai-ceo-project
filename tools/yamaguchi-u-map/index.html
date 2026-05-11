@@ -10,58 +10,61 @@
     body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; background: #f0f4f8; display: flex; flex-direction: column; height: 100dvh; }
 
     /* ヘッダー */
-    header { background: #1a3a6b; color: white; padding: 10px 14px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+    header { background: #1a3a6b; color: white; padding: 10px 14px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: space-between; }
     header h1 { font-size: 1rem; font-weight: 700; }
     header p  { font-size: .7rem; opacity: .7; margin-top: 2px; }
+    .key-btn  { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: white; border-radius: 6px; padding: 5px 10px; font-size: .75rem; cursor: pointer; white-space: nowrap; }
+    .key-btn:hover { background: rgba(255,255,255,.25); }
+
+    /* APIキー設定バー */
+    .api-bar {
+      background: #fefce8; border-bottom: 1px solid #fde68a; padding: 8px 12px;
+      display: none; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .api-bar.open { display: flex; }
+    .api-bar label { font-size: .78rem; color: #713f12; white-space: nowrap; font-weight: 600; }
+    .api-bar input {
+      flex: 1; padding: 5px 9px; border: 1.5px solid #fcd34d; border-radius: 6px;
+      font-size: .8rem; font-family: monospace; background: white;
+    }
+    .api-bar button { padding: 5px 12px; background: #d97706; color: white; border: none; border-radius: 6px; font-size: .78rem; font-weight: 700; cursor: pointer; }
+    .api-bar .api-hint { font-size: .7rem; color: #92400e; }
 
     /* キャンパスタブ */
     .campus-tabs { display: flex; background: #122c54; flex-shrink: 0; }
-    .campus-tab {
-      flex: 1; padding: 9px 4px; text-align: center; font-size: .78rem; font-weight: 600;
-      color: rgba(255,255,255,.55); cursor: pointer; border-bottom: 3px solid transparent;
-      transition: all .18s; user-select: none;
-    }
+    .campus-tab { flex: 1; padding: 9px 4px; text-align: center; font-size: .78rem; font-weight: 600; color: rgba(255,255,255,.55); cursor: pointer; border-bottom: 3px solid transparent; transition: all .18s; user-select: none; }
     .campus-tab:hover  { color: rgba(255,255,255,.85); }
     .campus-tab.active { color: white; border-bottom-color: #60a5fa; background: rgba(255,255,255,.07); }
 
     /* フィルターバー */
-    .controls { background: white; padding: 7px 10px; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; flex-shrink: 0; border-bottom: 1px solid #dde3ea; }
-    .btn { display: flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 20px; border: 2px solid transparent; font-size: .8rem; font-weight: 600; cursor: pointer; transition: all .15s; }
-    .btn-vend  { background: #fff3cd; border-color: #f59e0b; color: #92400e; }
-    .btn-trash { background: #d1fae5; border-color: #10b981; color: #065f46; }
-    .btn-osm   { background: #dbeafe; border-color: #3b82f6; color: #1e3a8a; }
-    .btn.off   { opacity: .35; }
-    .btn:hover { transform: scale(1.04); }
+    .controls { background: white; padding: 7px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; border-bottom: 1px solid #dde3ea; }
+    .btn { display: flex; align-items: center; gap: 4px; padding: 5px 11px; border-radius: 20px; border: 2px solid transparent; font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+    .btn-vend   { background: #fff3cd; border-color: #f59e0b; color: #92400e; }
+    .btn-trash  { background: #d1fae5; border-color: #10b981; color: #065f46; }
+    .btn-osm    { background: #dbeafe; border-color: #3b82f6; color: #1e3a8a; }
+    .btn-google { background: #fce7f3; border-color: #ec4899; color: #831843; }
+    .btn.off    { opacity: .35; }
+    .btn:hover  { transform: scale(1.04); }
     .badge { background: rgba(0,0,0,.12); border-radius: 10px; padding: 1px 6px; font-size: .72rem; }
     .note  { margin-left: auto; font-size: .7rem; color: #94a3b8; }
 
-    /* 地図 */
     #map { flex: 1; width: 100%; }
 
     /* 情報パネル */
-    .info-panel {
-      position: absolute; bottom: 68px; right: 10px; background: white;
-      border-radius: 10px; padding: 10px 14px; font-size: .78rem; color: #444;
-      box-shadow: 0 2px 12px rgba(0,0,0,.18); z-index: 1000; max-width: 210px; display: none;
-    }
+    .info-panel { position: absolute; bottom: 68px; right: 10px; background: white; border-radius: 10px; padding: 10px 14px; font-size: .78rem; color: #444; box-shadow: 0 2px 12px rgba(0,0,0,.18); z-index: 1000; max-width: 220px; display: none; }
     .info-panel.visible { display: block; }
     .info-panel h3 { font-size: .85rem; margin-bottom: 4px; color: #1a3a6b; }
     .tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: .68rem; margin-bottom: 5px; }
-    .tag-vend  { background: #fef3c7; color: #92400e; }
-    .tag-trash { background: #d1fae5; color: #065f46; }
-    .tag-osm   { background: #dbeafe; color: #1e3a8a; }
+    .tag-vend   { background: #fef3c7; color: #92400e; }
+    .tag-trash  { background: #d1fae5; color: #065f46; }
+    .tag-osm    { background: #dbeafe; color: #1e3a8a; }
+    .tag-google { background: #fce7f3; color: #831843; }
 
     /* ＋ボタン */
-    .add-btn {
-      position: absolute; bottom: 14px; right: 14px; z-index: 1000;
-      background: #1a3a6b; color: white; border: none; border-radius: 50%;
-      width: 50px; height: 50px; font-size: 1.5rem; cursor: pointer;
-      box-shadow: 0 3px 12px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center;
-      transition: transform .15s;
-    }
+    .add-btn { position: absolute; bottom: 14px; right: 14px; z-index: 1000; background: #1a3a6b; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; transition: transform .15s; }
     .add-btn:hover { transform: scale(1.08); }
 
-    /* モーダル */
+    /* モーダル共通 */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 2000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
     .modal { background: white; border-radius: 14px; padding: 20px; width: 320px; max-width: 92vw; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
@@ -75,6 +78,9 @@
     .btn-save   { background: #1a3a6b; color: white; }
     .hint { font-size: .7rem; color: #94a3b8; margin-top: 5px; }
 
+    /* Google結果カウント */
+    #google-status { font-size: .72rem; color: #831843; }
+
     @media (max-width: 480px) {
       header h1 { font-size: .88rem; }
       .note { display: none; }
@@ -84,29 +90,35 @@
 <body>
 
 <header>
-  <h1>🗺️ 山口大学 自販機・ごみ箱マップ</h1>
-  <p>キャンパスを選んで、自販機やごみ箱の場所を確認できます</p>
+  <div>
+    <h1>🗺️ 山口大学 自販機・ごみ箱マップ</h1>
+    <p>キャンパスを選んで確認 · ＋で場所を追加</p>
+  </div>
+  <button class="key-btn" onclick="toggleApiBar()">🔑 APIキー設定</button>
 </header>
 
-<!-- キャンパス切替タブ -->
+<!-- APIキー設定バー -->
+<div class="api-bar" id="api-bar">
+  <label>Google API Key</label>
+  <input type="password" id="api-key-input" placeholder="AIza..." />
+  <button onclick="saveApiKey()">保存</button>
+  <span class="api-hint" id="api-key-status"></span>
+</div>
+
+<!-- キャンパスタブ -->
 <div class="campus-tabs">
   <div class="campus-tab active" id="tab-yoshida" onclick="switchCampus('yoshida')">🏫 吉田</div>
   <div class="campus-tab"        id="tab-tokiwa"  onclick="switchCampus('tokiwa')">🏭 常盤</div>
   <div class="campus-tab"        id="tab-kogushi" onclick="switchCampus('kogushi')">🏥 小串</div>
 </div>
 
-<!-- フィルター -->
+<!-- フィルターバー -->
 <div class="controls">
-  <button class="btn btn-vend"  id="btn-vend"  onclick="toggleLayer('vend')">
-    🥤 自動販売機 <span class="badge" id="cnt-vend">0</span>
-  </button>
-  <button class="btn btn-trash" id="btn-trash" onclick="toggleLayer('trash')">
-    🗑️ ごみ箱 <span class="badge" id="cnt-trash">0</span>
-  </button>
-  <button class="btn btn-osm"   id="btn-osm"   onclick="loadOSM()">
-    🌐 OSM取得
-  </button>
-  <span class="note">※位置は仮データです</span>
+  <button class="btn btn-vend"   id="btn-vend"   onclick="toggleLayer('vend')">🥤 自販機 <span class="badge" id="cnt-vend">0</span></button>
+  <button class="btn btn-trash"  id="btn-trash"  onclick="toggleLayer('trash')">🗑️ ごみ箱 <span class="badge" id="cnt-trash">0</span></button>
+  <button class="btn btn-osm"    id="btn-osm"    onclick="loadOSM()">🌐 OSM取得</button>
+  <button class="btn btn-google" id="btn-google" onclick="loadGoogle()">🗺️ Google検索 <span class="badge" id="cnt-google">0</span></button>
+  <span class="note" id="google-status"></span>
 </div>
 
 <div id="map"></div>
@@ -115,10 +127,10 @@
 <div class="info-panel" id="info-panel">
   <span class="tag" id="info-tag"></span>
   <h3 id="info-name"></h3>
-  <p id="info-note" style="font-size:.75rem;color:#666;"></p>
+  <p id="info-note" style="font-size:.75rem;color:#666;margin-top:3px"></p>
+  <p id="info-addr" style="font-size:.7rem;color:#94a3b8;margin-top:3px"></p>
 </div>
 
-<!-- ＋追加ボタン -->
 <button class="add-btn" onclick="openModal()" title="場所を追加">＋</button>
 
 <!-- 追加モーダル -->
@@ -126,10 +138,7 @@
   <div class="modal">
     <h2>📍 場所を追加</h2>
     <label>種類</label>
-    <select id="m-type">
-      <option value="vend">🥤 自動販売機</option>
-      <option value="trash">🗑️ ごみ箱</option>
-    </select>
+    <select id="m-type"><option value="vend">🥤 自動販売機</option><option value="trash">🗑️ ごみ箱</option></select>
     <label>名前・場所の説明</label>
     <input id="m-name" type="text" placeholder="例: 理学部棟1F入口">
     <label>メモ（販売品・分別方法など）</label>
@@ -139,7 +148,7 @@
       <input id="m-lat" type="number" step="0.000001" placeholder="緯度">
       <input id="m-lng" type="number" step="0.000001" placeholder="経度">
     </div>
-    <p class="hint">💡 地図をクリックすると緯度・経度が自動入力されます</p>
+    <p class="hint">💡 地図をクリックすると自動入力されます</p>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
       <button class="btn-save"   onclick="saveNew()">追加する</button>
@@ -151,14 +160,13 @@
 <script>
 // ========== キャンパス定義 ==========
 const CAMPUSES = {
-  yoshida: { label: '吉田キャンパス', center: [34.147757, 131.467856], zoom: 17, bounds: [[34.143, 131.462],[34.153, 131.475]] },
-  tokiwa:  { label: '常盤キャンパス', center: [33.956553, 131.272345], zoom: 17, bounds: [[33.952, 131.267],[33.961, 131.278]] },
-  kogushi: { label: '小串キャンパス', center: [33.958153, 131.24869],  zoom: 17, bounds: [[33.954, 131.243],[33.963, 131.255]] }
+  yoshida: { label: '吉田キャンパス', center: [34.147757, 131.467856], zoom: 17, bounds: [[34.143,131.462],[34.153,131.475]], radius: 600 },
+  tokiwa:  { label: '常盤キャンパス', center: [33.956553, 131.272345], zoom: 17, bounds: [[33.952,131.267],[33.961,131.278]], radius: 500 },
+  kogushi: { label: '小串キャンパス', center: [33.958153, 131.24869],  zoom: 17, bounds: [[33.954,131.243],[33.963,131.255]], radius: 500 }
 };
-
 let currentCampus = 'yoshida';
 
-// ========== 地図初期化 ==========
+// ========== 地図 ==========
 const map = L.map('map').setView(CAMPUSES.yoshida.center, 17);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -170,106 +178,108 @@ const makeIcon = (emoji, bg) => L.divIcon({
   html: `<div style="background:${bg};border:2.5px solid white;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 2px 6px rgba(0,0,0,.3)">${emoji}</div>`,
   iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20], className:''
 });
-const ICONS = { vend: makeIcon('🥤','#f59e0b'), trash: makeIcon('🗑️','#10b981'), osm: makeIcon('📌','#3b82f6') };
+const ICONS = {
+  vend:   makeIcon('🥤','#f59e0b'),
+  trash:  makeIcon('🗑️','#10b981'),
+  osm:    makeIcon('📌','#3b82f6'),
+  google: makeIcon('🗺️','#ec4899')
+};
 
 // ========== レイヤー管理 ==========
-// campusKey -> { vend, trash, osm }
 const layerStore = {};
-const visible = { vend: true, trash: true, osm: false };
+const visible = { vend: true, trash: true, osm: false, google: false };
 let campusBorder = null;
 
 function getLayers(campus) {
-  if (!layerStore[campus]) {
-    layerStore[campus] = {
-      vend:  L.layerGroup(),
-      trash: L.layerGroup(),
-      osm:   L.layerGroup()
-    };
-  }
+  if (!layerStore[campus]) layerStore[campus] = { vend: L.layerGroup(), trash: L.layerGroup(), osm: L.layerGroup(), google: L.layerGroup() };
   return layerStore[campus];
 }
 
 function activateLayers(campus) {
-  const layers = getLayers(campus);
-  ['vend','trash','osm'].forEach(t => {
-    if (map.hasLayer(layers[t])) map.removeLayer(layers[t]);
-    if (visible[t]) layers[t].addTo(map);
+  Object.keys(visible).forEach(t => {
+    const layer = getLayers(campus)[t];
+    if (!layer) return;
+    map.hasLayer(layer) && map.removeLayer(layer);
+    if (visible[t]) layer.addTo(map);
   });
-  updateCount(campus);
+  updateCounts(campus);
 }
 
 function toggleLayer(type) {
   visible[type] = !visible[type];
-  const layers = getLayers(currentCampus);
-  visible[type] ? layers[type].addTo(map) : map.removeLayer(layers[type]);
-  document.getElementById('btn-' + type).classList.toggle('off', !visible[type]);
-  updateCount(currentCampus);
+  const layer = getLayers(currentCampus)[type];
+  visible[type] ? layer.addTo(map) : map.removeLayer(layer);
+  document.getElementById('btn-' + type)?.classList.toggle('off', !visible[type]);
+  updateCounts(currentCampus);
 }
 
-function updateCount(campus) {
-  const layers = getLayers(campus);
-  document.getElementById('cnt-vend').textContent  = layers.vend.getLayers().length;
-  document.getElementById('cnt-trash').textContent = layers.trash.getLayers().length;
+function updateCounts(campus) {
+  const l = getLayers(campus);
+  document.getElementById('cnt-vend').textContent   = l.vend.getLayers().length;
+  document.getElementById('cnt-trash').textContent  = l.trash.getLayers().length;
+  document.getElementById('cnt-google').textContent = l.google.getLayers().length;
 }
 
-// ========== マーカー追加 ==========
-function addMarker(campus, lat, lng, name, note, type) {
+// ========== マーカー ==========
+function addMarker(campus, lat, lng, name, note, type, address) {
+  const tagLabel = { vend:'🥤 自販機', trash:'🗑️ ごみ箱', osm:'🌐 OSM', google:'🗺️ Google' }[type] || type;
   const m = L.marker([lat, lng], { icon: ICONS[type] || ICONS.osm })
-    .bindPopup(`<b>${name}</b><br><small>${type==='vend'?'🥤 自動販売機':type==='trash'?'🗑️ ごみ箱':'🌐 OSM'}</small><br><span style="color:#555;font-size:.85em">${note||''}</span>`)
-    .on('click', () => showInfo(name, note, type));
+    .bindPopup(`<b>${name}</b><br><small>${tagLabel}</small>${note ? `<br>${note}` : ''}${address ? `<br><span style="color:#888;font-size:.85em">${address}</span>` : ''}`)
+    .on('click', () => showInfo(name, note, type, address));
   getLayers(campus)[type === 'osm' ? 'osm' : type].addLayer(m);
 }
 
 // ========== 情報パネル ==========
-function showInfo(name, note, type) {
-  const panel = document.getElementById('info-panel');
-  panel.classList.add('visible');
+function showInfo(name, note, type, address) {
+  document.getElementById('info-panel').classList.add('visible');
   const tag = document.getElementById('info-tag');
-  tag.textContent = type==='vend'?'🥤 自動販売機':type==='trash'?'🗑️ ごみ箱':'🌐 OSM';
-  tag.className = 'tag ' + (type==='vend'?'tag-vend':type==='trash'?'tag-trash':'tag-osm');
+  const labels = { vend:'🥤 自販機', trash:'🗑️ ごみ箱', osm:'🌐 OSM', google:'🗺️ Google' };
+  tag.textContent = labels[type] || type;
+  tag.className = 'tag tag-' + type;
   document.getElementById('info-name').textContent = name;
   document.getElementById('info-note').textContent = note || '';
+  document.getElementById('info-addr').textContent = address || '';
 }
 map.on('click', () => document.getElementById('info-panel').classList.remove('visible'));
 
 // ========== キャンパス切替 ==========
 function switchCampus(campus) {
-  // 前のキャンパスレイヤーを非表示
-  const prev = getLayers(currentCampus);
-  ['vend','trash','osm'].forEach(t => map.hasLayer(prev[t]) && map.removeLayer(prev[t]));
+  Object.keys(CAMPUSES).forEach(k => {
+    const l = getLayers(k);
+    Object.values(l).forEach(layer => map.hasLayer(layer) && map.removeLayer(layer));
+  });
   if (campusBorder) map.removeLayer(campusBorder);
 
   currentCampus = campus;
-
-  // タブ切替
   document.querySelectorAll('.campus-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + campus).classList.add('active');
 
-  // 地図移動
   const c = CAMPUSES[campus];
   map.flyTo(c.center, c.zoom, { duration: .8 });
-
-  // 境界ボックス
   campusBorder = L.rectangle(c.bounds, { color:'#1a3a6b', weight:2, fill:false, dashArray:'6 4', opacity:.5 }).addTo(map);
 
-  // レイヤー表示
   activateLayers(campus);
 
-  // OSMレイヤーをリセット（別キャンパスなので再取得が必要）
+  // OSM/Googleは再取得が必要なのでボタンをリセット
+  ['btn-osm','btn-google'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) { btn.disabled = false; btn.classList.add('off'); }
+  });
   getLayers(campus).osm.clearLayers();
-  const osmBtn = document.getElementById('btn-osm');
-  osmBtn.innerHTML = '🌐 OSM取得';
-  osmBtn.disabled = false;
+  getLayers(campus).google.clearLayers();
+  visible.osm = false;
+  visible.google = false;
+  updateCounts(campus);
 }
 
 // ========== OSM取得 ==========
 function loadOSM() {
   const btn = document.getElementById('btn-osm');
-  btn.textContent = '読み込み中…';
+  btn.textContent = '🌐 読込中…';
   btn.disabled = true;
   const b = map.getBounds();
   const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`;
-  const q = `[out:json][timeout:20];(node["amenity"="vending_machine"](${bbox});node["amenity"="waste_basket"](${bbox});node["amenity"="waste_disposal"](${bbox}););out body;`;
+  const q = `[out:json][timeout:20];(node["amenity"="vending_machine"](${bbox});node["amenity"="waste_basket"](${bbox}););out body;`;
 
   fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q))
     .then(r => r.json())
@@ -277,16 +287,114 @@ function loadOSM() {
       getLayers(currentCampus).osm.clearLayers();
       data.elements.forEach(e => {
         const isVend = e.tags.amenity === 'vending_machine';
-        const name = e.tags.name || (isVend ? '自動販売機（OSM）' : 'ごみ箱（OSM）');
-        const note = isVend ? (e.tags.vending || '') : (e.tags.waste || '');
-        addMarker(currentCampus, e.lat, e.lon, name, note, 'osm');
+        addMarker(currentCampus, e.lat, e.lon, e.tags.name || (isVend ? '自動販売機（OSM）' : 'ごみ箱（OSM）'), isVend ? e.tags.vending || '' : '', 'osm');
       });
       if (!visible.osm) toggleLayer('osm');
       btn.innerHTML = '🌐 OSM取得';
       btn.disabled = false;
-      updateCount(currentCampus);
+      updateCounts(currentCampus);
     })
-    .catch(() => { btn.innerHTML = '🌐 再取得'; btn.disabled = false; });
+    .catch(() => { btn.innerHTML = '🌐 OSM取得'; btn.disabled = false; });
+}
+
+// ========== Google Places API ==========
+function getApiKey() {
+  return localStorage.getItem('gmap_api_key') || '';
+}
+
+async function loadGoogle() {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    alert('右上の「🔑 APIキー設定」からGoogle Maps APIキーを入力してください。');
+    toggleApiBar(true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-google');
+  const status = document.getElementById('google-status');
+  btn.textContent = '🗺️ 検索中…';
+  btn.disabled = true;
+  status.textContent = '';
+
+  const c = CAMPUSES[currentCampus];
+  const queries = ['自動販売機', 'vending machine'];
+  getLayers(currentCampus).google.clearLayers();
+  let total = 0;
+
+  for (const query of queries) {
+    try {
+      const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': 'places.displayName,places.location,places.formattedAddress,places.primaryTypeDisplayName'
+        },
+        body: JSON.stringify({
+          textQuery: query,
+          locationBias: {
+            circle: {
+              center: { latitude: c.center[0], longitude: c.center[1] },
+              radius: c.radius
+            }
+          },
+          maxResultCount: 20,
+          languageCode: 'ja'
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || res.statusText);
+      }
+
+      const data = await res.json();
+      (data.places || []).forEach(p => {
+        const lat  = p.location?.latitude;
+        const lng  = p.location?.longitude;
+        const name = p.displayName?.text || '自動販売機';
+        const addr = p.formattedAddress || '';
+        const type = p.primaryTypeDisplayName?.text || '';
+        if (lat && lng) {
+          addMarker(currentCampus, lat, lng, name, type, 'google', addr);
+          total++;
+        }
+      });
+    } catch (e) {
+      status.textContent = '⚠️ ' + e.message;
+      btn.innerHTML = '🗺️ Google検索';
+      btn.disabled = false;
+      return;
+    }
+  }
+
+  if (!visible.google) toggleLayer('google');
+  btn.innerHTML = '🗺️ Google検索';
+  btn.disabled = false;
+  status.textContent = total > 0 ? `${total}件取得` : '該当なし';
+  updateCounts(currentCampus);
+}
+
+// ========== APIキー設定 ==========
+function toggleApiBar(forceOpen) {
+  const bar = document.getElementById('api-bar');
+  const isOpen = bar.classList.contains('open');
+  if (forceOpen || !isOpen) {
+    bar.classList.add('open');
+    const saved = getApiKey();
+    document.getElementById('api-key-input').value = saved;
+    document.getElementById('api-key-status').textContent = saved ? '✅ 保存済み' : '未設定';
+  } else {
+    bar.classList.remove('open');
+  }
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { alert('APIキーを入力してください'); return; }
+  localStorage.setItem('gmap_api_key', key);
+  document.getElementById('api-key-status').textContent = '✅ 保存しました';
+  setTimeout(() => document.getElementById('api-bar').classList.remove('open'), 1200);
 }
 
 // ========== モーダル ==========
@@ -298,7 +406,6 @@ map.on('click', e => {
 });
 function openModal()  { document.getElementById('modal').classList.add('open'); }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
-
 function saveNew() {
   const type = document.getElementById('m-type').value;
   const name = document.getElementById('m-name').value.trim();
@@ -308,11 +415,9 @@ function saveNew() {
   if (!name || isNaN(lat) || isNaN(lng)) { alert('名前・緯度・経度を入力してください'); return; }
   addMarker(currentCampus, lat, lng, name, note, type);
   activateLayers(currentCampus);
-  // localStorage保存
-  const key = 'yu_map_' + currentCampus;
-  const saved = JSON.parse(localStorage.getItem(key) || '[]');
+  const saved = JSON.parse(localStorage.getItem('yu_map_' + currentCampus) || '[]');
   saved.push({ lat, lng, name, note, type });
-  localStorage.setItem(key, JSON.stringify(saved));
+  localStorage.setItem('yu_map_' + currentCampus, JSON.stringify(saved));
   closeModal();
   map.setView([lat, lng], 18);
 }
@@ -326,12 +431,16 @@ fetch('data.json')
       if (!d) return;
       d.vending_machines.forEach(v => addMarker(campus, v.lat, v.lng, v.name, v.note, 'vend'));
       d.trash_cans.forEach(t       => addMarker(campus, t.lat, t.lng, t.name, t.note, 'trash'));
-      // localStorageの追加データ
       const saved = JSON.parse(localStorage.getItem('yu_map_' + campus) || '[]');
       saved.forEach(s => addMarker(campus, s.lat, s.lng, s.name, s.note, s.type));
     });
     switchCampus('yoshida');
   });
+
+// 保存済みAPIキーがあれば表示
+window.addEventListener('load', () => {
+  if (getApiKey()) document.getElementById('api-key-status').textContent = '✅ APIキー設定済み';
+});
 </script>
 </body>
 </html>
