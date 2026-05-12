@@ -1,9 +1,7 @@
 name: Notion 音声文字起こし・要約 自動処理
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'   # 30分ごとに新しい録音をチェック
-  workflow_dispatch:          # 手動実行も可能
+  workflow_dispatch:          # 手動実行のみ（自動実行を停止中）
 
 permissions:
   contents: write             # 状態ファイルをコミットバックするために必要
