@@ -172,9 +172,15 @@ def get_file_url_in_page(page_id):
 
 def download_audio(url):
     p("  Downloading audio...")
-    r = requests.get(url, verify=False, timeout=60)
+    r = requests.get(url, verify=False, timeout=120)
+    if r.status_code == 403:
+        p("  [FAIL] 403 Forbidden — Notion file URL has expired (valid ~1 hour after upload)")
+        return None
     if r.status_code != 200:
         p(f"  [FAIL] {r.status_code}")
+        return None
+    if len(r.content) < 1024:
+        p(f"  [FAIL] File too small ({len(r.content)} bytes) — may be expired or invalid")
         return None
     suffix = ".ogg"
     ct = r.headers.get("content-type", "")
@@ -480,17 +486,13 @@ def process_once(state):
 
         audio_url = get_file_url_in_page(pid)
         if not audio_url:
-            p("  No audio file found")
-            state["processed_pages"][pid] = {"date": created, "title": title, "summary": ""}
-            save_state(state)
-            continue
+            p("  No audio file found — will retry next run")
+            continue  # 処理済みにしない → 次回再試行
 
         audio_path = download_audio(audio_url)
         if not audio_path:
-            p("  [FAIL] Download failed (URL may be expired)")
-            state["processed_pages"][pid] = {"date": created, "title": title, "summary": ""}
-            save_state(state)
-            continue
+            p("  [FAIL] Download failed (URL may be expired) — will retry next run")
+            continue  # 処理済みにしない → 次回再試行
 
         try:
             transcript = transcribe(audio_path)
