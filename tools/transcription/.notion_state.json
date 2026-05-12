@@ -21,6 +21,10 @@
       "summary": "(既処理済み)"
     }
   },
-  "weekly_summaries": {},
-  "monthly_pages": {}
+  "weekly_summaries": {
+    "2026-W19": "35e4b221-8e34-8192-9dfb-c8a4086355ef"
+  },
+  "monthly_pages": {
+    "2026-05": "35e4b221-8e34-819d-b273-f471d4e54dc3"
+  }
 }
