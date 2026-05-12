@@ -1,5 +1,5 @@
 # Allen auto-pull: GitHubの最新をローカルに取り込む
-$repoPath = "C:\Users\e046ffv\OneDrive\ai-ceo-project"
+$repoPath = "C:\Users\tsube\OneDrive\デスクトップ\ai-ceo-project"
 $logFile  = "$repoPath\tools\auto-sync\pull.log"
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"

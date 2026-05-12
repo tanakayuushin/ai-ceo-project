@@ -2,7 +2,7 @@
 # 管理者権限で実行: PowerShell右クリック→「管理者として実行」→このスクリプトを実行
 
 $taskName   = "Allen-AutoPull"
-$scriptPath = "C:\Users\e046ffv\OneDrive\ai-ceo-project\tools\auto-sync\local_pull.ps1"
+$scriptPath = "C:\Users\tsube\OneDrive\デスクトップ\ai-ceo-project\tools\auto-sync\local_pull.ps1"
 $action     = New-ScheduledTaskAction -Execute "powershell.exe" `
                   -Argument "-NonInteractive -WindowStyle Hidden -File `"$scriptPath`""
 
