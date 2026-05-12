@@ -141,23 +141,29 @@ def get_child_pages():
 
 
 def is_already_transcribed(page_id):
-    """Check if page already has a divider (= transcription was appended)."""
+    """録音ページの中に「文字起こし・要約」子ページが既にあるか確認する。"""
     r = notion_get(f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100")
     if r.status_code != 200:
         return False
     for block in r.json().get("results", []):
-        if block.get("type") == "divider":
+        if block.get("type") == "child_page":
+            title = block.get("child_page", {}).get("title", "")
+            if "文字起こし" in title or "要約" in title:
+                return True
+        if block.get("type") == "divider":  # 旧バージョン互換
             return True
     return False
 
 
 def get_file_url_in_page(page_id):
+    """file ブロックまたは audio ブロックから音声URLを取得する。"""
     r = notion_get(f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100")
     if r.status_code != 200:
         return None
     for block in r.json().get("results", []):
-        if block.get("type") == "file":
-            info = block.get("file", {})
+        btype = block.get("type")
+        if btype in ("file", "audio"):
+            info = block.get(btype, {})
             fi = info.get("file") or info.get("external")
             if fi and fi.get("url"):
                 return fi["url"]
@@ -231,19 +237,22 @@ def summarize(transcript):
     return "(要約の生成に失敗しました)"
 
 
-def append_transcription_to_page(page_id, transcript, summary):
+def create_result_page_in_recording(recording_page_id, transcript, summary):
+    """録音ページの中に「文字起こし・要約」子ページを作成する。"""
     children = (
-        [divider(), heading("要約")]
+        [heading("要約")]
         + make_text_blocks(summary)
-        + [heading("文字起こし（全文）")]
+        + [divider(), heading("文字起こし（全文）")]
         + make_text_blocks(transcript or "(文字起こし結果なし)")
     )
-    r = notion_patch(
-        f"https://api.notion.com/v1/blocks/{page_id}/children",
-        {"children": children[:50]}
-    )
+    payload = {
+        "parent": {"page_id": recording_page_id},
+        "properties": {"title": {"title": [{"text": {"content": "文字起こし・要約"}}]}},
+        "children": children[:100],
+    }
+    r = notion_post("https://api.notion.com/v1/pages", payload)
     if r.status_code == 200:
-        p("  [OK] Appended to Notion page")
+        p("  [OK] Created '文字起こし・要約' page inside recording page")
         return True
     p(f"  [FAIL] {r.status_code} -- {r.text[:200]}")
     return False
@@ -486,7 +495,7 @@ def process_once(state):
         try:
             transcript = transcribe(audio_path)
             summary = summarize(transcript)
-            append_transcription_to_page(pid, transcript, summary)
+            create_result_page_in_recording(pid, transcript, summary)
             state["processed_pages"][pid] = {"date": created, "title": title, "summary": summary}
             save_state(state)
             new_count += 1
