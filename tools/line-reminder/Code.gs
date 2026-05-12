@@ -33,6 +33,7 @@ function doPost(e) {
     });
 
     const todayStr = formatDate(new Date());
+    const receivedKeys = new Set(); // 受信イベントのキー（削除判定用）
     let added = 0, updated = 0;
 
     for (const ev of events) {
@@ -51,6 +52,9 @@ function doPost(e) {
       const title = ev.title || '（タイトルなし）';
       const desc  = ev.description || '';
       const key   = title + '|' + dateStr;
+
+      if (isExamPeriodEvent(title)) continue; // テスト期間はスプレッドシートに追加しない
+      receivedKeys.add(key);
 
       if (existingMap.has(key)) {
         // 同じタイトル＋日付が既にある場合は時刻・メモだけ更新（リマインド済みフラグは保持）
@@ -71,6 +75,19 @@ function doPost(e) {
       }
     }
 
+    // TimeTreeから消えた未来の予定を削除
+    const rowsToDelete = [];
+    rows.forEach((r, i) => {
+      const rowDateStr = formatDate(parseDate(r[C_DATE - 1]));
+      if (rowDateStr < todayStr) return; // 過去の予定は保持
+      const key = r[C_NAME - 1] + '|' + rowDateStr;
+      if (!receivedKeys.has(key)) rowsToDelete.push(i + 2);
+    });
+    // 下から順に削除（行番号のずれを防ぐ）
+    rowsToDelete.sort((a, b) => b - a);
+    rowsToDelete.forEach(rowIdx => sheet.deleteRow(rowIdx));
+    const deleted = rowsToDelete.length;
+
     // 日付順に並び替え
     const lastRow = sheet.getLastRow();
     if (lastRow > 1) {
@@ -78,7 +95,7 @@ function doPost(e) {
     }
 
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok', added: added, updated: updated }))
+      .createTextOutput(JSON.stringify({ status: 'ok', added: added, updated: updated, deleted: deleted }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -210,6 +227,7 @@ function sendReminders() {
     const remindedStr  = String(row[C_REMINDED - 1] || 'false');
 
     if (remindedStr === 'done') continue;
+    if (isExamPeriodEvent(name)) continue; // テスト期間はリマインドしない
 
     // 送信済みキーのセット
     const sentKeys = remindedStr === 'false' ? [] : remindedStr.split('|');
@@ -396,6 +414,15 @@ function getNextWeekFromDate(str) {
 function getNextMonthFromDate(str) {
   const d = parseDate(str);
   return formatDate(new Date(d.getFullYear(), d.getMonth() + 1, d.getDate()));
+}
+
+
+// ── テスト期間判定 ────────────────────────────────────
+
+const EXAM_KEYWORDS = ['テスト期間', '試験期間', '定期試験', '期末試験', '中間試験'];
+
+function isExamPeriodEvent(title) {
+  return EXAM_KEYWORDS.some(kw => title.includes(kw));
 }
 
 

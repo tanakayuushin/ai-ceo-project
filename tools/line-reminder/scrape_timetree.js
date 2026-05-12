@@ -6,9 +6,14 @@ const PASSWORD    = process.env.TIMETREE_PASSWORD;
 const WEBHOOK_URL = process.env.GAS_WEBHOOK_URL;
 
 const SKIP_KEYWORDS = ['birthday', 'Birthday', 'BIRTHDAY', '誕生日', 'バースデー', 'お誕生日'];
+const EXAM_KEYWORDS = ['テスト期間', '試験期間', '定期試験', '期末試験', '中間試験'];
 
 function isBirthdayOrPersonal(title) {
   return SKIP_KEYWORDS.some(kw => title.includes(kw));
+}
+
+function isExamPeriod(title) {
+  return EXAM_KEYWORDS.some(kw => title.includes(kw));
 }
 
 function toJSTDateStr(start) {
@@ -174,6 +179,10 @@ function todayJST() {
     if (!ev.start_at || !ev.title) continue;
     if (isBirthdayOrPersonal(ev.title)) {
       console.log('[SKIP birthday]', ev.title);
+      continue;
+    }
+    if (isExamPeriod(ev.title)) {
+      console.log('[SKIP exam]', ev.title);
       continue;
     }
     const dateStr = toJSTDateStr(ev.start_at);
