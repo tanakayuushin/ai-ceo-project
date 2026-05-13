@@ -39,7 +39,7 @@ def _check_rate_limit(ip: str) -> bool:
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-_api_key = os.getenv("ANTHROPIC_API_KEY")
+_api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
 if not _api_key:
     raise RuntimeError("ANTHROPIC_API_KEY が .env に設定されていません。")
 client = Anthropic(
