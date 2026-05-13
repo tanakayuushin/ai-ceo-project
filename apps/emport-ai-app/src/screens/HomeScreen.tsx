@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,171 +7,240 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
 
-const QuickAction = ({
-  icon,
-  label,
-  onPress,
-  color,
-}: {
-  icon: string;
-  label: string;
-  onPress: () => void;
-  color: string;
-}) => (
-  <TouchableOpacity style={styles.quickAction} onPress={onPress}>
-    <View style={[styles.quickActionIcon, { backgroundColor: color + '22' }]}>
-      <Ionicons name={icon as any} size={26} color={color} />
-    </View>
-    <Text style={styles.quickActionLabel}>{label}</Text>
-  </TouchableOpacity>
-);
+const MEMO_KEY = 'emport_memos';
+const CHAT_COUNT_KEY = 'emport_chat_count';
 
-const InfoCard = ({
-  title,
+function KpiCard({
+  label,
   value,
-  subtitle,
+  unit,
   icon,
+  color,
+  badge,
 }: {
-  title: string;
-  value: string;
-  subtitle: string;
+  label: string;
+  value: string | number;
+  unit: string;
   icon: string;
-}) => (
-  <View style={styles.infoCard}>
-    <View style={styles.infoCardHeader}>
-      <Text style={styles.infoCardTitle}>{title}</Text>
-      <Ionicons name={icon as any} size={18} color={Colors.accent} />
+  color: string;
+  badge?: string;
+}) {
+  return (
+    <View style={[styles.kpiCard, { borderTopColor: color }]}>
+      <View style={styles.kpiHeader}>
+        <View style={[styles.kpiIconBox, { backgroundColor: color + '22' }]}>
+          <Ionicons name={icon as any} size={16} color={color} />
+        </View>
+        {badge && (
+          <View style={[styles.badge, { backgroundColor: color + '33' }]}>
+            <Text style={[styles.badgeText, { color }]}>{badge}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.kpiValue}>{value}</Text>
+      <Text style={styles.kpiUnit}>{unit}</Text>
+      <Text style={styles.kpiLabel}>{label}</Text>
     </View>
-    <Text style={styles.infoCardValue}>{value}</Text>
-    <Text style={styles.infoCardSubtitle}>{subtitle}</Text>
-  </View>
-);
+  );
+}
+
+function ProgressBar({ value, total, color }: { value: number; total: number; color: string }) {
+  const pct = total === 0 ? 0 : Math.min(value / total, 1);
+  return (
+    <View style={styles.progressTrack}>
+      <View style={[styles.progressFill, { width: `${pct * 100}%` as any, backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function StatusItem({
+  label,
+  sub,
+  status,
+  onPress,
+}: {
+  label: string;
+  sub: string;
+  status: 'urgent' | 'warning' | 'done' | 'info';
+  onPress: () => void;
+}) {
+  const statusMap = {
+    urgent: { color: Colors.error, dot: '●', text: '要対応' },
+    warning: { color: Colors.warning, dot: '●', text: '確認中' },
+    done: { color: Colors.success, dot: '●', text: '完了' },
+    info: { color: Colors.accent, dot: '●', text: '検討中' },
+  };
+  const s = statusMap[status];
+  return (
+    <TouchableOpacity style={styles.statusItem} onPress={onPress}>
+      <Text style={[styles.statusDot, { color: s.color }]}>{s.dot}</Text>
+      <View style={styles.statusBody}>
+        <Text style={styles.statusLabel}>{label}</Text>
+        <Text style={styles.statusSub}>{sub}</Text>
+      </View>
+      <View style={[styles.statusBadge, { backgroundColor: s.color + '22' }]}>
+        <Text style={[styles.statusBadgeText, { color: s.color }]}>{s.text}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const today = new Date();
-  const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+  const dateStr = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+  const weekDay = ['日', '月', '火', '水', '木', '金', '土'][today.getDay()];
+
+  const [memoCount, setMemoCount] = useState(0);
+  const [chatCount, setChatCount] = useState(0);
+
+  useEffect(() => {
+    AsyncStorage.getItem(MEMO_KEY).then((raw) => {
+      if (raw) setMemoCount(JSON.parse(raw).length);
+    });
+    AsyncStorage.getItem(CHAT_COUNT_KEY).then((raw) => {
+      if (raw) setChatCount(parseInt(raw, 10));
+    });
+  }, []);
+
+  const monthTarget = 10;
 
   return (
     <View style={styles.container}>
-
+      {/* ヘッダー */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerGreeting}>おはようございます</Text>
-            <Text style={styles.headerTitle}>Emport AI</Text>
-            <Text style={styles.headerDate}>{dateStr}</Text>
-          </View>
-          <View style={styles.headerLogo}>
-            <Ionicons name="briefcase" size={40} color={Colors.accent} />
-          </View>
+        <View>
+          <Text style={styles.headerDate}>{dateStr}（{weekDay}）</Text>
+          <Text style={styles.headerTitle}>経営ダッシュボード</Text>
         </View>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => navigation.navigate('Chat')}
+        >
+          <Ionicons name="chatbubble-ellipses" size={22} color={Colors.accent} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-        {/* クイックアクション */}
-        <Text style={styles.sectionTitle}>クイックアクション</Text>
-        <View style={styles.quickActions}>
-          <QuickAction
-            icon="chatbubbles"
+
+        {/* KPI カード */}
+        <Text style={styles.sectionTitle}>今月のサマリー</Text>
+        <View style={styles.kpiRow}>
+          <KpiCard
             label="AI相談"
-            onPress={() => navigation.navigate('Chat')}
+            value={chatCount}
+            unit="件"
+            icon="chatbubbles"
             color={Colors.accent}
+            badge={chatCount > 0 ? `目標${monthTarget}件` : undefined}
           />
-          <QuickAction
-            icon="cash"
-            label="補助金"
-            onPress={() => navigation.navigate('Subsidy')}
-            color="#4CAF50"
-          />
-          <QuickAction
-            icon="document-text"
+          <KpiCard
             label="メモ"
-            onPress={() => navigation.navigate('Memo')}
+            value={memoCount}
+            unit="件"
+            icon="document-text"
             color="#2196F3"
           />
-          <QuickAction
-            icon="settings"
-            label="設定"
-            onPress={() => navigation.navigate('Settings')}
-            color={Colors.textSecondary}
-          />
-        </View>
-
-        {/* 情報カード */}
-        <Text style={styles.sectionTitle}>経営情報</Text>
-        <View style={styles.infoCards}>
-          <InfoCard
-            title="AI相談"
-            value="24時間対応"
-            subtitle="経営・財務・マーケティング"
-            icon="chatbubble-ellipses"
-          />
-          <InfoCard
-            title="補助金情報"
-            value="最大450万円"
-            subtitle="デジタル化推進補助金2026"
+          <KpiCard
+            label="補助金"
+            value={3}
+            unit="候補"
             icon="cash"
+            color="#4CAF50"
+            badge="最大450万"
           />
-        </View>
-        <View style={styles.infoCards}>
-          <InfoCard
-            title="対応業種"
-            value="全業種対応"
-            subtitle="製造・飲食・小売・サービス業"
-            icon="business"
-          />
-          <InfoCard
-            title="相談実績"
-            value="累計1,000件+"
-            subtitle="中小企業オーナー向け"
-            icon="people"
+          <KpiCard
+            label="アラート"
+            value={2}
+            unit="件"
+            icon="alert-circle"
+            color={Colors.error}
+            badge="要対応"
           />
         </View>
 
-        {/* 今日のTIP */}
-        <Text style={styles.sectionTitle}>今日の経営TIP</Text>
-        <TouchableOpacity
-          style={styles.tipCard}
-          onPress={() => navigation.navigate('Chat')}
-        >
-          <Ionicons name="bulb" size={24} color={Colors.accent} />
-          <Text style={styles.tipTitle}>補助金申請のコツ</Text>
-          <Text style={styles.tipBody}>
-            2026年度のデジタル化推進補助金は申請枠が拡大されました。
-            AI導入・システム構築費用の最大2/3が補助対象になります。
-            まずAIに相談して、あなたの会社に合った申請計画を立てましょう。
-          </Text>
-          <View style={styles.tipAction}>
-            <Text style={styles.tipActionText}>AIに相談する</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.accent} />
-          </View>
-        </TouchableOpacity>
-
-        {/* よく使う機能 */}
-        <Text style={styles.sectionTitle}>よく使われる相談テーマ</Text>
-        {[
-          { icon: 'trending-up', text: '売上を上げるにはどうすればいいか？', color: Colors.accent },
-          { icon: 'people', text: '採用・人材育成の進め方', color: '#4CAF50' },
-          { icon: 'phone-portrait', text: '自社のDX化・AI活用方法', color: '#2196F3' },
-          { icon: 'cash-outline', text: '資金調達・補助金の申請方法', color: '#9C27B0' },
-          { icon: 'document-text', text: '経営計画の作り方', color: '#FF9800' },
-        ].map((item, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={styles.themeItem}
-            onPress={() => navigation.navigate('Chat')}
-          >
-            <View style={[styles.themeIcon, { backgroundColor: item.color + '22' }]}>
-              <Ionicons name={item.icon as any} size={20} color={item.color} />
+        {/* 月次目標 */}
+        <Text style={styles.sectionTitle}>今月の進捗</Text>
+        <View style={styles.progressCard}>
+          <View style={styles.progressRow}>
+            <View>
+              <Text style={styles.progressTitle}>AI相談 月次目標</Text>
+              <Text style={styles.progressSub}>{chatCount} / {monthTarget} 件</Text>
             </View>
-            <Text style={styles.themeText}>{item.text}</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-          </TouchableOpacity>
-        ))}
+            <Text style={[styles.progressPct, { color: Colors.accent }]}>
+              {Math.round((chatCount / monthTarget) * 100)}%
+            </Text>
+          </View>
+          <ProgressBar value={chatCount} total={monthTarget} color={Colors.accent} />
+
+          <View style={[styles.progressRow, { marginTop: 16 }]}>
+            <View>
+              <Text style={styles.progressTitle}>補助金申請準備</Text>
+              <Text style={styles.progressSub}>2 / 3 件 書類整備中</Text>
+            </View>
+            <Text style={[styles.progressPct, { color: '#4CAF50' }]}>67%</Text>
+          </View>
+          <ProgressBar value={2} total={3} color="#4CAF50" />
+        </View>
+
+        {/* アクションリスト */}
+        <Text style={styles.sectionTitle}>アクションリスト</Text>
+        <View style={styles.statusCard}>
+          <StatusItem
+            label="デジタル化AI導入補助金"
+            sub="締切 2026/6/30 — 申請書類未完"
+            status="urgent"
+            onPress={() => navigation.navigate('Subsidy')}
+          />
+          <View style={styles.divider} />
+          <StatusItem
+            label="小規模事業者持続化補助金"
+            sub="締切 2026/5月 — 書類確認中"
+            status="warning"
+            onPress={() => navigation.navigate('Subsidy')}
+          />
+          <View style={styles.divider} />
+          <StatusItem
+            label="ものづくり補助金"
+            sub="申請完了 — 結果待ち"
+            status="done"
+            onPress={() => navigation.navigate('Subsidy')}
+          />
+          <View style={styles.divider} />
+          <StatusItem
+            label="経営計画の見直し"
+            sub="AIに相談して戦略を整理する"
+            status="info"
+            onPress={() => navigation.navigate('Chat')}
+          />
+        </View>
+
+        {/* クイックアクション */}
+        <Text style={styles.sectionTitle}>クイックアクション</Text>
+        <View style={styles.quickGrid}>
+          {[
+            { icon: 'chatbubbles', label: 'AI相談', sub: '24時間対応', color: Colors.accent, screen: 'Chat' },
+            { icon: 'cash', label: '補助金', sub: '最大450万円', color: '#4CAF50', screen: 'Subsidy' },
+            { icon: 'document-text', label: '商談メモ', sub: `${memoCount}件保存中`, color: '#2196F3', screen: 'Memo' },
+            { icon: 'settings', label: '設定', sub: 'APIキー管理', color: Colors.textSecondary, screen: 'Settings' },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.screen}
+              style={styles.quickCard}
+              onPress={() => navigation.navigate(item.screen)}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: item.color + '22' }]}>
+                <Ionicons name={item.icon as any} size={24} color={item.color} />
+              </View>
+              <Text style={styles.quickLabel}>{item.label}</Text>
+              <Text style={styles.quickSub}>{item.sub}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <View style={{ height: 30 }} />
       </ScrollView>
@@ -185,160 +254,210 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    backgroundColor: Colors.primary,
-  },
-  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 52,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.secondary,
   },
-  headerGreeting: {
-    color: Colors.textSecondary,
-    fontSize: 13,
+  headerDate: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    marginBottom: 2,
   },
   headerTitle: {
     color: Colors.text,
-    fontSize: 28,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  headerDate: {
-    color: Colors.accentLight,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  headerLogo: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  headerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.accent,
+    borderWidth: 1,
+    borderColor: Colors.accent + '55',
   },
   body: {
     flex: 1,
     paddingHorizontal: 16,
   },
   sectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginTop: 20,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickAction: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  quickActionLabel: {
-    color: Colors.text,
+    color: Colors.textMuted,
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginTop: 20,
+    marginBottom: 10,
   },
-  infoCards: {
+  kpiRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
+    gap: 8,
   },
-  infoCard: {
+  kpiCard: {
     flex: 1,
     backgroundColor: Colors.surface,
     borderRadius: 12,
-    padding: 14,
+    padding: 10,
     borderWidth: 1,
     borderColor: Colors.border,
+    borderTopWidth: 3,
   },
-  infoCardHeader: {
+  kpiHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  infoCardTitle: {
-    color: Colors.textSecondary,
-    fontSize: 11,
+  kpiIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  infoCardValue: {
+  badge: {
+    borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  kpiValue: {
     color: Colors.text,
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 26,
   },
-  infoCardSubtitle: {
+  kpiUnit: {
+    color: Colors.textSecondary,
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  kpiLabel: {
     color: Colors.textMuted,
     fontSize: 10,
   },
-  tipCard: {
-    backgroundColor: Colors.primary,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 4,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-  },
-  tipTitle: {
-    color: Colors.accentLight,
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  tipBody: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 14,
-  },
-  tipAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tipActionText: {
-    color: Colors.accent,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  themeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  progressCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: 14,
+    padding: 16,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: 12,
   },
-  themeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 10,
   },
-  themeText: {
+  progressTitle: {
     color: Colors.text,
     fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  progressSub: {
+    color: Colors.textMuted,
+    fontSize: 11,
+  },
+  progressPct: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: Colors.border,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  statusCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  statusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  statusDot: {
+    fontSize: 10,
+  },
+  statusBody: {
     flex: 1,
+  },
+  statusLabel: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  statusSub: {
+    color: Colors.textMuted,
+    fontSize: 11,
+  },
+  statusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginHorizontal: 14,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickCard: {
+    width: '47.5%',
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  quickIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickLabel: {
+    color: Colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  quickSub: {
+    color: Colors.textMuted,
+    fontSize: 11,
   },
 });

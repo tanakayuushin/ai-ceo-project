@@ -13,7 +13,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message, sendMessage, getApiKey, SYSTEM_PROMPT } from '../services/ApiService';
+
+const CHAT_COUNT_KEY = 'emport_chat_count';
 import { useNavigation } from '@react-navigation/native';
 
 const SUGGESTED_TOPICS = [
@@ -104,6 +107,10 @@ export default function ChatScreen() {
     scrollToBottom();
 
     try {
+      const raw = await AsyncStorage.getItem(CHAT_COUNT_KEY);
+      const count = raw ? parseInt(raw, 10) + 1 : 1;
+      await AsyncStorage.setItem(CHAT_COUNT_KEY, String(count));
+
       const reply = await sendMessage(newMessages, SYSTEM_PROMPT, apiKey);
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
