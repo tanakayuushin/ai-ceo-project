@@ -78,7 +78,7 @@ export default function MemoScreen() {
   );
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>商談メモ</Text>
         <TouchableOpacity onPress={() => setShowForm(!showForm)}>
