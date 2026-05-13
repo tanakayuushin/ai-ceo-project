@@ -417,6 +417,78 @@ def analyze_minutes(minutes_text: str) -> dict[str, Any]:
     return validate_minutes_result(parsed)
 
 
+SYSTEM_PROMPT_SUBSIDY = """
+<role>
+あなたは中小企業の補助金診断AIです。
+会社情報とやりたいことをもとに、申請できる可能性が高い補助金を診断して返します。
+2026年度の最新情報をもとに、現実的で申請しやすい補助金を優先して提案してください。
+</role>
+
+<output_format>
+出力はJSONのみ返してください。
+{
+  "matched_subsidies": [
+    {
+      "name": "補助金名",
+      "amount": "最大金額（例：最大450万円）",
+      "ratio": "補助率（例：2/3）",
+      "deadline": "申請期限（例：2026年7月）",
+      "match_reason": "この会社が申請できる理由（1〜2文）",
+      "difficulty": "申請しやすさ：易・中・難"
+    }
+  ],
+  "top_recommendation": "最もおすすめの補助金名",
+  "next_step": "今すぐできる具体的なアクション（1〜2文）",
+  "caution": "注意点があれば記載（なければ空文字）"
+}
+matched_subsidiesは2〜4件。
+</output_format>
+"""
+
+
+def diagnose_subsidy(form_data: dict[str, Any]) -> dict[str, Any]:
+    content = (
+        f"【会社情報】\n"
+        f"業種: {form_data.get('industry', '不明')}\n"
+        f"従業員数: {form_data.get('employees', '不明')}\n"
+        f"年商: {form_data.get('revenue', '不明')}\n"
+        f"地域: {form_data.get('region', '不明')}\n\n"
+        f"【やりたいこと・検討している投資】\n{form_data.get('plan', '不明')}\n\n"
+        f"【予算感】\n{form_data.get('budget', '未定')}"
+    )
+    logger.info("diagnose_subsidy: %s", form_data.get("industry", "不明"))
+    response = client.messages.create(
+        model=MODEL_NAME,
+        max_tokens=1000,
+        temperature=0.2,
+        system=SYSTEM_PROMPT_SUBSIDY,
+        messages=[
+            {"role": "user", "content": content},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+    text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+    parsed = parse_response_json("{" + "\n".join(text_blocks))
+    subsidies = parsed.get("matched_subsidies", [])
+    validated = []
+    for s in subsidies[:4]:
+        if isinstance(s, dict):
+            validated.append({
+                "name": str(s.get("name", "")),
+                "amount": str(s.get("amount", "")),
+                "ratio": str(s.get("ratio", "")),
+                "deadline": str(s.get("deadline", "")),
+                "match_reason": str(s.get("match_reason", "")),
+                "difficulty": str(s.get("difficulty", "中")),
+            })
+    return {
+        "matched_subsidies": validated,
+        "top_recommendation": str(parsed.get("top_recommendation", "")),
+        "next_step": str(parsed.get("next_step", "")),
+        "caution": str(parsed.get("caution", "")),
+    }
+
+
 def analyze_manufacturing(form_data: dict[str, Any]) -> dict[str, Any]:
     issues = form_data.get("issues", [])
     issues_text = "・" + "\n・".join(issues) if issues else "（未選択）"
@@ -486,6 +558,9 @@ def index():
     minutes_text = ""
     minutes_result = None
     minutes_error = ""
+    subsidy_result = None
+    subsidy_error = ""
+    subsidy_form = {}
     active_tab = request.args.get("tab", "inquiry")
 
     if request.method == "POST":
@@ -555,6 +630,22 @@ def index():
                     minutes_result = analyze_minutes(minutes_text)
                 except Exception as exc:
                     minutes_error = f"分析中にエラーが発生しました: {exc}"
+        elif action == "subsidy":
+            subsidy_form = {
+                "industry": request.form.get("sub_industry", "").strip(),
+                "employees": request.form.get("sub_employees", "").strip(),
+                "revenue": request.form.get("sub_revenue", "").strip(),
+                "region": request.form.get("sub_region", "").strip(),
+                "plan": request.form.get("sub_plan", "").strip(),
+                "budget": request.form.get("sub_budget", "").strip(),
+            }
+            if not subsidy_form["industry"] or not subsidy_form["plan"]:
+                subsidy_error = "業種とやりたいことを入力してください。"
+            else:
+                try:
+                    subsidy_result = diagnose_subsidy(subsidy_form)
+                except Exception as exc:
+                    subsidy_error = f"診断中にエラーが発生しました: {exc}"
         else:
             active_tab = "inquiry"
 
@@ -577,6 +668,9 @@ def index():
         minutes_text=minutes_text,
         minutes_result=minutes_result,
         minutes_error=minutes_error,
+        subsidy_result=subsidy_result,
+        subsidy_error=subsidy_error,
+        subsidy_form=subsidy_form,
     )
 
 

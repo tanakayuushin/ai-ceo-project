@@ -91,9 +91,9 @@ export default function HomeScreen() {
             color="#4CAF50"
           />
           <QuickAction
-            icon="bar-chart"
-            label="ツール"
-            onPress={() => navigation.navigate('Tools')}
+            icon="document-text"
+            label="メモ"
+            onPress={() => navigation.navigate('Memo')}
             color="#2196F3"
           />
           <QuickAction

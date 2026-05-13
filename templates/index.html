@@ -539,6 +539,8 @@
               onclick="location.href='/?tab=xpost'">X投稿文生成</button>
       <button class="tab-btn {% if active_tab == 'minutes' %}active{% endif %}"
               onclick="location.href='/?tab=minutes'">議事録要約</button>
+      <button class="tab-btn {% if active_tab == 'subsidy' %}active{% endif %}"
+              onclick="location.href='/?tab=subsidy'">💰補助金診断</button>
     </div>
 
     <!-- ========== 問い合わせ分析タブ ========== -->
@@ -974,6 +976,100 @@
       </ul>
       {% else %}
       <p style="font-size:0.88rem;color:#8a9bbf;">記載なし</p>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- ========== 補助金診断タブ ========== -->
+    {% if active_tab == 'subsidy' %}
+    <form method="POST">
+      <input type="hidden" name="action" value="subsidy" />
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <label>業種 <span style="color:#e57373">*</span></label>
+          <input type="text" name="sub_industry" value="{{ subsidy_form.get('industry','') }}"
+            placeholder="例：建設業、飲食業、製造業" required />
+        </div>
+        <div>
+          <label>従業員数</label>
+          <select name="sub_employees">
+            <option value="">選択してください</option>
+            <option value="1〜5名" {% if subsidy_form.get('employees')=='1〜5名' %}selected{% endif %}>1〜5名</option>
+            <option value="6〜20名" {% if subsidy_form.get('employees')=='6〜20名' %}selected{% endif %}>6〜20名</option>
+            <option value="21〜50名" {% if subsidy_form.get('employees')=='21〜50名' %}selected{% endif %}>21〜50名</option>
+            <option value="51〜100名" {% if subsidy_form.get('employees')=='51〜100名' %}selected{% endif %}>51〜100名</option>
+            <option value="100名以上" {% if subsidy_form.get('employees')=='100名以上' %}selected{% endif %}>100名以上</option>
+          </select>
+        </div>
+        <div>
+          <label>年商（目安）</label>
+          <select name="sub_revenue">
+            <option value="">選択してください</option>
+            <option value="1000万円未満">1000万円未満</option>
+            <option value="1000万〜5000万円">1000万〜5000万円</option>
+            <option value="5000万〜1億円">5000万〜1億円</option>
+            <option value="1億〜5億円">1億〜5億円</option>
+            <option value="5億円以上">5億円以上</option>
+          </select>
+        </div>
+        <div>
+          <label>都道府県</label>
+          <input type="text" name="sub_region" value="{{ subsidy_form.get('region','') }}"
+            placeholder="例：山口県、東京都" />
+        </div>
+      </div>
+      <label style="margin-top:16px;display:block;">やりたいこと・検討している投資 <span style="color:#e57373">*</span></label>
+      <textarea name="sub_plan" style="min-height:120px;"
+        placeholder="例：AI搭載の受発注管理システムを導入したい。現在は紙と電話で管理しており、月に約80時間の工数がかかっている。">{{ subsidy_form.get('plan','') }}</textarea>
+      <label>予算のイメージ</label>
+      <input type="text" name="sub_budget" value="{{ subsidy_form.get('budget','') }}"
+        placeholder="例：100万円以内、補助金込みで50万円以内など" />
+      {% if subsidy_error %}<div class="error-box">{{ subsidy_error }}</div>{% endif %}
+      <button type="submit" class="submit-btn">補助金を診断する</button>
+    </form>
+
+    {% if subsidy_result %}
+    <div class="result-box">
+      <h2>診断結果</h2>
+      {% if subsidy_result.top_recommendation %}
+      <div style="background:#1a3a2a;border:1px solid #4CAF50;border-radius:10px;padding:14px;margin-bottom:20px;">
+        <p style="color:#4CAF50;font-weight:700;margin:0 0 4px;">🏆 最もおすすめ</p>
+        <p style="color:#fff;font-size:1.1rem;font-weight:600;margin:0;">{{ subsidy_result.top_recommendation }}</p>
+      </div>
+      {% endif %}
+
+      <h3>申請できる補助金</h3>
+      {% for s in subsidy_result.matched_subsidies %}
+      <div style="background:#162b40;border:1px solid #2a4a65;border-radius:12px;padding:16px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-weight:700;color:#fff;font-size:1rem;">{{ s.name }}</span>
+          <span style="background:{% if s.difficulty=='易' %}#1a3a2a{% elif s.difficulty=='難' %}#3a1a1a{% else %}#1a2a3a{% endif %};
+            color:{% if s.difficulty=='易' %}#4CAF50{% elif s.difficulty=='難' %}#e57373{% else %}#64b5f6{% endif %};
+            padding:2px 10px;border-radius:20px;font-size:0.8rem;font-weight:600;">
+            申請{{ s.difficulty }}
+          </span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+          <span style="color:#F0A500;font-weight:700;">{{ s.amount }}</span>
+          <span style="color:#a0b4c8;">補助率 {{ s.ratio }}</span>
+          <span style="color:#a0b4c8;">📅 {{ s.deadline }}</span>
+        </div>
+        <p style="color:#c8d4e8;font-size:0.9rem;margin:0;">{{ s.match_reason }}</p>
+      </div>
+      {% endfor %}
+
+      {% if subsidy_result.next_step %}
+      <div style="background:#0a2342;border-left:3px solid #F0A500;padding:14px;border-radius:0 10px 10px 0;margin-top:16px;">
+        <p style="color:#F0A500;font-weight:700;margin:0 0 4px;">次のアクション</p>
+        <p style="color:#c8d4e8;margin:0;">{{ subsidy_result.next_step }}</p>
+      </div>
+      {% endif %}
+      {% if subsidy_result.caution %}
+      <div style="background:#2a1a0a;border-left:3px solid #FF9800;padding:14px;border-radius:0 10px 10px 0;margin-top:12px;">
+        <p style="color:#FF9800;font-weight:700;margin:0 0 4px;">⚠️ 注意点</p>
+        <p style="color:#c8d4e8;margin:0;">{{ subsidy_result.caution }}</p>
+      </div>
       {% endif %}
     </div>
     {% endif %}
