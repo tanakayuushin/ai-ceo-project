@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
@@ -59,13 +58,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
 
       {/* ヘッダー */}
-      <LinearGradient
-        colors={[Colors.primary, Colors.secondary]}
-        style={styles.header}
-      >
+      <View style={styles.header}>
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.headerGreeting}>おはようございます</Text>
@@ -76,7 +72,7 @@ export default function HomeScreen() {
             <Ionicons name="briefcase" size={40} color={Colors.accent} />
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
         {/* クイックアクション */}
@@ -145,24 +141,17 @@ export default function HomeScreen() {
           style={styles.tipCard}
           onPress={() => navigation.navigate('Chat')}
         >
-          <LinearGradient
-            colors={[Colors.primary, Colors.secondary]}
-            style={styles.tipGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="bulb" size={24} color={Colors.accent} />
-            <Text style={styles.tipTitle}>補助金申請のコツ</Text>
-            <Text style={styles.tipBody}>
-              2026年度のデジタル化推進補助金は申請枠が拡大されました。
-              AI導入・システム構築費用の最大2/3が補助対象になります。
-              まずAIに相談して、あなたの会社に合った申請計画を立てましょう。
-            </Text>
-            <View style={styles.tipAction}>
-              <Text style={styles.tipActionText}>AIに相談する</Text>
-              <Ionicons name="arrow-forward" size={16} color={Colors.accent} />
-            </View>
-          </LinearGradient>
+          <Ionicons name="bulb" size={24} color={Colors.accent} />
+          <Text style={styles.tipTitle}>補助金申請のコツ</Text>
+          <Text style={styles.tipBody}>
+            2026年度のデジタル化推進補助金は申請枠が拡大されました。
+            AI導入・システム構築費用の最大2/3が補助対象になります。
+            まずAIに相談して、あなたの会社に合った申請計画を立てましょう。
+          </Text>
+          <View style={styles.tipAction}>
+            <Text style={styles.tipActionText}>AIに相談する</Text>
+            <Ionicons name="arrow-forward" size={16} color={Colors.accent} />
+          </View>
         </TouchableOpacity>
 
         {/* よく使う機能 */}
@@ -202,6 +191,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 24,
     paddingHorizontal: 20,
+    backgroundColor: Colors.primary,
   },
   headerContent: {
     flexDirection: 'row',
@@ -227,7 +217,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -301,12 +291,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   tipCard: {
+    backgroundColor: Colors.primary,
     borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  tipGradient: {
     padding: 18,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
   },
   tipTitle: {
     color: Colors.accentLight,
