@@ -155,6 +155,7 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(m) => m.id}
           renderItem={({ item }) => <MessageBubble message={item} />}
+          style={styles.flex}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={scrollToBottom}
           showsVerticalScrollIndicator={false}
@@ -270,7 +271,6 @@ const styles = StyleSheet.create({
   messageList: {
     padding: 16,
     gap: 12,
-    flexGrow: 1,
   },
   messageRow: {
     flexDirection: 'row',
