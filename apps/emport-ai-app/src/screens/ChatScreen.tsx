@@ -12,12 +12,12 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { Colors } from '../constants/colors';
 import { Message, sendMessage, getApiKey, SYSTEM_PROMPT } from '../services/ApiService';
 
 const CHAT_COUNT_KEY = 'emport_chat_count';
-import { useNavigation } from '@react-navigation/native';
 
 const SUGGESTED_TOPICS = [
   '売上を増やすには？',
@@ -31,18 +31,13 @@ const SUGGESTED_TOPICS = [
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
   return (
-    <View style={[styles.messagRow, isUser ? styles.userRow : styles.aiRow]}>
+    <View style={[styles.messageRow, isUser ? styles.userRow : styles.aiRow]}>
       {!isUser && (
         <View style={styles.aiAvatar}>
           <Ionicons name="sparkles" size={16} color={Colors.accent} />
         </View>
       )}
-      <View
-        style={[
-          styles.bubble,
-          isUser ? styles.userBubble : styles.aiBubble,
-        ]}
-      >
+      <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
         <Text style={[styles.bubbleText, isUser ? styles.userText : styles.aiText]}>
           {message.content}
         </Text>
@@ -72,9 +67,7 @@ export default function ChatScreen() {
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
 
   const handleSend = useCallback(async (text?: string) => {
@@ -99,7 +92,6 @@ export default function ChatScreen() {
       content,
       timestamp: new Date(),
     };
-
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setInput('');
@@ -112,13 +104,10 @@ export default function ChatScreen() {
       await AsyncStorage.setItem(CHAT_COUNT_KEY, String(count));
 
       const reply = await sendMessage(newMessages, SYSTEM_PROMPT, apiKey);
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: reply,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => [
+        ...prev,
+        { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() },
+      ]);
     } catch (e: any) {
       Alert.alert('エラー', e.message || 'AIとの通信に失敗しました。');
     } finally {
@@ -128,12 +117,8 @@ export default function ChatScreen() {
   }, [input, loading, apiKey, messages, navigation, scrollToBottom]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      {/* ヘッダー */}
+    <View style={styles.container}>
+      {/* ヘッダー — KAV の外に固定 */}
       <View style={styles.header}>
         <View style={styles.aiInfo}>
           <View style={styles.aiIcon}>
@@ -145,91 +130,97 @@ export default function ChatScreen() {
           </View>
         </View>
         <TouchableOpacity
-          onPress={() => {
-            setMessages([
-              {
-                id: '0',
-                role: 'assistant',
-                content: 'チャットをリセットしました。新しいご相談をどうぞ！',
-                timestamp: new Date(),
-              },
-            ]);
-          }}
+          onPress={() =>
+            setMessages([{
+              id: '0',
+              role: 'assistant',
+              content: 'チャットをリセットしました。新しいご相談をどうぞ！',
+              timestamp: new Date(),
+            }])
+          }
         >
           <Ionicons name="refresh" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      {/* メッセージ一覧 */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <MessageBubble message={item} />}
-        contentContainerStyle={styles.messageList}
-        onContentSizeChange={scrollToBottom}
-        showsVerticalScrollIndicator={false}
-        ListFooterComponent={
-          loading ? (
-            <View style={styles.typingIndicator}>
-              <View style={styles.aiAvatar}>
-                <Ionicons name="sparkles" size={16} color={Colors.accent} />
+      {/* ここだけ KAV — ヘッダーは含まないのでオフセット不要 */}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
+        {/* メッセージ一覧 */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          renderItem={({ item }) => <MessageBubble message={item} />}
+          contentContainerStyle={styles.messageList}
+          onContentSizeChange={scrollToBottom}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          ListFooterComponent={
+            loading ? (
+              <View style={styles.typingIndicator}>
+                <View style={styles.aiAvatar}>
+                  <Ionicons name="sparkles" size={16} color={Colors.accent} />
+                </View>
+                <View style={styles.typingBubble}>
+                  <ActivityIndicator size="small" color={Colors.accent} />
+                  <Text style={styles.typingText}>考え中...</Text>
+                </View>
               </View>
-              <View style={styles.typingBubble}>
-                <ActivityIndicator size="small" color={Colors.accent} />
-                <Text style={styles.typingText}>考え中...</Text>
-              </View>
-            </View>
-          ) : null
-        }
-      />
-
-      {/* 提案トピック（初回のみ） */}
-      {messages.length <= 1 && (
-        <View style={styles.suggestions}>
-          <FlatList
-            data={SUGGESTED_TOPICS}
-            keyExtractor={(t) => t}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.suggestionChip}
-                onPress={() => handleSend(item)}
-              >
-                <Text style={styles.suggestionText}>{item}</Text>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-          />
-        </View>
-      )}
-
-      {/* 入力欄 */}
-      <View style={styles.inputArea}>
-        <TextInput
-          style={styles.input}
-          value={input}
-          onChangeText={setInput}
-          placeholder="経営の相談を入力..."
-          placeholderTextColor={Colors.textMuted}
-          multiline
-          maxLength={1000}
-          returnKeyType="default"
+            ) : null
+          }
         />
-        <TouchableOpacity
-          style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
-          onPress={() => handleSend()}
-          disabled={!input.trim() || loading}
-        >
-          <Ionicons
-            name="send"
-            size={20}
-            color={!input.trim() || loading ? Colors.textMuted : Colors.accent}
+
+        {/* 提案トピック（初回のみ） */}
+        {messages.length <= 1 && (
+          <View style={styles.suggestions}>
+            <FlatList
+              data={SUGGESTED_TOPICS}
+              keyExtractor={(t) => t}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.suggestionChip}
+                  onPress={() => handleSend(item)}
+                >
+                  <Text style={styles.suggestionText}>{item}</Text>
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+            />
+          </View>
+        )}
+
+        {/* 入力欄 */}
+        <View style={styles.inputArea}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="経営の相談を入力..."
+            placeholderTextColor={Colors.textMuted}
+            multiline
+            maxLength={1000}
+            returnKeyType="default"
           />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity
+            style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
+            onPress={() => handleSend()}
+            disabled={!input.trim() || loading}
+          >
+            <Ionicons
+              name="send"
+              size={20}
+              color={!input.trim() || loading ? Colors.textMuted : Colors.accent}
+            />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -237,6 +228,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  flex: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -276,8 +270,9 @@ const styles = StyleSheet.create({
   messageList: {
     padding: 16,
     gap: 12,
+    flexGrow: 1,
   },
-  messagRow: {
+  messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginBottom: 8,
