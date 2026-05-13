@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// RailwayデプロイURL（デプロイ後に実際のURLに更新してください）
+const BACKEND_URL = 'https://ai-ceo-project-production.up.railway.app';
+const MOBILE_API_TOKEN = 'emport-mobile-dev-2026';
+
 const API_KEY_STORAGE = 'emport_api_key';
-const EMPORT_API_URL = 'https://api.anthropic.com/v1/messages';
 
 export interface Message {
   id: string;
@@ -20,36 +23,32 @@ export async function saveApiKey(key: string): Promise<void> {
 
 export async function sendMessage(
   messages: Message[],
-  systemPrompt: string,
-  apiKey: string
+  systemPrompt: string
 ): Promise<string> {
   const body = {
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: systemPrompt,
     messages: messages.map((m) => ({
       role: m.role,
       content: m.content,
     })),
+    system: systemPrompt,
   };
 
-  const res = await fetch(EMPORT_API_URL, {
+  const res = await fetch(`${BACKEND_URL}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      Authorization: `Bearer ${MOBILE_API_TOKEN}`,
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`API Error ${res.status}: ${err}`);
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || `API Error ${res.status}`);
   }
 
   const data = await res.json();
-  return data.content[0].text;
+  return data.content;
 }
 
 export const SYSTEM_PROMPT = `あなたは「Emport AI」の経営AIアドバイザーです。

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
-import { Message, sendMessage, getApiKey, SYSTEM_PROMPT } from '../services/ApiService';
+import { Message, sendMessage, SYSTEM_PROMPT } from '../services/ApiService';
 
 const CHAT_COUNT_KEY = 'emport_chat_count';
 
@@ -47,7 +46,6 @@ function MessageBubble({ message }: { message: Message }) {
 }
 
 export default function ChatScreen() {
-  const navigation = useNavigation<any>();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
@@ -59,12 +57,7 @@ export default function ChatScreen() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
-
-  useEffect(() => {
-    getApiKey().then(setApiKey);
-  }, []);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -73,18 +66,6 @@ export default function ChatScreen() {
   const handleSend = useCallback(async (text?: string) => {
     const content = (text || input).trim();
     if (!content || loading) return;
-
-    if (!apiKey) {
-      Alert.alert(
-        'APIキーが必要です',
-        '設定画面でClaude APIキーを入力してください。',
-        [
-          { text: 'キャンセル', style: 'cancel' },
-          { text: '設定へ', onPress: () => navigation.navigate('Settings') },
-        ]
-      );
-      return;
-    }
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -103,7 +84,7 @@ export default function ChatScreen() {
       const count = raw ? parseInt(raw, 10) + 1 : 1;
       await AsyncStorage.setItem(CHAT_COUNT_KEY, String(count));
 
-      const reply = await sendMessage(newMessages, SYSTEM_PROMPT, apiKey);
+      const reply = await sendMessage(newMessages, SYSTEM_PROMPT);
       setMessages((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() },
@@ -114,7 +95,7 @@ export default function ChatScreen() {
       setLoading(false);
       scrollToBottom();
     }
-  }, [input, loading, apiKey, messages, navigation, scrollToBottom]);
+  }, [input, loading, messages, scrollToBottom]);
 
   return (
     <View style={styles.container}>

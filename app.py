@@ -1,20 +1,38 @@
 import json
 import logging
 import os
+import time
+from collections import defaultdict
 from typing import Any
 
 from anthropic import Anthropic
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 
 load_dotenv()
 
 MODEL_NAME = "claude-haiku-4-5-20251001"
 MAX_INPUT_LENGTH = 2000  # ユーザー入力の最大文字数
+MOBILE_API_TOKEN = os.getenv("MOBILE_API_TOKEN", "emport-mobile-dev-2026")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "ai-tool-secret-change-in-prod")
 ACCESS_CODE = os.getenv("ACCESS_CODE", "ai-tool-2026")
+
+# モバイルAPIレート制限（IPごと・60秒あたり最大30リクエスト）
+_rate_cache: dict[str, list[float]] = defaultdict(list)
+_RATE_WINDOW = 60
+_RATE_MAX = 30
+
+
+def _check_rate_limit(ip: str) -> bool:
+    now = time.time()
+    window_start = now - _RATE_WINDOW
+    _rate_cache[ip] = [t for t in _rate_cache[ip] if t > window_start]
+    if len(_rate_cache[ip]) >= _RATE_MAX:
+        return False
+    _rate_cache[ip].append(now)
+    return True
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -672,6 +690,54 @@ def index():
         subsidy_error=subsidy_error,
         subsidy_form=subsidy_form,
     )
+
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    # 認証
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {MOBILE_API_TOKEN}":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # レート制限
+    ip = request.remote_addr or "unknown"
+    if not _check_rate_limit(ip):
+        return jsonify({"error": "リクエストが多すぎます。しばらく待ってからお試しください。"}), 429
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    raw_messages = data.get("messages", [])
+    system = str(data.get("system", ""))[:1000]
+
+    if not isinstance(raw_messages, list) or not raw_messages:
+        return jsonify({"error": "messages is required"}), 400
+
+    valid_messages = []
+    for m in raw_messages:
+        if (
+            isinstance(m, dict)
+            and m.get("role") in ("user", "assistant")
+            and isinstance(m.get("content"), str)
+        ):
+            valid_messages.append({"role": m["role"], "content": m["content"][:2000]})
+
+    if not valid_messages:
+        return jsonify({"error": "No valid messages"}), 400
+
+    try:
+        response = client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=1024,
+            system=system,
+            messages=valid_messages,
+        )
+        text_blocks = [block.text for block in response.content if hasattr(block, "text")]
+        return jsonify({"content": "\n".join(text_blocks)})
+    except Exception as exc:
+        logger.error("api_chat error: %s", exc)
+        return jsonify({"error": "AI処理中にエラーが発生しました"}), 500
 
 
 if __name__ == "__main__":
