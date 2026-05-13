@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import time
+import traceback
 from collections import defaultdict
 from typing import Any
 
+import httpx
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, session, redirect, url_for
@@ -40,7 +42,10 @@ logger = logging.getLogger(__name__)
 _api_key = os.getenv("ANTHROPIC_API_KEY")
 if not _api_key:
     raise RuntimeError("ANTHROPIC_API_KEY が .env に設定されていません。")
-client = Anthropic(api_key=_api_key)
+client = Anthropic(
+    api_key=_api_key,
+    http_client=httpx.Client(verify=False, timeout=30.0),
+)
 
 
 SYSTEM_PROMPT_INQUIRY = """
@@ -736,7 +741,7 @@ def api_chat():
         text_blocks = [block.text for block in response.content if hasattr(block, "text")]
         return jsonify({"content": "\n".join(text_blocks)})
     except Exception as exc:
-        logger.error("api_chat error: %s", exc)
+        logger.error("api_chat error: %s\n%s", exc, traceback.format_exc())
         return jsonify({"error": "AI処理中にエラーが発生しました"}), 500
 
 
