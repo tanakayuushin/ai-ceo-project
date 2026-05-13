@@ -6,10 +6,10 @@
 __pycache__/
 *.pyc
 .cursor/
-.claude/
+.claude/*
+!.claude/settings.json
 credentials.json
 token.pickle
-settings.json
 temp_data/
 
 # Playwright

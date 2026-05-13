@@ -1,0 +1,33 @@
+﻿{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(*)",
+      "PowerShell(*)",
+      "mcp__claude_ai_Gmail__list_drafts",
+      "mcp__claude_ai_Gmail__search_threads",
+      "mcp__claude_ai_Gmail__get_thread",
+      "mcp__claude_ai_Gmail__list_labels",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_tabs",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_wait_for"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c \"if [ -n $(git status --porcelain 2>/dev/null | head -1) ]; then git add -A && git commit -m auto:$(date +%Y-%m-%d) && git push; fi\"",
+            "timeout": 60,
+            "statusMessage": "GitHubにpush中..."
+          }
+        ]
+      }
+    ]
+  }
+}
