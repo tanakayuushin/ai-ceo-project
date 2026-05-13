@@ -1,7 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// RailwayデプロイURL（デプロイ後に実際のURLに更新してください）
-const BACKEND_URL = 'https://ai-ceo-project-production.up.railway.app';
+const BACKEND_URL = 'https://web-production-487269.up.railway.app';
 const MOBILE_API_TOKEN = 'emport-mobile-dev-2026';
 
 const API_KEY_STORAGE = 'emport_api_key';
