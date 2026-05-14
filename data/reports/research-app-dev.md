@@ -590,3 +590,261 @@ await initializeSslPinning({
 3. **アプリ内課金 vs Stripe Web** — 手数料30%問題と最適な課金設計
 4. **React Native ディープリンク** — URLスキームからアプリ画面を直接開く
 5. **アプリアクセシビリティ対応** — App Store審査で問われるa11y要件
+
+---
+
+## 12. Expo OTA Update（Over-the-Air更新）— アプリ再申請なしで更新
+
+**調査日時: 2026-05-14 (第3ラウンド)**
+
+### OTAアップデートとは
+
+```
+通常のアプリ更新:
+  コード変更 → EASビルド → App Store審査（24-48時間）→ ユーザーへ
+
+OTA Update（EAS Update）:
+  コード変更 → eas update コマンド → 即座にユーザーへ（数分）
+  
+→ バグ修正・テキスト変更・UI調整を審査なしで即時リリース可能！
+```
+
+### 制約（重要）
+
+```
+OTAで更新できる:
+  ✅ JavaScriptコード
+  ✅ 画像・フォント等のアセット
+  ✅ スタイル・テキスト・ロジック
+  ✅ APIエンドポイントURL
+
+OTAで更新できない（ネイティブ変更は新ビルドが必要）:
+  ❌ 新しいライブラリのインストール（native modules）
+  ❌ app.json の変更
+  ❌ Permissions の追加
+  ❌ SDKバージョンアップ
+```
+
+### セットアップ手順
+
+```bash
+# 1. expo-updates インストール
+npx expo install expo-updates
+
+# 2. EAS設定
+eas build:configure
+eas update:configure
+
+# 3. OTAアップデート送信
+eas update --branch production --message "バグ修正: チャット送信の問題を修正"
+
+# 4. 確認
+eas update:list
+```
+
+### eas.json の channel設定
+
+```json
+{
+  "build": {
+    "production": {
+      "channel": "production"
+    },
+    "staging": {
+      "channel": "staging"
+    }
+  }
+}
+```
+
+### Emport AIでの活用シナリオ
+
+```
+シナリオ1: 補助金情報の更新
+  「今月から新しい補助金が始まった」
+  → システムプロンプトの更新をOTAで即時配信
+
+シナリオ2: バグ修正
+  「チャット画面で特定条件でクラッシュ」
+  → 審査なし・即日修正を全ユーザーに配信
+
+シナリオ3: 業種特化モード追加
+  → 建設業モードをOTAで追加（ネイティブ変更なし）
+```
+
+**情報源:**
+- [EAS Update 公式ドキュメント](https://docs.expo.dev/eas-update/introduction/)
+- [OTA Updates ベストプラクティス (pagepro)](https://pagepro.co/blog/ota-updates-with-expo/)
+
+---
+
+## 13. Expo Push Notifications 実装ガイド 2026年版
+
+**調査日時: 2026-05-14 (第3ラウンド)**
+
+### 重要な2026年変更点
+
+```
+⚠️ SDK 53以降の重大変更:
+  Expo Go では Push通知が完全に動作しなくなった
+  → Development Build が必須
+```
+
+### 実装手順
+
+```bash
+# 1. ライブラリインストール
+npx expo install expo-notifications expo-device expo-constants
+
+# 2. Development Build（Expo Go不可のため）
+npx expo install expo-dev-client
+eas build --profile development --platform ios
+```
+
+### クライアント実装
+
+```typescript
+// hooks/usePushNotifications.ts
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
+
+export async function registerForPushNotifications(): Promise<string | null> {
+  if (!Device.isDevice) {
+    console.log('実機でのみ動作します');
+    return null;
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    return null; // 権限拒否 → 静かに失敗
+  }
+
+  const token = await Notifications.getExpoPushTokenAsync({
+    projectId: Constants.expoConfig?.extra?.eas?.projectId,
+  });
+
+  return token.data;
+}
+```
+
+### サーバー（Flask/Railway）からの送信
+
+```python
+# app.py に追加
+import requests
+
+def send_push_notification(expo_push_token: str, title: str, body: str):
+    """Expo Push Notification送信"""
+    requests.post(
+        'https://exp.host/--/api/v2/push/send',
+        json={
+            'to': expo_push_token,
+            'title': title,
+            'body': body,
+            'sound': 'default',
+        },
+        headers={'Content-Type': 'application/json'}
+    )
+
+# 例: 週次Tips配信
+# send_push_notification(token, "今週の経営Tips", "飲食業のFL比率改善法3選")
+```
+
+### 通知パーミッション取得のベストプラクティス
+
+```
+✅ アプリの価値を体感した後（Step 4のチャット後）にPermission要求
+✅ 「なぜ通知が必要か」を先に説明
+✅ 拒否されても機能をブロックしない
+❌ 起動直後にいきなりPermission要求しない
+❌ 繰り返し何度も要求しない
+```
+
+**情報源:**
+- [Expo Push Notifications 公式ガイド](https://docs.expo.dev/push-notifications/push-notifications-setup/)
+- [Expo Push Notifications 2026 完全ガイド (devcom.com)](https://devcom.com/tech-blog/react-native-push-notifications/)
+
+---
+
+## 14. アプリ内課金 vs Stripe Web — 手数料30%問題と最適解
+
+**調査日時: 2026-05-14 (第3ラウンド)**
+
+### 手数料比較（2026年）
+
+| 課金方式 | 手数料 | 月額4,980円での実収 |
+|---|---|---|
+| Apple IAP（App Store） | **30%**（1年後15%） | 3,486円 |
+| Google Play IAP | **15〜30%** | 3,486〜4,233円 |
+| Stripe（Web決済） | **2.9% + 30円** | 4,806円 |
+| **差額（Stripe vs Apple）** | - | **+1,320円/ユーザー** |
+
+### 2026年の法的変化（重要）
+
+```
+2025年4月 Epic v. Apple 判決:
+  → 米国のiOSアプリはWebリンクから課金ページに誘導可能に
+  → Stripeを使えば30%手数料を回避できる
+
+EUデジタル市場法（DMA）:
+  → EUでも外部決済が認められるが、5%の手数料をAppleに支払う必要あり
+
+日本：
+  → 2026年現在、Apple IAP強制ルールが撤廃される動きあり
+  → ただし確定ではない（要最新確認）
+```
+
+### Emport AIの推奨課金設計（2026年）
+
+```
+戦略: 「Webを入口にして30%を回避する」
+
+Phase 1（最安全・今すぐ）:
+  → Stripeの Web決済（Stripe Checkout）のみ
+  → アプリ内に課金ボタンなし
+  → 「プランを見る」ボタン → ブラウザのStripeページへ
+  → Apple/Google の審査リスクなし・手数料2.9%のみ
+
+Phase 2（審査通過後）:
+  → iOS/Android で「外部リンク」の課金ページへ誘導
+  → Epic v. Apple判決を活用（米国ユーザー向け）
+
+Phase 3（将来・スケール後）:
+  → RevenueCat（サブスク管理ライブラリ）で
+    IAP + Web課金をハイブリッド管理
+```
+
+### RevenueCat（サブスク管理ライブラリ）
+
+```bash
+npx expo install react-native-purchases
+
+# 特徴:
+# - iOS IAP・Android IAP・Web課金を統一管理
+# - 分析ダッシュボード付き
+# - チャーン追跡・パワーユーザー特定
+# - 月$119まで無料プランあり
+```
+
+**情報源:**
+- [Stripe for In-App Purchases 2026 (adapty.io)](https://adapty.io/blog/can-you-use-stripe-for-in-app-purchases/)
+- [RevenueCat React Native 公式](https://www.revenuecat.com/docs/getting-started/installation/reactnative)
+
+---
+
+## 15. 次のリサーチ課題（第3ラウンド終了）
+
+第4ラウンドで調査予定：
+1. **React Native ディープリンク / ユニバーサルリンク** — 外部からアプリ画面を直接開く
+2. **アプリのアクセシビリティ（a11y）** — App Store審査で求められる対応
+3. **Expo Router × 認証フロー** — JWT・セッション管理・ログイン状態の永続化
+4. **React Native アプリのSEO戦略** — ASO（App Store最適化）の具体的手法
+5. **Emport AI特有の技術課題** — チャット履歴の管理・長いセッションのメモリ最適化
