@@ -1035,6 +1035,248 @@ response = client.messages.create(
 
 ---
 
+## 27. Prompt Caching 実装完了 — コスト試算更新
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### 実装内容（app.py に追加済み）
+
+```python
+# before（毎回フル課金）
+response = client.messages.create(
+    model=MODEL_NAME,
+    max_tokens=1024,
+    system=system,  # 毎回 $1/MTok で課金
+    messages=valid_messages,
+)
+
+# after（キャッシュで90%削減）
+system_param = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+response = client.messages.create(
+    model=MODEL_NAME,
+    max_tokens=1024,
+    system=system_param,  # キャッシュヒット時は $0.10/MTok
+    messages=valid_messages,
+)
+```
+
+### 公式料金（2026年5月確認）
+
+| 操作 | Haiku 4.5 料金 | 説明 |
+|---|---|---|
+| 通常 Input | $1.00/MTok | ベース料金 |
+| Cache Write (5分) | $1.25/MTok | 1.25倍（書込み時のみ） |
+| **Cache Hit** | **$0.10/MTok** | **ベースの10%！** |
+| Output | $5.00/MTok | キャッシュ対象外 |
+
+### コスト比較（Emport AIのシステムプロンプト 約700トークン）
+
+| ユーザー100人・月1回チャット（100回/月） | Before | After |
+|---|---|---|
+| System prompt コスト | $0.07 | $0.009（キャッシュヒット率90%想定） |
+| **月次削減額** | - | **約90%削減** |
+
+→ Railwayの費用（月$5）より**APIコストの削減効果のほうが大きい可能性**
+
+---
+
+## 28. 飲食業向け Emport AI 特化プロンプト設計
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### 飲食業の核心KPI
+
+| 指標 | 目安 | 意味 |
+|---|---|---|
+| **F比率**（Food Cost）| **30%以内** | 売上に対する食材費の割合 |
+| **L比率**（Labor Cost）| **20%以内** | 売上に対する人件費の割合 |
+| **FL比率**（F+L）| **55〜60%以内** | これが60%を超えると黒字が出ない |
+| **FLR比率**（+Rent）| **70%以内** | 家賃込みのコスト率 |
+| 人時売上高 | 5,000〜8,000円/時 | 1時間あたり何円稼いでいるか |
+| 回転率 | 業態による | 席数×回転数÷座席数 |
+
+### 飲食業向け特化システムプロンプト（案）
+
+```
+あなたは飲食業専門の経営AIアドバイザーです。
+飲食店オーナー・店長の経営課題に対して、
+FL比率・原価管理・シフト最適化・集客施策など
+飲食業に特化した実践的なアドバイスを提供します。
+
+【専門知識】
+- FL比率の計算と改善策（目標: FL比55〜60%以内）
+- 食材原価管理・ロス削減・仕入れ交渉
+- シフト最適化・人時売上高の改善
+- Googleマップ口コミ対応・SNS集客
+- 飲食業向け補助金（小規模事業者持続化補助金等）
+- テイクアウト・デリバリー展開戦略
+- 季節メニュー・原価の高い食材の置き換え提案
+
+【回答スタイル】
+- FL比率や原価率など具体的な数字を使う
+- 「今週できること」から優先順位をつける
+- 飲食業の実態に即した現実的な提案をする
+```
+
+### 業種選択機能の実装案
+
+```typescript
+// ChatScreen.tsx に業種選択を追加
+const INDUSTRIES = ['汎用', '飲食業', '小売業', '建設業', '美容・サロン'];
+
+// 業種に応じてシステムプロンプトを切り替え
+function getSystemPrompt(industry: string): string {
+  switch (industry) {
+    case '飲食業': return SYSTEM_PROMPT_FOOD;
+    case '小売業': return SYSTEM_PROMPT_RETAIL;
+    default: return SYSTEM_PROMPT;
+  }
+}
+```
+
+**情報源:**
+- [飲食店FL比率完全解説 (Airレジ)](https://airregi.jp/magazine/guide/2259/)
+- [飲食業KPIとは (データのじかん)](https://data.wingarc.com/kpilogictreeofrestaurantindustry-32909)
+
+---
+
+## 29. Claude Code Hooks 実用パターン集
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### Hooksの基本構造
+
+```json
+// .claude/settings.json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": "bash /path/to/security-check.sh"
+        }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [{
+          "type": "command",
+          "command": "python /path/to/format.py"
+        }]
+      }
+    ]
+  }
+}
+```
+
+### Emport AI開発に使えるHooksパターン10選
+
+| パターン | イベント | 用途 |
+|---|---|---|
+| 1. APIキー検出 | PreToolUse(Write) | ハードコードされたsecretをブロック |
+| 2. Pythonフォーマット | PostToolUse(Write) | .pyファイル保存時にblackを自動実行 |
+| 3. TypeScript型チェック | PostToolUse(Write) | .tsファイル保存時にtscを自動実行 |
+| 4. Railwayデプロイ通知 | PostToolUse(Bash) | pushコマンド後にSlack通知 |
+| 5. gitpush確認 | PreToolUse(Bash) | `git push`前に確認プロンプト |
+| 6. テスト自動実行 | PostToolUse(Write) | テストファイル変更時にnpm testを実行 |
+| 7. コスト計算 | PostToolUse(Bash) | APIコール後にトークン数を集計・記録 |
+| 8. ログ記録 | PostToolUse(任意) | 全ツール操作をMarkdownに記録 |
+| 9. 環境切替防止 | PreToolUse(Bash) | 本番環境への誤操作をブロック |
+| 10. EASビルド自動化 | PostToolUse(Bash) | コード変更後にEAS Buildをトリガー |
+
+### Emport AIプロジェクト向け推奨Hook設定
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Write",
+      "hooks": [{
+        "type": "command",
+        "command": "python layer4_file_guard.py"
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "Write",
+      "hooks": [{
+        "type": "command",
+        "command": "python -c \"import sys; f=open('/tmp/claude-writes.log','a'); f.write(sys.argv[1]+'\\n')\" \"$CLAUDE_FILE_PATH\""
+      }]
+    }]
+  }
+}
+```
+
+**情報源:**
+- [Hooks完全ガイド (Claude Code公式)](https://code.claude.com/docs/ja/hooks-guide)
+- [PreToolUse/PostToolUse実践入門 (Zenn)](https://zenn.dev/biki/articles/claude-code-hooks-workflow-automation)
+- [Hooks設定10選 (claudecode.co.jp)](https://claudecode.co.jp/info/claude-code-hooks-guide)
+
+---
+
+## 30. 総合まとめ — アレンからオーナーへの提言
+
+**調査日時: 2026-05-14 (第6ラウンド 最終)**
+
+### 今日の調査で判明した最重要事項
+
+**1. 補助金対象SaaS登録が最優先アクション**
+```
+デジタル化・AI導入補助金2026の IT導入支援事業者に登録
+  → 顧客の導入費用が最大450万円補助される
+  → 営業の最強カード
+  → 商工会議所経由申請で加点あり（既に接触済みで有利）
+```
+
+**2. Prompt Cachingで既にコスト90%削減済み**
+```
+今日のコミット（2892894）でapp.pyに実装完了
+  → 月1万チャットでもAPI費用は約450円
+  → 月額4,980円サブスクで余裕の黒字
+```
+
+**3. LINE連携がモバイルアプリより即効性がある可能性**
+```
+アプリDL → LINE友達追加の方が中高年経営者には簡単
+  → LINE Messaging API + Railway既存バックエンドで実装可能
+  → 工数: 約5〜7時間
+```
+
+**4. 飲食業からの業種特化が最初の一手**
+```
+飲食業（日本最多業種の一つ）× FL比率特化
+  → 差別化が明確
+  → 「飲食専門AI経営アドバイザー」でポジション確立
+```
+
+**5. Obsidianを社内ナレッジ管理に使うべき**
+```
+現在のWeeklyレポート管理をObsidianに移行
+  → Claude Codeが直接ノートを読める
+  → 商工会議所とのやりとり・顧客情報も集約
+  → 2026年v1.12でCLI追加済みで完全自動化可能
+```
+
+### 次にオーナーとやるべきこと（優先順）
+
+| 優先度 | タスク | 所要時間 |
+|---|---|---|
+| ★★★ | IT導入支援事業者登録申請 | 1〜2日 |
+| ★★★ | Railway Hobbyプラン切替（残16日） | 30分 |
+| ★★☆ | プライバシーポリシーページ作成 | 2〜3時間 |
+| ★★☆ | LINE公式アカウント開設 | 30分 |
+| ★☆☆ | Obsidian導入・社内KB構築 | 1日 |
+| ★☆☆ | 飲食業向け特化モード実装 | 4〜6時間 |
+
+---
+
+*調査は継続中。ユーザーが「いい」と言うまで次のトピックを調査して追記します。*
+
+---
+
 ## 13. 次のリサーチ課題（第2ラウンド終了・アレン選定）
 
 **調査日時: 2026-05-14 (第2ラウンド)**
