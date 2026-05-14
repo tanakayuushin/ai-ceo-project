@@ -732,10 +732,12 @@ def api_chat():
         return jsonify({"error": "No valid messages"}), 400
 
     try:
+        # システムプロンプトをキャッシュ（繰り返しリクエストでinputコスト90%削減）
+        system_param = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}] if system else system
         response = client.messages.create(
             model=MODEL_NAME,
             max_tokens=1024,
-            system=system,
+            system=system_param,
             messages=valid_messages,
         )
         text_blocks = [block.text for block in response.content if hasattr(block, "text")]
