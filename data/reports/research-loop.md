@@ -1273,6 +1273,187 @@ function getSystemPrompt(industry: string): string {
 
 ---
 
+---
+
+## 31. Obsidian × Claude Code 連携セットアップガイド（Windows版）
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### 連携の3つの方法（2026年版）
+
+| 方法 | 難易度 | 効果 |
+|---|---|---|
+| **1. VaultをClaude Codeのワークスペースに設定** | ★☆☆ | 最簡単。Claude Codeが全ノートを読める |
+| **2. Obsidian CLI + Claude Code** | ★★☆ | ターミナル経由でノートを操作 |
+| **3. Claudianプラグイン（Obsidian内でClaude Code）** | ★★☆ | Obsidian UI内でClaude Codeが動く |
+
+### 方法1（最速）: VaultをClaude Codeのワークスペースに追加
+
+```bash
+# Obsidianのvaultフォルダを確認
+# 通常: C:\Users\tsube\Documents\ObsidianVault\
+
+# Claude Codeでそのフォルダを開く
+claude "C:\Users\tsube\Documents\ObsidianVault\"
+```
+
+→ Emport AIプロジェクトのCLAUDE.mdに以下を追加：
+```markdown
+## ナレッジベース
+週次レポートは ../ObsidianVault/ceo/ に保存。
+顧客情報は ../ObsidianVault/customers/ に保存。
+```
+
+### 方法3: Claudianプラグイン
+
+- GitHub: [YishenTu/claudian](https://github.com/YishenTu/claudian)
+- Obsidianのコミュニティプラグインからインストール
+- Vault内でClaude Codeを直接起動できる
+- Windows: 2026年4月現在「実験的サポート」
+
+### Emport AIへの具体的な活用案
+
+```
+Obsidian Vault構造（推奨）:
+/vault
+  /ceo
+    /weekly-reports/     ← 既存のweekly-reportsをここに移行
+    /decisions/          ← 経営判断の記録
+  /customers
+    /商工会議所/          ← 接触履歴・提案内容
+    /山田建設/            ← 既存顧客事例
+  /market-research
+    /competitors/        ← 競合情報
+    /subsidies/          ← 補助金情報（最新版）
+  /products
+    /emport-ai/          ← プロダクト仕様・ロードマップ
+```
+
+**情報源:**
+- [Claude Code × Obsidian完全連携ガイド (dot-ai)](https://dot-ai.myuuu.co.jp/times/117)
+- [Obsidian CLI完全ガイド 2026 (visionnurture)](https://www.visionnurture.com/obsidian_guide_for_beginner_006/)
+- [Claudian プラグイン (GitHub)](https://github.com/YishenTu/claudian)
+
+---
+
+## 32. Railway Hobbyプラン — アップグレード手順
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### 料金詳細
+
+| プラン | 月額 | 含まれるクレジット | 特徴 |
+|---|---|---|---|
+| Trial（現在） | 無料 | $5 | 時間制限あり・残り16日 |
+| **Hobby** | **$5/月** | **$5** | 無制限・クレジット超過分追加課金 |
+| Pro | $20/月 | $20 | チーム向け |
+
+**Hobbyプランの実質コスト**:
+- 月額基本料: $5（固定）
+- 使用量が$5以内なら追加なし
+- 超えた分だけ追加課金
+- Emport AIの規模（軽量Flask）なら**月$5〜$7程度**で収まる見込み
+
+### アップグレード手順
+
+```
+1. Railway ダッシュボード (railway.com/dashboard) にログイン
+2. 右上のアカウントアイコン → 「Plans」
+3. 「Hobby」プランを選択
+4. クレジットカード情報を入力（$5/月）
+5. Trial残高は自動でCarryoverされる
+```
+
+**→ 今すぐやること**: オーナーがRailwayダッシュボードにアクセスしてHobbyにアップグレード（残り16日以内）
+
+**情報源:**
+- [Railway Pricing Plans (公式Docs)](https://docs.railway.com/pricing/plans)
+- [Railway Pricing 2026 (costbench)](https://costbench.com/software/developer-tools/railway/)
+
+---
+
+## 33. IT導入支援事業者登録 — 具体的手順と必要書類
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### 必要書類チェックリスト
+
+```
+□ 履歴事項全部証明書（法務局で取得・発行3ヶ月以内）
+□ 納税証明書（税務署で取得）
+□ 2期分の決算書（または簡易的な決算情報）
+□ ITツールの販売実績・サービス説明資料
+□ プライバシーポリシーURL
+□ サービス料金表
+□ セキュリティ対応説明
+```
+
+### 申請フロー
+
+```
+Step 1: it-shien.smrj.go.jp にアクセスして仮登録
+  ↓
+Step 2: 仮登録完了メールが届く（本登録用URLが届く）
+  ↓
+Step 3: 本登録（書類添付・詳細入力）
+  ↓
+Step 4: 審査（1〜2週間で差し戻しまたは承認）
+  ↓
+Step 5: 採否通知 → 登録完了
+  ↓
+Step 6: ITツール（Emport AI）の個別登録
+```
+
+### Emport AIが登録するための準備
+
+| 準備事項 | 現状 | アクション |
+|---|---|---|
+| 法人登記 | ? | 未確認（要確認） |
+| プライバシーポリシー | URLのみ存在 | 実際のページ作成が必要 |
+| サービス料金表 | 未設定 | 価格設計を決める |
+| 販売実績 | なし | 無料ユーザーでも可能か確認 |
+| セキュリティ説明 | Railway + Anthropic | 文書化が必要 |
+
+**情報源:**
+- [IT導入支援事業者登録申請フロー (smrj.go.jp)](https://it-shien.smrj.go.jp/itvendor/flow/)
+- [IT導入支援事業者になるには (japan-finance.jp)](https://japan-finance.jp/subsidy/120/)
+- [登録マニュアル PDF (smrj.go.jp)](https://it-shien.smrj.go.jp/pdf/it2026_manual_it_jigyosha.pdf)
+
+---
+
+## 34. 調査完了サマリー（第1〜7ラウンド）
+
+**調査日時: 2026-05-14 最終**
+
+### 調査トピック一覧
+
+| # | トピック | 主要発見 |
+|---|---|---|
+| 1 | Claude Code Tips | Focus View・Hooks・並列エージェント・MCPが最重要 |
+| 2 | Obsidian | Claude CodeのワークスペースとしてVaultを使うのが最強 |
+| 3 | 日本スタートアップ動向 | 2026年Q1は過去最高調達額・AI案件集中 |
+| 4 | AI市場規模 | 日本2024: 1.3兆円→2029年: 4.2兆円（3倍以上） |
+| 5 | 競合SaaS | 国産9,800円〜・Emport AIは4,980円で差別化可 |
+| 6 | 戦略的示唆 | 補助金登録＋商工会議所提携が最優先 |
+| 7 | IT導入支援事業者 | 審査1〜2週間・法人登記と書類準備が必要 |
+| 8 | 商工会議所DX | 複数者連携枠で加点あり（既接触で有利） |
+| 9 | App Store申請 | EAS Submit・プライバシーポリシーページが必須 |
+| 10 | AI規制 v1.2 | AIエージェントのHuman-in-the-Loop義務化 |
+| 11 | 料金設計 | 4,980円/月 + 補助金で実質2,500円が刺さる |
+| 12 | X戦略 | エンゲージメント重視・数字ネタが拡散 |
+| 13 | LINE連携 | Messaging API + Railway で5〜7時間で実装可 |
+| 14 | freee API | 財務データ連携でアドバイスの質が爆上がり |
+| 15 | Prompt Caching | 実装完了。コスト90%削減済み（Commit: 2892894） |
+| 16 | 競合深掘り | 「自律実行できるか」が次の差別化ポイント |
+| 17 | 国産LLM | PLaMo・NEC・富士通・tsuzumi。今はClaudeで正解 |
+| 18 | 資金調達 | シード3000万〜1.5億・MRR 50万が最低ライン |
+| 19 | APIコスト最適化 | Haiku 月1万チャット=450円。黒字確実 |
+| 20 | 経営者コミュニティ | 商工会議所＞こくちーず＞X の順で費用対効果高 |
+| 21 | 業種別ニーズ | 飲食業が第1候補（FL比率特化で差別化） |
+| 22 | Hooks実用例 | PreToolUse/PostToolUse で自動化10パターン |
+| 23 | Obsidian連携 | VaultをClaude Codeのワークスペースに追加が最速 |
+| 24 | Railway | Hobbyプラン月$5、残り16日以内にアップグレード要 |
+
 *調査は継続中。ユーザーが「いい」と言うまで次のトピックを調査して追記します。*
 
 ---
