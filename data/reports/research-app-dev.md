@@ -848,3 +848,666 @@ npx expo install react-native-purchases
 3. **Expo Router × 認証フロー** — JWT・セッション管理・ログイン状態の永続化
 4. **React Native アプリのSEO戦略** — ASO（App Store最適化）の具体的手法
 5. **Emport AI特有の技術課題** — チャット履歴の管理・長いセッションのメモリ最適化
+
+---
+
+## 16. ディープリンク / ユニバーサルリンク — 外部からアプリ画面を直接開く
+
+**調査日時: 2026-05-14 (第4ラウンド)**
+
+### 2つのディープリンク方式の比較
+
+```
+❌ カスタムURLスキーム（myapp://）:
+  - 設定が最も簡単
+  - アプリ未インストール時: 失敗してアプリストアへ誘導できない
+  - 別アプリがschemeを奪える（セキュリティリスク）
+  - iOS 14以降では制限が増加
+
+✅ ユニバーサルリンク（iOS） / App Links（Android）:
+  - https://yourdomain.com/path → アプリで開く（未インストールならWebへ）
+  - ドメイン所有者のみが設定可能（安全）
+  - Firebase Dynamic Linksは2025年8月に廃止 → 自前実装が必要
+```
+
+### Firebase Dynamic Links廃止（2025年8月）後の代替
+
+```
+主要な代替サービス:
+  Branch.io     — ディープリンク + アトリビューション統合、React Native SDK有り
+  Adjust        — 広告アトリビューション + ディープリンク
+  AppsFlyer     — エンタープライズ向け
+
+自前実装（推奨・コスト最小）:
+  Expo Router + Universal Links/App Links の組み合わせ
+```
+
+### Expo Router でのユニバーサルリンク設定
+
+```typescript
+// app.json
+{
+  "expo": {
+    "scheme": "emport-ai",
+    "ios": {
+      "bundleIdentifier": "ai.emport.app",
+      "associatedDomains": ["applinks:emport-ai.vercel.app"]
+    },
+    "android": {
+      "package": "ai.emport.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "emport-ai.vercel.app",
+              "pathPrefix": "/app"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    }
+  }
+}
+```
+
+### サーバー側の設定（必須）
+
+```json
+// iOS: https://emport-ai.vercel.app/.well-known/apple-app-site-association
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.ai.emport.app",
+        "paths": ["/app/*", "/chat/*"]
+      }
+    ]
+  }
+}
+
+// Android: https://emport-ai.vercel.app/.well-known/assetlinks.json
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "ai.emport.app",
+    "sha256_cert_fingerprints": ["YOUR_SHA256_FINGERPRINT"]
+  }
+}]
+```
+
+### Expo Router でのディープリンク受信（コード）
+
+```typescript
+// app/app/chat/[id].tsx
+// URL: https://emport-ai.vercel.app/app/chat/12345
+// → このファイルが自動的に開かれる
+
+import { useLocalSearchParams } from 'expo-router';
+
+export default function ChatScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  // id = "12345"
+  return <ChatView chatId={id} />;
+}
+```
+
+### デファード・ディープリンク（未インストール→インストール後に指定画面）
+
+```
+Branch.io の「Deferred Deep Linking」機能:
+  1. ユーザーがリンクをタップ → アプリ未インストール → App Storeへ
+  2. インストール完了後、アプリを起動
+  3. Branch SDKが「最初にどの画面を開くべきか」を記憶して自動遷移
+  
+用途: マーケティングリンク・紹介機能・キャンペーンLP
+```
+
+### Emport AIでの活用シナリオ
+
+```
+✅ 使うべきシーン:
+  - メールでチャット共有リンク送付 → タップでそのチャット画面を直接開く
+  - ランディングページ → 無料トライアル登録後、アプリを自動起動
+  - プッシュ通知のディープリンク → 特定の業種ページへ直接遷移
+  - QRコードキャンペーン → 店舗からアプリ特定機能へ誘導
+```
+
+**情報源:**
+- [Expo ディープリンク公式ドキュメント](https://docs.expo.dev/linking/overview/)
+- [Expo Router ディープリンク完全ガイド（2026）](https://reactnativerelay.com/article/deep-linking-react-native-expo-router-universal-links-app-links)
+
+---
+
+## 17. アプリアクセシビリティ（a11y）— App Store審査で求められる要件
+
+**調査日時: 2026-05-14 (第4ラウンド)**
+
+### なぜ重要か
+
+```
+法的要件:
+  - Americans with Disabilities Act (ADA) — 米国
+  - European Accessibility Act (EAA) — EU 2025年6月施行
+  - 日本: 障害者差別解消法（努力義務だが審査で確認される）
+
+App Store審査:
+  - Apple: アクセシビリティ不備でリジェクトされるケースが増加
+  - VoiceOver（iOS）/ TalkBack（Android）で操作不能だとリジェクト対象
+```
+
+### React Native の主要なアクセシビリティProps
+
+```typescript
+// スクリーンリーダー向けラベル
+<TouchableOpacity
+  accessible={true}
+  accessibilityLabel="AIチャットを送信"
+  accessibilityRole="button"
+  accessibilityState={{ disabled: isLoading }}
+  onPress={handleSend}
+>
+  <Text>送信</Text>
+</TouchableOpacity>
+
+// 画像の代替テキスト
+<Image
+  source={avatarUri}
+  accessible={true}
+  accessibilityLabel="AIアシスタントのアバター"
+/>
+
+// 動的な更新をスクリーンリーダーに通知
+import { AccessibilityInfo } from 'react-native';
+AccessibilityInfo.announceForAccessibility('メッセージを送信しました');
+```
+
+### accessibilityRole 一覧（重要なもの）
+
+```
+"button"    — タップ可能なボタン
+"link"      — 外部リンク
+"header"    — セクションの見出し
+"image"     — 画像
+"text"      — テキスト（デフォルト）
+"switch"    — ON/OFFトグル
+"adjustable" — スライダー等の調整可能要素
+```
+
+### テストツール
+
+```
+開発中:
+  @react-native-ama/core   — レンダリング時に違反を検出・ログ出力
+  eslint-plugin-react-native-a11y — コード書き時に警告
+
+CI/自動テスト:
+  jest + @testing-library/react-native — スクリーンリーダー動作をユニットテスト
+
+定期的な手動テスト:
+  iOS: VoiceOver（設定→アクセシビリティ→VoiceOver）
+  Android: TalkBack（設定→ユーザー補助→TalkBack）
+```
+
+### Emport AI での最低限対応
+
+```typescript
+// チャット入力フィールド
+<TextInput
+  accessible={true}
+  accessibilityLabel="業種・質問を入力"
+  accessibilityHint="入力後に送信ボタンをタップしてください"
+  placeholder="例: 建設業の見積もり作成について"
+/>
+
+// ローディング状態
+<ActivityIndicator
+  accessible={true}
+  accessibilityLabel="AIが回答を生成中"
+/>
+
+// reducedMotion（動きに敏感なユーザー向け）
+import { useReducedMotion } from 'react-native-reanimated';
+const reducedMotion = useReducedMotion();
+// reducedMotion が true の場合はアニメーションを無効化
+```
+
+### Emport AIの優先対応リスト
+
+```
+🔴 必須（審査リジェクト防止）:
+  - 全ボタン/タップ要素に accessibilityLabel を設定
+  - 画像に accessibilityLabel を設定
+  - フォーム入力に accessibilityLabel + accessibilityHint
+
+🟡 推奨（評価向上）:
+  - VoiceOver/TalkBack での手動テスト
+  - ローディング状態をスクリーンリーダーに通知
+  - 色だけに頼らない情報伝達（色盲対応）
+
+🟢 余裕があれば:
+  - Dynamic Type（文字サイズ変更）対応
+  - reducedMotion 対応
+  - Focus Management（モーダル開閉時のフォーカス制御）
+```
+
+**情報源:**
+- [React Native アクセシビリティ（公式）](https://reactnative.dev/docs/accessibility)
+- [React Native Accessibility Guide 2026](https://reactnativerelay.com/article/react-native-accessibility-guide-building-inclusive-apps-expo)
+
+---
+
+## 18. Expo Router × 認証フロー — JWT・セッション管理・ログイン状態の永続化
+
+**調査日時: 2026-05-14 (第4ラウンド)**
+
+### 2026年の推奨アーキテクチャ
+
+```
+Expo Router v5 の Protected Routes が認証フローの標準:
+  - Stack.Protected コンポーネントで画面を条件付き保護
+  - クライアントサイドで即座にリダイレクト
+  - ディープリンクからアクセスされても保護が機能する
+```
+
+### ディレクトリ構成
+
+```
+app/
+├── _layout.tsx          ← RootNavigator（認証状態管理の中心）
+├── (auth)/              ← 未認証ユーザー向け画面
+│   ├── login.tsx
+│   └── register.tsx
+├── (app)/               ← 認証済みユーザー向け画面
+│   ├── _layout.tsx
+│   ├── index.tsx        ← チャット画面
+│   └── settings.tsx
+└── index.tsx            ← ルートリダイレクト
+```
+
+### Stack.Protected を使った認証実装
+
+```typescript
+// app/_layout.tsx
+import { Stack } from 'expo-router';
+import { useSession } from '@/hooks/useSession';
+
+export default function RootLayout() {
+  const { session, isLoading } = useSession();
+
+  if (isLoading) return <SplashScreen />;
+
+  return (
+    <Stack>
+      {/* 認証済みユーザーのみアクセス可能 */}
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+
+      {/* 未認証ユーザーのみアクセス可能 */}
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+```
+
+### セッション管理（expo-secure-store を使ったJWT保存）
+
+```typescript
+// hooks/useSession.ts
+import * as SecureStore from 'expo-secure-store';
+import { useState, useEffect } from 'react';
+
+const TOKEN_KEY = 'emport_ai_token';
+
+export function useSession() {
+  const [session, setSession] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // アプリ起動時にトークンを読み込み
+    SecureStore.getItemAsync(TOKEN_KEY).then((token) => {
+      setSession(token);
+      setIsLoading(false);
+    });
+  }, []);
+
+  const signIn = async (token: string) => {
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    setSession(token);
+  };
+
+  const signOut = async () => {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    setSession(null);
+  };
+
+  return { session, isLoading, signIn, signOut };
+}
+```
+
+### バックエンド（Flask）でのJWT発行
+
+```python
+# app.py (Railway上のバックエンド)
+import jwt
+import datetime
+
+JWT_SECRET = os.environ.get('JWT_SECRET')
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    access_code = data.get('access_code')
+    
+    if access_code != os.environ.get('ACCESS_CODE'):
+        return jsonify({'error': '認証コードが違います'}), 401
+    
+    # JWTトークンを発行（24時間有効）
+    payload = {
+        'user': 'authenticated',
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+    return jsonify({'token': token})
+
+def verify_token(token: str) -> bool:
+    try:
+        jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return True
+    except jwt.ExpiredSignatureError:
+        return False
+    except jwt.InvalidTokenError:
+        return False
+```
+
+### 認証フロー全体像
+
+```
+1. アプリ起動
+   → expo-secure-store からJWT取得試行
+   → トークンあり: 認証済み画面へ（(app)/）
+   → トークンなし: ログイン画面へ（(auth)/login）
+
+2. ログイン
+   → アクセスコード入力 → Railwayバックエンドへ POST
+   → JWTが返ってくる → expo-secure-store に保存
+   → Stack.Protected が session を検知 → 自動的に(app)/へ遷移
+
+3. API呼び出し
+   → SecureStoreからJWT取得
+   → Authorization: Bearer <token> ヘッダーに付与
+   → バックエンドでverify_token()で検証
+
+4. ログアウト
+   → SecureStore.deleteItemAsync()
+   → session = null → Stack.Protected が(auth)/へリダイレクト
+```
+
+**情報源:**
+- [Expo Router 認証（公式）](https://docs.expo.dev/router/advanced/authentication/)
+- [Protected Routes（公式）](https://docs.expo.dev/router/advanced/protected/)
+
+---
+
+## 19. ASO（App Store最適化）— 日本市場でダウンロードを最大化する
+
+**調査日時: 2026-05-14 (第4ラウンド)**
+
+### ASOの基本原則
+
+```
+App Store（iOS）の特徴:
+  - アプリ名（30文字）・サブタイトル（30文字）・キーワード欄（100文字）が検索インデックス
+  - 説明文は検索インデックスされない → ユーザー説得用に書く
+  - 検索が最大の流入経路（全流入の約65%）
+
+Google Play（Android）の特徴:
+  - タイトル・短い説明・長い説明 全てが検索インデックス
+  - 説明文にキーワードを自然に入れることで上位表示可能
+  - 1000文字ごとに同じキーワード1回が最適密度
+```
+
+### 2026年のASOトレンド
+
+```
+1. AIによるキーワード提案
+   - Apple: AI生成の「App Store Tags」が2026年より導入
+   - スクリーンショット・説明文からAIが自動でタグを生成
+
+2. ロングテールキーワードの重要性上昇
+   - 「AIアシスタント」より「中小企業向けAI業務改善アシスタント」が転換率高い
+   - 競合の少ないロングテールで上位を狙う戦略が2026年主流
+
+3. エンゲージメント指標の比重増加
+   - 2026年はダウンロード数よりリテンション率（DAU/MAU）がランキングに影響
+   - セッション頻度・評価数・評価スコアが重要
+```
+
+### 日本市場特有の注意点
+
+```
+検索キーワードの形式:
+  - ひらがな・カタカナ・漢字 それぞれで検索される
+  - ローマ字入力でも変換後の日本語で検索が届く
+  - 例: "AI チャット" / "AIチャット" / "ai chat" 全て別キーワード
+
+ひらがな/カタカナの両方を登録するのが必須:
+  ✅ AIアシスタント（カタカナ）
+  ✅ あいあしすたんと（ひらがな）← 意外と検索される
+  ✅ 人工知能（漢字）
+  ✅ 業務改善（業界キーワード）
+```
+
+### Emport AI の最適なキーワード戦略
+
+```
+アプリ名（30文字）:
+  "Emport AI - 中小企業向けAIアシスタント"
+
+サブタイトル（30文字）:
+  "業務改善・見積・提案書を自動作成"
+
+キーワード欄（100文字、カンマ区切り）:
+  AI,業務効率化,中小企業,チャットGPT,見積書,提案書,
+  コンサル,経営,自動化,AIアシスタント,ビジネス
+
+説明文の冒頭（重要 — 最初の3行が展開前に表示される）:
+  "中小企業の業務を最大80%効率化するAIアシスタント。
+   建設業・製造業・小売業など業種に特化したAIが、
+   見積もり・提案書・報告書を数秒で自動作成します。"
+```
+
+### ビジュアル最適化（インストール率への影響大）
+
+```
+スクリーンショット戦略:
+  - 最初の3枚が最重要（プレビューで表示される）
+  - キャプションテキストを入れる（画面だけでは伝わらない）
+  - Before/After で効果を視覚化
+
+App プレビュー動画（最大30秒）:
+  - スクリーンショットより高いコンバージョンが期待できる
+  - 実際の操作画面を見せる（AI回答生成の速さを見せる）
+  - 最初の5秒が勝負（音なしで視聴される前提で作る）
+```
+
+### ASOツール
+
+```
+無料:
+  AppFollow    — ランキング追跡・レビュー管理
+  Store Maven  — スクリーンショットA/Bテスト
+
+有料（効果高）:
+  AppTweak     — 最も包括的なキーワード分析プラットフォーム
+  MobileAction — 競合分析・市場シェア追跡
+```
+
+**情報源:**
+- [ASO 2026 完全ガイド（ASOMobile）](https://asomobile.net/en/blog/aso-in-2026-the-complete-guide-to-app-optimization/)
+- [日本市場のASO攻略（phiture）](https://phiture.com/asostack/how-to-crack-open-the-japanese-market-part-i-kwo-462bce02d69b/)
+
+---
+
+## 20. Emport AI特有の技術課題 — チャット履歴管理・長セッション最適化
+
+**調査日時: 2026-05-14 (第4ラウンド)**
+
+### チャット履歴管理の問題
+
+```
+AIチャットアプリ特有の課題:
+  1. メッセージが増えるにつれてFlatListが重くなる
+  2. Claude APIに送るcontext（履歴）が長くなるとトークン消費増
+  3. 長セッション中のメモリリーク
+  4. アプリ再起動後の履歴復元
+```
+
+### FlatList → FlashList 移行（メッセージリスト最適化）
+
+```typescript
+// Before: FlatList（重い）
+<FlatList
+  data={messages}
+  renderItem={({ item }) => <MessageBubble message={item} />}
+  keyExtractor={(item) => item.id}
+  inverted  // チャットは下から上に表示
+/>
+
+// After: FlashList（5-10倍高速）
+import { FlashList } from '@shopify/flash-list';
+
+<FlashList
+  data={messages}
+  renderItem={({ item }) => <MessageBubble message={item} />}
+  estimatedItemSize={80}  // メッセージの推定高さ
+  keyExtractor={(item) => item.id}
+  inverted
+/>
+```
+
+### React.memo でメッセージコンポーネントを最適化
+
+```typescript
+// MessageBubble.tsx
+const MessageBubble = React.memo(({ message }: { message: Message }) => {
+  return (
+    <View style={styles.bubble}>
+      <Text>{message.content}</Text>
+      <Text style={styles.timestamp}>{message.timestamp}</Text>
+    </View>
+  );
+}, (prevProps, nextProps) => {
+  // メッセージIDが同じなら再レンダリングしない
+  return prevProps.message.id === nextProps.message.id;
+});
+```
+
+### Claude APIへ送るcontextの最適化
+
+```typescript
+// 全履歴をAPIに送らず最新N件に制限
+const MAX_CONTEXT_MESSAGES = 20;
+
+const buildApiMessages = (messages: Message[]) => {
+  // 最新20件のみをコンテキストとして送る
+  const contextMessages = messages.slice(-MAX_CONTEXT_MESSAGES);
+  
+  return contextMessages.map(msg => ({
+    role: msg.role,  // 'user' | 'assistant'
+    content: msg.content
+  }));
+};
+
+// さらに最適化: 要約を使う
+// 古い会話履歴を「これまでの会話の要約: ...」に置き換える
+const summarizeOldMessages = async (messages: Message[]) => {
+  const oldMessages = messages.slice(0, -10); // 最新10件以外
+  const summary = await callClaudeAPI(
+    `以下の会話を3行で要約してください: ${JSON.stringify(oldMessages)}`
+  );
+  return [
+    { role: 'system', content: `これまでの会話の要約: ${summary}` },
+    ...messages.slice(-10) // 最新10件はそのまま
+  ];
+};
+```
+
+### MMKV でチャット履歴を高速永続化
+
+```typescript
+import { MMKV } from 'react-native-mmkv';
+
+const storage = new MMKV();
+const CHAT_KEY = 'chat_messages';
+
+// 保存（AsyncStorageより30倍速い）
+const saveMessages = (messages: Message[]) => {
+  storage.set(CHAT_KEY, JSON.stringify(messages));
+};
+
+// 読み込み（同期的 → 画面遷移が速い）
+const loadMessages = (): Message[] => {
+  const data = storage.getString(CHAT_KEY);
+  return data ? JSON.parse(data) : [];
+};
+```
+
+### 長セッションのメモリリーク防止
+
+```typescript
+// useEffect のクリーンアップを必ず実装
+useEffect(() => {
+  const subscription = someEventEmitter.addListener('event', handler);
+  return () => subscription.remove(); // ← クリーンアップ必須
+}, []);
+
+// 不要になったデータはnullをセット（GCを助ける）
+useEffect(() => {
+  return () => {
+    setMessages([]); // コンポーネントアンマウント時にクリア
+  };
+}, []);
+```
+
+### Emport AI のチャット最適化ロードマップ
+
+```
+Phase 1（今すぐ）:
+  ✅ FlashList に移行（estimatedItemSize=80）
+  ✅ MessageBubble を React.memo 化
+  ✅ APIに送るコンテキストを最新20件に制限
+
+Phase 2（次のスプリント）:
+  - MMKV でチャット履歴を永続化
+  - セッション要約機能（古い会話を圧縮）
+  - ページネーション（100件以上は遅延読み込み）
+
+Phase 3（将来）:
+  - サーバーサイドでのチャット履歴管理
+  - ベクトル検索による関連過去会話の検索
+  - Streaming API対応（逐次表示でUX向上）
+```
+
+**情報源:**
+- [React Native Performance 2026 Playbook（RapidNative）](https://www.rapidnative.com/blogs/react-native-performance-optimization-2026-playbook)
+- [Stream Chat SDK パフォーマンスガイド](https://getstream.io/chat/docs/sdk/react-native/v4/guides/performance-guide/)
+
+---
+
+## 21. 次のリサーチ課題（第4ラウンド終了）
+
+第5ラウンドで調査予定：
+1. **React Native アニメーション — Reanimated 4** — workletによるUI thread実行・60fps保証
+2. **Expo ローカライズ（i18n）** — 多言語対応の実装方法
+3. **モバイルアプリのCrash監視** — Sentry・Firebase Crashlytics設定
+4. **Expo Dev Client / Development Build** — Expo Goを超えたカスタムビルド環境
+5. **React Native Web対応** — 1つのコードベースでWeb+Mobile両対応
