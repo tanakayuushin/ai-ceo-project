@@ -3555,3 +3555,340 @@ Phase 3（エンタープライズ化）:
 3. **AIアプリの競合分析** — 日本市場の類似AIアプリ・差別化戦略
 4. **モバイルアプリのSEO** — インデックス化・コンテンツ戦略とアプリ連携
 5. **React Native パッケージ管理** — yarn vs pnpm vs bun の2026年比較
+
+---
+
+## 45. Maestro E2E テスト — YAMLで書けるE2Eテスト
+
+**調査日時: 2026-05-14 (第9ラウンド)**
+
+### Maestroの特徴
+
+```
+2026年のE2Eテストの標準:
+  - テストをYAMLで記述（コードを書かなくていい）
+  - アプリのコードに一切変更不要（外部から操作）
+  - iOS/Android両対応
+  - Expo Go / Development Build / EAS Workflows 全対応
+  - CIへの組み込みが最も簡単
+```
+
+### インストール
+
+```bash
+# macOS
+brew tap mobile-dev-inc/tap
+brew install maestro
+
+# Windows
+iex "& {$(irm get.scoop.sh)} -RunAsNonInteractive"
+scoop install maestro
+```
+
+### テストファイル（YAML）の書き方
+
+```yaml
+# tests/login.yaml — ログインフローのE2Eテスト
+appId: ai.emport.app
+---
+- launchApp
+- assertVisible: "Emport AI"        # スプラッシュ画面の確認
+- tapOn: "ログイン"                  # ボタンをタップ
+- inputText:
+    text: "TEST-CODE-001"            # アクセスコードを入力
+- tapOn: "確認"
+- assertVisible: "チャット"          # ログイン成功後の画面を確認
+- takeScreenshot: "after-login"      # スクリーンショット撮影
+```
+
+```yaml
+# tests/chat-flow.yaml — チャット送信のE2Eテスト
+appId: ai.emport.app
+---
+- launchApp
+- tapOn: "建設業"                   # 業種を選択
+- assertVisible: "建設業を選択しました"
+- tapOn:
+    id: "message-input"             # testID で要素を指定
+- inputText:
+    text: "見積書の作成方法を教えてください"
+- tapOn: "送信"
+- waitForAnimationToEnd             # AI応答を待機
+- assertVisible:
+    text: "見積書"                   # AI回答に「見積書」が含まれることを確認
+    timeout: 10000                  # 10秒待機
+```
+
+### EAS Workflows での自動テスト
+
+```yaml
+# .eas/workflows/e2e-test.yml
+name: E2E Test
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    type: build
+    steps:
+      - name: Build for testing
+        run: eas build --platform android --profile testing --non-interactive
+      
+      - name: Run Maestro tests
+        run: maestro test tests/
+```
+
+### testID の設定（コンポーネント側）
+
+```typescript
+// テスト用IDをコンポーネントに設定
+<TextInput
+  testID="message-input"   // Maestroから testID で要素を特定できる
+  placeholder="質問を入力"
+/>
+
+<TouchableOpacity testID="send-button" onPress={handleSend}>
+  <Text>送信</Text>
+</TouchableOpacity>
+```
+
+### Emport AI のテスト優先順位
+
+```
+E2Eテスト（Maestro）:
+  1. ログインフロー（アクセスコード入力 → 認証成功）
+  2. チャット送信（業種選択 → 送信 → AI応答表示）
+  3. 業種切り替え（別業種への切り替え）
+
+ユニットテスト（Jest）:
+  - APIコールのモック・エラーハンドリング
+  - Zodスキーマのバリデーション
+
+→ まずE2Eで主要フローを保護、詳細はユニットテストで
+```
+
+**情報源:**
+- [Maestro E2E on EAS Workflows（公式）](https://docs.expo.dev/eas/workflows/examples/e2e-tests/)
+- [React Native E2E テスト Maestro 2026（addjam）](https://addjam.com/blog/2026-02-18/our-experience-adding-e2e-testing-react-native-maestro/)
+
+---
+
+## 46. Expo SDK 55 — 2026年最新の重大な変更点
+
+**調査日時: 2026-05-14 (第9ラウンド)**
+
+### SDK 55 の主要な変更
+
+```
+React Native 0.83 + React 19.2（最新）
+New Architecture が強制（もはやオプションではない）
+Legacy Architectureが削除済み
+```
+
+### 最重要: Bytecode Diffing で更新サイズが75%削減
+
+```
+従来のOTA Update:
+  コード1行変更 → JSバンドル全体（数MB）をダウンロード
+  → ユーザーの通信量を無駄に使う
+
+SDK 55（Bytecode Diffing）:
+  コード1行変更 → 変更された差分のみ（数KB）をダウンロード
+  → 更新サイズが約25%まで削減（75%削減）
+  → ユーザーはより速く最新版を取得できる
+```
+
+### Expo Router v7（SDK 55同梱）
+
+```
+主な新機能:
+  - React Server Components（RSC）のモバイル対応（実験的）
+  - Server-Side Rendering (SSR) のalpha版（Web）
+  - データローダー（実験的）
+  - Better static site generation
+
+実用的な影響:
+  - iOS/Android向けRSCは2026年時点でまだ実験的
+  - Web向けSSRはVercelにデプロイすれば動作
+  - Emport AIはモバイル中心なので今は様子見
+```
+
+### expo-widgets（iOS ウィジェット）
+
+```typescript
+// SDK 55から: iOSホーム画面ウィジェットをExpo UIで作成可能
+// ネイティブコード不要！
+
+// app/widget/index.tsx（ウィジェット専用ファイル）
+import { Widget } from 'expo-widgets';
+
+export default function ChatWidget() {
+  return (
+    <Widget>
+      <Widget.Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+        Emport AI
+      </Widget.Text>
+      <Widget.Text>
+        タップしてAIアシスタントを開く
+      </Widget.Text>
+    </Widget>
+  );
+}
+```
+
+### SDK 55 への移行注意点
+
+```
+❌ 非推奨 → 削除された:
+  - Legacy Architecture（Bridge）— 使っていたら移行必須
+  - Expo Go でのプッシュ通知（SDK 53から）
+
+✅ 推奨される変更:
+  - New Architecture: 強制になったので設定確認不要
+  - app.json の experiments.newArchEnabled は削除可能
+
+Emport AI の対応:
+  - 現時点でSDK 53使用中 → SDK 55への移行計画が必要
+  - Breaking Changesを確認してから移行する
+```
+
+**情報源:**
+- [Expo SDK 55 公式ChangeLog](https://expo.dev/changelog/sdk-55)
+- [What's New in Expo SDK 55（Medium）](https://medium.com/@onix_react/whats-new-in-expo-sdk-55-6eac1553cee8)
+
+---
+
+## 47. 日本市場の競合分析 — Emport AIの差別化戦略
+
+**調査日時: 2026-05-14 (第9ラウンド)**
+
+### 2026年日本の中小企業AI市場
+
+```
+市場規模:
+  日本の対話型AI市場: 2034年に34億960万ドル（CAGR 16.63%）
+  中小企業のAI導入率: 約4社に1社（25%程度）
+  → まだ75%が未導入 = 巨大なブルーオーシャン
+
+中小企業向け主要AI（競合）:
+  ChatGPT    — 汎用性最高・最も知名度あり・月額$20
+  Claude      — 長文処理・要約が得意・月額$20
+  Microsoft Copilot — Office統合が強み・Microsoft 365に統合
+  PKSHA      — 日本語AI・エンタープライズ向け・高価格
+  Dify       — AIワークフロー構築・エンジニア向け
+```
+
+### Emport AIが持つ差別化優位性
+
+```
+1. 業種特化（最大の差別化）
+   競合: 汎用AIアシスタント
+   Emport AI: 建設業・製造業・小売業等の業種専門知識を組み込み
+   → 「AIの回答が業界の常識を知っている」という体験
+
+2. モバイルファースト
+   競合: PCブラウザ中心（ChatGPT・Claude）
+   Emport AI: スマートフォンで使えるネイティブアプリ
+   → 現場でスマホを使う職人・営業職に刺さる
+
+3. 超シンプルUI
+   競合: 高機能だが複雑（AIに慣れていないと難しい）
+   Emport AI: 業種を選んで話しかけるだけ
+   → 「AIを使ったことがない」層へのハードルが最低
+
+4. 低価格（月額980円）
+   競合: ChatGPT ¥2,988/月・Claude ¥2,988/月
+   Emport AI: ¥980/月（3分の1の価格）
+   → 中小企業経営者が承認しやすい金額
+
+5. IT導入補助金対象化（将来）
+   → IT支援事業者登録後: 補助率50%（実質¥490/月）
+   → 競合の汎用AIは補助金対象外が多い
+```
+
+### 弱点と対策
+
+```
+弱点:
+  - ブランド認知度ゼロ（ChatGPTに対してほぼ無名）
+  - 機能が少ない（汎用AIに比べて限定的）
+
+対策:
+  - ニッチを狙う（「建設業専門AI」で商工会議所経由）
+  - 無料トライアルで価値を体験させてから有料化
+  - 口コミ・紹介でスケール（実際に便利なら広がる）
+```
+
+**情報源:**
+- [日本の中小企業向けAIツール比較 2026（sei-san-sei）](https://www.sei-san-sei.com/blog/blog-0090.html)
+- [日本の対話型AI市場規模（NEWSCAST）](https://newscast.jp/smart/news/2793351)
+
+---
+
+## 48. パッケージマネージャー 2026年比較 — npm vs yarn vs pnpm vs bun
+
+**調査日時: 2026-05-14 (第9ラウンド)**
+
+### 2026年のパッケージマネージャー比較
+
+```
+速度比較（cold install、200依存関係）:
+  Bun:   最速（10〜30倍速い、Zigで実装）
+  pnpm:  速い（Node.jsベースの中では最速）
+  Yarn Berry: 中程度
+  npm:   最も遅い（デフォルトだが遅い）
+
+ディスク使用量（10プロジェクト）:
+  pnpm:  612MB（ハードリンクで重複排除）
+  npm:   4.87GB（プロジェクトごとに全コピー）
+  → pnpmは87%のディスク削減
+
+React Native/Expo との互換性:
+  npm:   ✅ 完全対応（デフォルト）
+  yarn:  ✅ 完全対応（Expoで長年使われてきた）
+  pnpm:  ✅ RN 0.76+ で公式サポート（Expoモノレポに推奨）
+  bun:   ⚠️ 互換性が高まったが一部問題あり
+```
+
+### 2026年の推奨
+
+```
+React Native / Expo 単体プロジェクト:
+  → npm または yarn（最も安全・ドキュメントが多い）
+  
+Expoモノレポ（複数アプリ管理）:
+  → pnpm（ディスク効率・速度・RN 0.76+で公式サポート）
+  
+速度最優先の新プロジェクト:
+  → Bun（ただしRNとの互換性を十分確認）
+```
+
+### Emport AI の現在の構成
+
+```
+現在: npm（デフォルト）→ 変更不要
+理由:
+  - 単体プロジェクト（モノレポではない）
+  - npmで問題なく動作している
+  - 変更のリスクより安定性を優先
+
+将来: pnpmへの移行を検討
+  - アプリが複数になった場合（iOS/Android/Web）
+  - ディスク効率の改善が必要な場合
+```
+
+**情報源:**
+- [pnpm vs npm vs yarn vs Bun 2026年比較（DEV Community）](https://dev.to/pockit_tools/pnpm-vs-npm-vs-yarn-vs-bun-the-2026-package-manager-showdown-51dc)
+- [React Native パッケージマネージャー比較（reintech）](https://reintech.io/blog/npm-vs-yarn-vs-pnpm-vs-bun-2026-comparison)
+
+---
+
+## 49. 次のリサーチ課題（第9ラウンド終了）
+
+第10ラウンドで調査予定：
+1. **React Native のエラーハンドリング設計** — Error Boundary・グローバルエラー処理
+2. **Expo アプリの CI/CD 完全自動化** — GitHub Actions + EAS + Sentry の連携
+3. **モバイルアプリのアナリティクス** — Amplitude・Mixpanel・PostHog 比較
+4. **React Native + LLM 次世代トレンド** — LLMをオンデバイスで動かす（llama.cpp等）
+5. **Emport AI 開発ロードマップ最終整理** — 優先度・工数・技術スタックの統合
