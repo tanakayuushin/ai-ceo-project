@@ -2040,3 +2040,499 @@ const styles = StyleSheet.create({
 3. **Expo Camera / 画像認識** — OCR・名刺読み取り・業務書類デジタル化
 4. **App Store レビュー管理戦略** — 良いレビューを増やす・悪いレビューへの対処
 5. **React Native のデバッグ技法** — Flipper・Reactotron・新Architecture Debugger
+
+---
+
+## 28. A/Bテスト & 機能フラグ — Firebase Remote Config
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### 機能フラグとは
+
+```
+機能フラグ（Feature Flag）= コードを変えずにアプリの動作を変える仕組み
+
+活用例:
+  - 新UIを一部ユーザーのみに先行公開
+  - A/Bテスト: タイトルAとタイトルBでどちらがCTR高いか計測
+  - 問題のある機能を即座にOFFにする（リリース後のキルスイッチ）
+  - 有料プランのユーザーだけに機能を見せる
+```
+
+### Firebase Remote Config セットアップ
+
+```bash
+# @react-native-firebase 全体インストール（Development Build必要）
+npx expo install @react-native-firebase/app @react-native-firebase/remote-config
+
+# または Expo公式フィーチャーフラグ（シンプル版）
+# Expoドキュメント: docs.expo.dev/guides/using-feature-flags/
+```
+
+```typescript
+// hooks/useRemoteConfig.ts
+import remoteConfig from '@react-native-firebase/remote-config';
+
+export async function initRemoteConfig() {
+  await remoteConfig().setDefaults({
+    new_chat_ui_enabled: false,      // 新しいチャットUI
+    max_free_messages: 10,           // 無料メッセージ数
+    show_industry_picker: true,      // 業種選択UI表示
+    welcome_message: 'こんにちは！', // ウェルカムメッセージ
+  });
+
+  // 5分ごとに最新値を取得（本番環境）
+  await remoteConfig().setConfigSettings({ minimumFetchIntervalMillis: 300000 });
+  await remoteConfig().fetchAndActivate();
+}
+
+export function useFeatureFlag(key: string): boolean {
+  return remoteConfig().getBoolean(key);
+}
+
+export function useRemoteValue(key: string): string {
+  return remoteConfig().getString(key);
+}
+```
+
+```typescript
+// 使用例
+export function ChatScreen() {
+  const newUiEnabled = useFeatureFlag('new_chat_ui_enabled');
+  const maxMessages = remoteConfig().getNumber('max_free_messages');
+
+  return newUiEnabled ? <NewChatUI /> : <OldChatUI />;
+}
+```
+
+### Firebase A/Bテスト設定
+
+```
+Firebaseコンソールでの設定:
+  1. Remote Config → A/Bテスト作成
+  2. テスト対象: 50%にnew_chat_ui_enabled=true、50%にfalse
+  3. 計測指標: セッション継続時間・メッセージ送信数・有料転換率
+  4. 統計的有意性が出るまで継続（通常2週間）
+
+Emport AIでテストすべき項目:
+  - ウェルカムメッセージの文章（転換率への影響）
+  - 無料プランのメッセージ制限数（5件 vs 10件 vs 20件）
+  - 業種選択UIの位置（最初 vs チャット中）
+  - CTA（有料プランへの誘導）のコピー
+```
+
+### 軽量な代替: Expo公式フィーチャーフラグ
+
+```typescript
+// Firebase不要のシンプルな実装
+// docs.expo.dev/guides/using-feature-flags/
+
+const FEATURE_FLAGS = {
+  newChatUI: process.env.EXPO_PUBLIC_FEATURE_NEW_CHAT === 'true',
+  analyticsEnabled: process.env.EXPO_PUBLIC_ANALYTICS === 'true',
+};
+
+// .env.production
+// EXPO_PUBLIC_FEATURE_NEW_CHAT=true
+```
+
+**情報源:**
+- [React Native Feature Flags（Expo公式）](https://docs.expo.dev/guides/using-feature-flags/)
+- [Firebase Remote Config（公式）](https://firebase.google.com/docs/remote-config)
+
+---
+
+## 29. オフライン対応 — WatermelonDB vs MMKV vs SQLite
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### 2026年のオフライン対応ライブラリ比較
+
+```
+用途別推奨:
+
+軽量データ（設定・キャッシュ・トークン）:
+  → MMKV（30倍速、同期読み書き、既に導入済み）
+
+構造化データ（チャット履歴・顧客データ・大量レコード）:
+  → WatermelonDB または expo-sqlite
+
+リアルタイム同期が必要:
+  → WatermelonDB + Supabase/バックエンド
+  → RxDB（最も包括的、CouchDB/Supabase/Firestoreに対応）
+```
+
+### WatermelonDB の特徴
+
+```
+✅ パフォーマンス: 1,000件の一括挿入が10件と同じ速度（SQLiteトランザクション活用）
+✅ Observable: データ変更が自動でUIに反映（RxJS的）
+✅ 同期プロトコル内蔵: サーバーとのdiff同期（変更分だけ転送）
+✅ 50,000件以上のレコードでも高速
+
+❌ 複雑: セットアップが難しい（スキーマ定義が必要）
+❌ Development Build必須（Expo Goでは動かない）
+❌ Expo managedでは追加設定が必要
+```
+
+### expo-sqlite（シンプルなSQL）
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+const db = SQLite.openDatabaseSync('emport_ai.db');
+
+// テーブル作成
+db.execSync(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    content TEXT NOT NULL,
+    role TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    session_id TEXT NOT NULL
+  );
+`);
+
+// メッセージ保存
+const saveMessage = (message: Message) => {
+  db.runSync(
+    'INSERT INTO messages (id, content, role, timestamp, session_id) VALUES (?, ?, ?, ?, ?)',
+    [message.id, message.content, message.role, Date.now(), message.sessionId]
+  );
+};
+
+// 特定セッションのメッセージ取得
+const getSessionMessages = (sessionId: string): Message[] => {
+  return db.getAllSync(
+    'SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC',
+    [sessionId]
+  );
+};
+```
+
+### Emport AI のオフライン戦略
+
+```
+現状の判断: 本格的なオフライン対応は後回し
+
+理由:
+  - Emport AIはAI回答がメイン → ネットなしでは機能しない
+  - オフライン = キャッシュ程度で十分
+
+段階的な実装:
+Phase 1（今）: MMKV でチャット履歴を保存（既に設計済み）
+Phase 2（将来）: expo-sqlite で複数セッション・検索対応
+Phase 3（スケール後）: WatermelonDB + バックエンド同期
+
+→ Phase 1から始めて、ユーザーのニーズに合わせて拡張する
+```
+
+**情報源:**
+- [WatermelonDB 公式（GitHub）](https://github.com/nozbe/watermelondb)
+- [TinyBase vs WatermelonDB vs RxDB 2026比較](https://www.pkgpulse.com/blog/tinybase-vs-watermelondb-vs-rxdb-offline-first-2026)
+
+---
+
+## 30. Expo Camera & OCR — 業務書類のデジタル化
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### OCRの実装方法（2026年）
+
+```
+方法1: MLKit（Google）— Android強み
+  react-native-mlkit-ocr
+  - Development Build必須
+  - iOS/Android対応
+  - オフラインでOCR可能
+
+方法2: Vision Framework（Apple）— iOS強み
+  expo-ocr
+  - iOS専用（iPhone/iPad）
+  - iOSの組み込みOCRエンジン使用
+  - 高精度だがAndroid非対応
+
+方法3: Google Vision API（クラウド）— 最高精度
+  - サーバー経由で送信
+  - ネット接続必要
+  - 月1,000件まで無料
+  - 日本語精度が最高
+
+→ Emport AIには Google Vision API が最適（既にFlaskバックエンドあり）
+```
+
+### Google Vision API での OCR 実装
+
+```typescript
+// フロントエンド: 画像を撮影してサーバーへ送信
+import { CameraView, useCameraPermissions } from 'expo-camera';
+
+export function DocumentScanner() {
+  const cameraRef = useRef(null);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const scanDocument = async () => {
+    const photo = await cameraRef.current.takePictureAsync({ base64: true });
+    
+    // バックエンドへ送信してOCR
+    const response = await fetch(`${API_URL}/api/ocr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: photo.base64 })
+    });
+    const { text } = await response.json();
+    
+    // 抽出したテキストをAIチャットに入力
+    setInputText(`以下の書類の内容を整理してください:\n${text}`);
+  };
+
+  return (
+    <CameraView ref={cameraRef} style={styles.camera}>
+      <TouchableOpacity onPress={scanDocument} style={styles.button}>
+        <Text>書類をスキャン</Text>
+      </TouchableOpacity>
+    </CameraView>
+  );
+}
+```
+
+```python
+# バックエンド（Flask）: Google Vision API を呼び出す
+import google.cloud.vision as vision
+import base64
+
+@app.route('/api/ocr', methods=['POST'])
+def ocr():
+    image_b64 = request.json['image']
+    image_bytes = base64.b64decode(image_b64)
+    
+    client = vision.ImageAnnotatorClient()
+    image = vision.Image(content=image_bytes)
+    response = client.text_detection(image=image)
+    
+    extracted_text = response.text_annotations[0].description if response.text_annotations else ''
+    return jsonify({'text': extracted_text})
+```
+
+### Emport AIでのOCR活用シナリオ
+
+```
+✅ 実用的なユースケース:
+  - 請求書・見積書をカメラで読み取り → AIで分析・要約
+  - 名刺を読み取り → 顧客情報として整理
+  - 工事現場の黒板を読み取り → 日報自動作成
+  - 手書きメモを読み取り → テキスト化してAIに渡す
+
+💡 Emport AIの差別化:
+  「カメラで書類をスキャン → AI解析」の流れは
+  中小企業にとって非常に価値が高い機能になりえる
+```
+
+**情報源:**
+- [Expo Camera 公式ドキュメント](https://docs.expo.dev/versions/latest/sdk/camera/)
+- [Google Vision API + React Native](https://medium.com/swlh/how-to-integrate-google-vision-api-with-react-native-and-expo-6af0db04b4e8)
+
+---
+
+## 31. App Store レビュー管理戦略
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### レビューがダウンロード数に与える影響
+
+```
+データ（2026年）:
+  評価が★1上がる → ダウンロード数が25〜40%増加
+  評価4.5以上 → 検索ランキング優遇
+  評価3.5未満 → App Storeの特集から除外される可能性
+
+→ App Storeレビューは最も費用対効果の高いASO施策
+```
+
+### In-App Review（アプリ内レビュー誘導）
+
+```typescript
+// expo-store-review: Expo公式のレビュー誘導API
+import * as StoreReview from 'expo-store-review';
+
+// 最適なタイミングでレビューを依頼
+const requestReview = async () => {
+  const isAvailable = await StoreReview.isAvailableAsync();
+  if (isAvailable) {
+    await StoreReview.requestReview();
+    // → iOS/Androidのネイティブレビューダイアログが表示される
+  }
+};
+```
+
+### 最適なレビュー依頼タイミング
+
+```
+✅ 依頼すべきタイミング:
+  - AI回答を「役に立った」と評価した直後
+  - チャット10回目の節目
+  - アプリ使用3日目（継続利用が確認できた時）
+  - 有料プランに転換した直後
+
+❌ 避けるべきタイミング:
+  - アプリ初回起動時
+  - エラー発生直後
+  - 複雑な操作中
+  - 同じユーザーに1週間以内に2回目
+
+重要: iOS/Androidとも年間3回までしかダイアログを表示できない
+→ タイミングを慎重に選ぶ
+```
+
+### 低評価レビューへの対応戦略
+
+```
+返信の基本:
+  1. 感謝を述べる（批判でも）
+  2. 問題を認める（言い訳しない）
+  3. 解決策または改善予定を伝える
+  4. 24時間以内に返信（素早さが重要）
+
+返信テンプレート（日本語）:
+  "ご意見をいただきありがとうございます。
+   〇〇についてご不便をおかけして申し訳ございません。
+   次回アップデートで改善予定です。
+   引き続きよろしくお願いします。— Emport AIチーム"
+
+低評価が増えたら:
+  → Sentry でクラッシュログを確認
+  → レビュー内容を機能改善のフィードバックとして活用
+```
+
+### レビュー管理ツール
+
+```
+AppFollow（無料プランあり）:
+  - 複数ストアのレビューを一元管理
+  - 返信テンプレート機能
+  - レビュー感情分析
+
+Appbot:
+  - AIによるレビュー感情分析
+  - Slackへの通知統合
+
+→ 初期はAppFollowの無料プランで十分
+```
+
+**情報源:**
+- [Expo StoreReview 公式](https://docs.expo.dev/versions/latest/sdk/storereview/)
+- [App Store レビュー完全ガイド 2026（AppTweak）](https://www.apptweak.com/en/aso-blog/app-store-reviews)
+
+---
+
+## 32. React Native デバッグ技法 — 2026年最新ツール
+
+**調査日時: 2026-05-14 (第6ラウンド)**
+
+### 2026年のデバッグツール全体像
+
+```
+🟢 現在の標準（推奨）:
+  React Native DevTools — RN 0.76以降の公式デバッガー
+  Chromeプロトコル経由でHermes VMに直接接続
+  → JS Thread を止めないので本番に近い動作でデバッグ可能
+
+🟡 サードパーティ（補完的に使う）:
+  Reactotron — ネットワーク・Redux状態の可視化（デバッグモード不要）
+  
+❌ 非推奨（過去の遺物）:
+  Flipper — RN 0.74以降はデフォルト外（手動設定が必要）
+  Chrome Remote Debugging — Hermes移行後は非推奨
+```
+
+### React Native DevTools の使い方
+
+```bash
+# アプリを起動してDevToolsを開く
+npx expo start
+
+# シミュレーターで: Cmd+D（iOS）/ Cmd+M（Android）→ "Open DevTools"
+# または: ターミナルで 'j' を押す
+```
+
+```
+DevToolsでできること:
+  ✅ Console（console.log・エラー確認）
+  ✅ Sources（ブレークポイント・ステップ実行）
+  ✅ Memory（メモリ使用量・ヒープスナップショット）
+  ✅ Performance Panel（0.83+）— フレームドロップ・JS実行時間を可視化
+  ✅ Network Inspector（HTTPリクエスト確認）
+  ✅ React DevTools（コンポーネントツリー・Propsの確認）
+```
+
+### Reactotron — デバッグモード不要の監視ツール
+
+```bash
+npm install --save-dev reactotron-react-native reactotron-redux
+```
+
+```typescript
+// ReactotronConfig.ts（開発時のみ読み込む）
+if (__DEV__) {
+  const Reactotron = require('reactotron-react-native').default;
+  Reactotron
+    .configure({ host: 'localhost' })
+    .useReactNative({
+      networking: {
+        ignoreUrls: /symbolicate/  // MetroBundlerの通信を無視
+      }
+    })
+    .connect();
+  
+  console.tron = Reactotron;  // console.tron.log() で送信
+}
+```
+
+```
+Reactotronの特徴:
+  ✅ JS ThreadをSTOPしないので本番に近い状態で監視できる
+  ✅ APIのリクエスト・レスポンスをリアルタイム表示
+  ✅ Zustand/Redux の状態変化をタイムライン表示
+  ✅ カスタムコマンド（ボタン1つでテストデータを投入等）
+  ✅ Desktop App（Mac/Windows）で確認
+```
+
+### よくあるバグと調査方法
+
+```
+バグ種別            | 調査ツール
+--------------------|------------------------
+クラッシュ          | Sentry（本番）/ DevTools（開発中）
+パフォーマンス問題  | DevTools Performance Panel
+APIエラー           | Reactotron / DevTools Network
+状態管理バグ        | Reactotron（Zustand統合）
+メモリリーク        | DevTools Memory タブ
+レンダリング過多    | React DevTools Profiler
+```
+
+### 本番環境でのデバッグ（Sentry連携）
+
+```typescript
+// エラーの詳細コンテキストを添付
+Sentry.withScope((scope) => {
+  scope.setTag('screen', 'ChatScreen');
+  scope.setExtra('messageCount', messages.length);
+  scope.setExtra('industry', currentIndustry);
+  Sentry.captureException(error);
+});
+```
+
+**情報源:**
+- [React Native Debugging Guide 2026（React Native Relay）](https://reactnativerelay.com/article/complete-guide-debugging-react-native-apps-2026-devtools-performance-panel-radon-ide-production-monitoring)
+- [React Native DevTools vs Flipper（New Architecture）](https://metadesignsolutions.com/react-native-devtools-vs-flipper-the-ultimate-debugging-workflow-for-the-new-architecture/)
+
+---
+
+## 33. 次のリサーチ課題（第6ラウンド終了）
+
+第7ラウンドで調査予定：
+1. **React Native + AI統合パターン** — Streaming API・リアルタイムAI応答の実装
+2. **Expo EAS Submit** — App Store / Google Play への自動提出
+3. **モバイルアプリのマネタイズ最適化** — Paywall設計・転換率向上の心理学
+4. **React Native パフォーマンス計測** — 具体的な数値目標と計測方法
+5. **Claude API × モバイルアプリ最適化** — Promptキャッシング・コスト削減・レスポンス高速化
