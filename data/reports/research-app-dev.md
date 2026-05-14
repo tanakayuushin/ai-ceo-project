@@ -3892,3 +3892,448 @@ Expoモノレポ（複数アプリ管理）:
 3. **モバイルアプリのアナリティクス** — Amplitude・Mixpanel・PostHog 比較
 4. **React Native + LLM 次世代トレンド** — LLMをオンデバイスで動かす（llama.cpp等）
 5. **Emport AI 開発ロードマップ最終整理** — 優先度・工数・技術スタックの統合
+
+---
+
+## 50. エラーハンドリング — Error Boundary + グローバルエラー処理
+
+**調査日時: 2026-05-14 (第10ラウンド)**
+
+### Error Boundary の限界
+
+```
+Error Boundary がキャッチできるもの:
+  ✅ レンダリング中のエラー
+  ✅ ライフサイクルメソッドのエラー
+  ✅ コンストラクタのエラー
+
+Error Boundary がキャッチできないもの:
+  ❌ イベントハンドラ（onPress等）
+  ❌ 非同期処理（setTimeout・Promise・fetch）
+  ❌ ネイティブ側のエラー
+  
+→ 複数レイヤーでのエラーハンドリングが必要
+```
+
+### 完全なエラーハンドリング設計
+
+```typescript
+// app/_layout.tsx — アプリ全体のエラーハンドリング
+
+// 1. Sentry の GlobalErrorBoundary（最外層）
+import * as Sentry from '@sentry/react-native';
+
+export default Sentry.wrap(function RootLayout() {
+  return (
+    // 2. カスタム Error Boundary（UI フォールバック用）
+    <ErrorBoundary fallback={<ErrorScreen />}>
+      <SessionProvider>
+        <Stack />
+      </SessionProvider>
+    </ErrorBoundary>
+  );
+});
+```
+
+```typescript
+// components/ErrorBoundary.tsx
+import React, { Component, ErrorInfo } from 'react';
+
+interface State {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  State
+> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    Sentry.captureException(error, { extra: info });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+```
+
+```typescript
+// 3. 非同期エラーのグローバルキャプチャ
+// index.js（エントリーポイント）
+
+// Unhandled Promiseエラーをキャッチ
+global.ErrorUtils.setGlobalHandler((error: Error, isFatal: boolean) => {
+  Sentry.captureException(error, {
+    tags: { fatal: isFatal ? 'true' : 'false' }
+  });
+  
+  if (isFatal) {
+    // 致命的エラー: ユーザーにメッセージを表示してアプリを再起動
+    Alert.alert(
+      'エラーが発生しました',
+      'アプリを再起動してください。',
+      [{ text: 'OK' }]
+    );
+  }
+});
+```
+
+```typescript
+// 4. API呼び出しの共通エラーハンドリング
+const apiCall = async <T>(
+  fn: () => Promise<T>,
+  errorMessage = 'エラーが発生しました'
+): Promise<T | null> => {
+  try {
+    return await fn();
+  } catch (error) {
+    Sentry.captureException(error);
+    Alert.alert('エラー', errorMessage);
+    return null;
+  }
+};
+
+// 使用例
+const result = await apiCall(
+  () => sendMessage(messages, industry),
+  'AI応答の取得に失敗しました。再度お試しください。'
+);
+```
+
+**情報源:**
+- [React Native Error Boundary（Sentry）](https://docs.sentry.io/platforms/react-native/integrations/error-boundary/)
+- [React Native Error Handling 完全ガイド（dzone）](https://dzone.com/articles/react-native-error-handling-guide)
+
+---
+
+## 51. モバイルアプリアナリティクス — PostHog vs Mixpanel vs Amplitude
+
+**調査日時: 2026-05-14 (第10ラウンド)**
+
+### 2026年の3大アナリティクスツール比較
+
+```
+                | PostHog      | Mixpanel     | Amplitude
+----------------|--------------|--------------|------------------
+無料枠          | 100万イベント/月 | 100万イベント/月 | 1万MTU/月
+オープンソース   | ✅ セルフホスト可 | ❌           | ❌
+機能統合        | Analytics + Feature Flags + A/Bテスト + Session Replay | Analytics + Session Replay | Analytics
+React Native SDK | ✅           | ✅           | ✅
+日本語サポート  | △            | △            | △
+Emport AI推奨   | ✅ 最適       | 中規模〜     | エンタープライズ〜
+```
+
+### PostHog — Emport AIに最適な理由
+
+```
+1. 無料枠が最も太い:
+   月100万イベント + Feature Flags + A/Bテスト + Session Replay
+   → 複数ツールを契約しなくていい（コスト削減）
+
+2. エンジニア向け設計:
+   アレン（Claude Code）が設定・管理しやすい
+   セルフホストも可能（プライバシー重視の場合）
+
+3. React Native対応:
+   ネイティブSDK + オフライン時のイベントキュー
+   ジェスチャー追跡・モバイルSession Replay
+```
+
+### PostHog の実装
+
+```bash
+npm install posthog-react-native
+```
+
+```typescript
+// app/_layout.tsx
+import PostHog, { PostHogProvider } from 'posthog-react-native';
+
+const client = new PostHog(process.env.EXPO_PUBLIC_POSTHOG_API_KEY!, {
+  host: 'https://eu.i.posthog.com',
+  disabled: __DEV__,  // 開発中は計測しない
+});
+
+export default function RootLayout() {
+  return (
+    <PostHogProvider client={client}>
+      <Stack />
+    </PostHogProvider>
+  );
+}
+```
+
+```typescript
+// イベントの計測
+import { usePostHog } from 'posthog-react-native';
+
+export function ChatScreen() {
+  const posthog = usePostHog();
+
+  const handleSend = async (message: string) => {
+    // チャット送信イベントを計測
+    posthog.capture('message_sent', {
+      industry: currentIndustry,
+      message_length: message.length,
+      session_message_count: messages.length,
+    });
+    
+    await sendMessage(message);
+  };
+
+  const handleUpgrade = () => {
+    // 有料転換イベントを計測
+    posthog.capture('upgrade_clicked', {
+      plan: 'annual',
+      source: 'chat_limit_reached',
+    });
+  };
+}
+```
+
+### 計測すべき主要イベント（Emport AI）
+
+```
+ユーザー行動:
+  app_opened         — アプリ起動
+  industry_selected  — 業種選択
+  message_sent       — メッセージ送信（conversions の分母）
+  ai_response_viewed — AI回答表示
+
+転換指標:
+  paywall_shown      — ペイウォール表示
+  upgrade_clicked    — 有料プラン選択
+  subscription_started — 課金開始
+
+離脱分析:
+  onboarding_dropped — どのステップで離脱したか
+  session_ended      — セッション長さ・最後の操作
+```
+
+**情報源:**
+- [アナリティクスツール無料枠比較 2026（agentdeals）](https://agentdeals.dev/analytics-free-tier-comparison-2026)
+- [モバイルアプリアナリティクス最良ツール（PostHog）](https://posthog.com/blog/best-mobile-app-analytics-tools)
+
+---
+
+## 52. オンデバイスLLM — インターネット不要のAI（次世代トレンド）
+
+**調査日時: 2026-05-14 (第10ラウンド)**
+
+### オンデバイスLLMとは
+
+```
+従来のアプリ:
+  ユーザー → インターネット → Claude API → ユーザー
+  
+オンデバイスLLM:
+  ユーザー → スマートフォン内のAIモデル → ユーザー
+  → インターネット不要・プライバシー完全保護・レイテンシゼロ
+```
+
+### 主要ライブラリ（2026年）
+
+```
+llama.rn（最も普及）:
+  - llama.cppのReact Nativeバインディング
+  - New Architecture必須（v0.10+）
+  - 1〜3Bパラメータのモデルに最適
+
+react-native-executorch（SoftwareMansion製）:
+  - Meta ExecuTorchを使ったオンデバイス推論
+  - LLM・画像認識・音声認識に対応
+  - より高精度・幅広いモデルに対応
+
+対応モデル（小型・高速）:
+  Llama 3.2 1B Instruct  — Meta製・日本語対応
+  SmolLM2 1.7B          — 超軽量
+  Qwen 2 0.5B           — 中国AI・多言語対応
+```
+
+### llama.rn の実装例
+
+```bash
+npm install llama.rn
+# Development Build必須（Expo Goでは動かない）
+```
+
+```typescript
+import { initLlama, LlamaContext } from 'llama.rn';
+
+export function useOnDeviceAI() {
+  const [context, setContext] = useState<LlamaContext | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadModel = async () => {
+    setIsLoading(true);
+    // モデルファイル（GGUF形式）をバンドルまたはダウンロード
+    const ctx = await initLlama({
+      model: 'file:///data/user/0/ai.emport.app/models/llama-3.2-1b.gguf',
+      n_ctx: 2048,   // コンテキストサイズ
+      n_threads: 4,  // CPUスレッド数
+    });
+    setContext(ctx);
+    setIsLoading(false);
+  };
+
+  const chat = async (message: string): Promise<string> => {
+    if (!context) return '';
+    
+    const result = await context.completion({
+      prompt: `あなたはAIアシスタントです。\nUser: ${message}\nAssistant:`,
+      n_predict: 512,
+      temperature: 0.7,
+    }, (data) => {
+      // Streaming対応
+      console.log(data.token); // 1トークンずつ受信
+    });
+    
+    return result.text;
+  };
+
+  return { loadModel, chat, isLoading, isReady: !!context };
+}
+```
+
+### Emport AIでの活用可能性
+
+```
+現状の判断: クラウドAI（Claude）を使い続ける
+
+理由:
+  - Claude Sonnetの品質に遠く及ばない（1Bモデルは賢くない）
+  - モデルファイル（1〜4GB）をダウンロードさせる体験が悪い
+  - オフライン対応はEmport AIのコア価値ではない
+
+将来的に検討するタイミング:
+  - モデルが進化して小型でも十分な精度になった場合
+  - プライバシー重視の医療・法律業種への展開時
+  - Claude APIのコストが大きな課題になった時
+
+→ 2026年時点では「知っておく技術」として研究するのみ
+```
+
+**情報源:**
+- [llama.rn GitHub](https://github.com/mybigday/llama.rn)
+- [React Native オンデバイスAI 2026ガイド（Medium）](https://medium.com/@arslannaz195/react-native-on-device-ai-run-llms-without-internet-2026-guide-5bc95fc27bdb)
+
+---
+
+## 53. Emport AI 技術スタック & 開発ロードマップ 総整理
+
+**調査日時: 2026-05-14 (第10ラウンド)**
+
+### 確定技術スタック（今すぐ使うべき）
+
+```
+フロントエンド（モバイルアプリ）:
+  Framework:  Expo SDK 53（→ 55に移行予定）
+  Router:     Expo Router v3
+  言語:       TypeScript
+  状態管理:   Zustand + persist middleware
+  リスト:     FlashList（FlatListから移行）
+  ストレージ: MMKV（高速）+ expo-secure-store（機密）
+  アニメーション: Reanimated 4（New Architecture）
+  型安全:     Zod（APIレスポンス検証）
+
+バックエンド:
+  Server:     Flask（Python）on Railway Hobby Plan
+  AI:         Claude claude-sonnet-4-6（Prompt Caching有効）
+  Auth:       JWT（アクセスコード → JWT発行）
+
+CI/CD:
+  Build:      EAS Build（GitHub Actions連携）
+  OTA:        EAS Update（バグ修正の即時配布）
+  Submit:     EAS Submit（ストア提出自動化）
+
+監視・分析:
+  Error:      Sentry（Crash-Free率 99.5%目標）
+  Analytics:  PostHog（無料100万イベント/月）
+  
+テスト:
+  Unit:       Jest + React Native Testing Library
+  E2E:        Maestro（YAMLで主要フローを自動化）
+```
+
+### 開発優先度マトリクス
+
+```
+🔴 今すぐ対応（リリース前必須）:
+  1. FlashList 導入（パフォーマンス改善）
+  2. accessibilityLabel 追加（審査リジェクト防止）
+  3. Sentry 設定（エラー監視）
+  4. Zod でAPIレスポンス検証
+  5. プライバシーポリシー・利用規約ページ作成
+
+🟡 リリース後 Sprint 1（1〜2週間）:
+  6. Streaming API（AI応答の逐次表示）
+  7. PostHog 設定（アナリティクス）
+  8. Maestro でE2Eテスト（ログイン・チャット）
+  9. オンボーディングフロー実装（業種選択）
+  10. Paywall設計（7日間無料トライアル）
+
+🟢 Sprint 2（1ヶ月後）:
+  11. EAS Submit で自動ストア提出設定
+  12. Firebase Remote Config（A/Bテスト）
+  13. In-App Review（レビュー誘導）
+  14. ASO（キーワード最適化・スクリーンショット）
+  15. OCR機能（書類スキャン → AI解析）
+
+🔵 将来（3〜6ヶ月後）:
+  16. Supabase 移行（マルチユーザー対応）
+  17. Development Build移行（プッシュ通知実装）
+  18. SDK 55 アップグレード
+  19. Expo Router API Routes移行（Flask廃止）
+  20. オンデバイスLLM研究（llama.rn）
+```
+
+### コスト試算（月次）
+
+```
+現在の運用コスト:
+  Railway Hobby:       $5/月
+  Claude API:          $30〜50/月（利用量による）
+  Sentry:              無料（5,000イベント/月）
+  PostHog:             無料（100万イベント/月）
+  EAS（Expo）:         無料〜$99/月
+  合計:                約$35〜55/月
+
+収益目標:
+  Phase 1: 100ユーザー × ¥980/月 = ¥98,000/月（黒字化）
+  Phase 2: 1,000ユーザー × ¥980/月 = ¥980,000/月
+  Phase 3: 10,000ユーザー × ¥650/月（年額換算）= ¥6,500,000/月
+```
+
+### 競合との戦い方（最終戦略）
+
+```
+「業種特化 × スマートフォン × 低価格 × IT補助金対象」
+
+武器:
+  ChatGPTより安い（¥980 vs ¥2,988）
+  ChatGPTより業種に詳しい（建設業・製造業の専門知識）
+  ChatGPTよりモバイルで使いやすい
+  IT導入補助金で実質半額（登録後）
+
+突破口:
+  商工会議所経由で中小企業経営者に直接リーチ
+  「無料で使ってみてください」から始める
+  使った人が口コミで広める
+```
+
+**情報源:**
+- 第1〜9ラウンドの全調査結果を統合した総括
+
+---
+
+*アプリ開発調査完了（第1〜10ラウンド）。「いい」と言われるまで随時追加継続。*
