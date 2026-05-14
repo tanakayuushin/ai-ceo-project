@@ -1454,6 +1454,360 @@ Step 6: ITツール（Emport AI）の個別登録
 | 23 | Obsidian連携 | VaultをClaude Codeのワークスペースに追加が最速 |
 | 24 | Railway | Hobbyプラン月$5、残り16日以内にアップグレード要 |
 
+---
+
+## 35. EAS Build 設定ガイド — Emport AI App Store申請への道
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### eas.json の基本構造
+
+```json
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "distribution": "store"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "YOUR_APPLE_ID",
+        "ascAppId": "YOUR_APP_STORE_APP_ID",
+        "appleTeamId": "YOUR_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-services.json",
+        "track": "production"
+      }
+    }
+  }
+}
+```
+
+### Emport AIのリリースコマンド（手順）
+
+```bash
+# Step 1: EAS CLIインストール
+npm install -g eas-cli
+
+# Step 2: EASにログイン
+eas login
+
+# Step 3: プロジェクト設定
+eas build:configure
+
+# Step 4: プロダクションビルド（iOS + Android 同時）
+eas build --platform all --profile production
+
+# Step 5: ストアに提出
+eas submit --platform all
+```
+
+### 必要なアカウント
+
+| プラットフォーム | アカウント | 費用 |
+|---|---|---|
+| iOS | Apple Developer Account | **$99/年** |
+| Android | Google Play Console | **$25（一回）** |
+| Expo EAS | Expo Account (無料プランあり) | 無料〜$99/月 |
+
+### 現在の準備状況
+
+```
+✅ アプリコード完成（React Native + Expo）
+✅ バックエンドAPI完成（Railway）
+❌ Apple Developer Account（未取得）
+❌ Google Play Console（未取得）
+❌ プライバシーポリシーページ（URLのみ）
+❌ eas.json（未作成）
+```
+
+**情報源:**
+- [EAS Build設定 eas.json (Expo公式)](https://docs.expo.dev/build/eas-json/)
+- [App Store/Play Store提出 (Expo公式)](https://docs.expo.dev/deploy/submit-to-app-stores/)
+
+---
+
+## 36. Googleマップ口コミAPI × 飲食業 — キラー機能の可能性
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### Google Places API で取れるデータ
+
+| データ | 取得方法 | 活用 |
+|---|---|---|
+| 店舗評価（星） | Place Details API | 競合比較・自店分析 |
+| 口コミテキスト（最新5件） | Place Details API | 感情分析・改善点抽出 |
+| 営業時間・電話番号 | Places API | 店舗情報管理 |
+| 周辺競合店 | Nearby Search API | 商圏分析 |
+
+### Emport AI × Google Maps の組み合わせ案
+
+```
+ユーザーが「自分の店のGoogle口コミ分析して」と入力
+  ↓
+Emport AIがGoogle Places API で口コミを取得
+  ↓
+Claudeが口コミを分析:
+  「最近の口コミを分析すると、
+   ポジティブ: 料理の味（8件中5件）・接客（3件）
+   ネガティブ: 待ち時間（3件）・値段（2件）
+   
+   改善優先度:
+   1. 待ち時間対策（予約システム導入でコスト月2万〜）
+   2. 価格訴求の見直し（セットメニュー追加）」
+  ↓
+具体的な改善アクションを提案
+```
+
+### 実装の現実的ハードル
+
+- Google Places API: $17/1,000リクエスト（コストがかかる）
+- 口コミ取得上限: 最新5件のみ（全件は取れない）
+- プライバシー: 口コミは公開データだが利用規約に注意
+
+**→ 現時点では手動入力の方が現実的。将来のプレミアム機能として検討。**
+
+**情報源:**
+- [Google Places APIで口コミ分析 (gaaaon.jp)](https://gaaaon.jp/blog/google_map_api)
+- [Google Maps APIランキング表示 (delta-ss.com)](https://www.delta-ss.com/labo/a015.html)
+
+---
+
+## 37. Substack × Emport AI — コンテンツマーケティング戦略
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### なぜSubstackか（2026年5月現在）
+
+- 2026年GW以降、日本で爆発的に流行中（イケハヤ・けんすう等が参入）
+- 開封率44〜45%（メールの平均20-25%を大幅超）
+- 有料購読者の90%がクリエイターに還元
+- **中小企業経営者層（40〜60代）は読書習慣があり刺さりやすい**
+
+### Emport AI Substack 戦略案
+
+**アカウント名**: 「Emport AI 経営インサイト」  
+**コンセプト**: 中小企業経営者が週1回読むだけで経営が変わるニュースレター
+
+| コンテンツ | 頻度 | 無料/有料 |
+|---|---|---|
+| 今週の補助金速報 | 週1 | **無料** |
+| AI経営Tips（3選） | 週1 | **無料** |
+| 業界特化分析（飲食・建設・小売） | 月2 | **有料 $5/月** |
+| 補助金申請書テンプレート | 随時 | **有料** |
+
+**効果の連鎖**:
+```
+Substack（無料）で信頼構築
+    ↓
+Substack（有料）でマネタイズ①
+    ↓
+Emport AIアプリ（月額4,980円）へ誘導
+    ↓
+マネタイズ②（本命）
+```
+
+**Claude Codeを使った自動化**:
+- 週次補助金情報を自動スクレイピング → Claude で要約 → Substack下書き自動生成
+- 既に `tools/social-media/` に投稿スクリプトの基盤あり
+
+**情報源:**
+- [Substackとは？ひとり社長の資産化ガイド 2026 (cenleaf)](https://cenleaf.com/blog/substack-sns-guide/)
+- [Substackの収益化 2026 (wakariyasukuosieruyo.blog)](https://wakariyasukuosieruyo.blog/substack-shuekika-ikura/)
+
+---
+
+## 38. 日本経済マクロ動向 — 中小企業への影響（2026年）
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### 2026年の日本経済
+
+| 指標 | 状況 | 中小企業への影響 |
+|---|---|---|
+| GDP成長率 | +0.8%（緩やかな回復） | プラスだが実感薄い |
+| 金利 | 日銀が緩やかに利上げ継続 | 借入コスト増加 |
+| 円安 | 構造的な円安が継続 | 輸入コスト高（食材・原材料） |
+| 物価 | インフレ継続中 | 売値転嫁が課題 |
+| 人手不足 | 深刻化 | 人件費増加・採用難 |
+
+### Emport AIへの意味
+
+```
+円安 → 輸入コスト上昇 → 飲食業の原価率悪化
+  → 「FL比率を改善したい」というニーズが急増
+  → Emport AIの飲食業特化モードへの需要UP
+
+人手不足 → AI・自動化へのニーズ増加
+  → 「人の代わりにAIが経営判断をサポート」
+  → Emport AIの核心価値と直結
+
+金利上昇 → 銀行融資が厳しくなる
+  → 補助金・助成金への需要増加
+  → 「補助金申請サポート機能」がさらに重要に
+```
+
+**情報源:**
+- [2026年日本経済見通し (大和総研)](https://www.dir.co.jp/report/research/economics/outlook/20251223_025485.html)
+- [2026年金利と円安 (ダイヤモンド・オンライン)](https://diamond.jp/articles/-/380536)
+
+---
+
+## 39. 補助金マップ — Emport AI顧客が使える制度まとめ
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### 2026年主要補助金一覧
+
+| 補助金名 | 上限額 | 補助率 | 対象 | 特徴 |
+|---|---|---|---|---|
+| デジタル化・AI導入補助金 | **450万円** | 1/2〜3/4 | AIツール導入 | Emport AI対象 |
+| 小規模事業者持続化補助金 | 200万円 | 2/3 | 販路開拓・集客 | 小規模事業者向け |
+| ものづくり補助金 | 1,250万円 | 1/2〜2/3 | 設備・システム | 採択率34.1% |
+| 事業再構築補助金 | 1,500万円 | 1/2〜2/3 | 事業転換 | 大型 |
+
+### 補助金申請代行 × Emport AI の可能性
+
+```
+現状: 「補助金について教えて」→ アドバイスを返すだけ
+
+将来: 「持続化補助金に申請したい」
+  → Emport AIが質問しながら経営計画書の下書きを自動生成
+  → 「ここをこう直せば採択率が上がります」と提案
+  → PDF出力
+
+→ このキラー機能があれば月額1万円でも払う中小企業が続出
+```
+
+**情報源:**
+- [2026年補助金まとめ (hojyokinnomadoguchi)](https://hojyokinnomadoguchi.jp/hojyokin-2025-matome/)
+- [ものづくり補助金採択率分析 (hojokin-joseikin)](https://hojokin-joseikin.com/1704/)
+
+---
+
+## 40. SaaS チャーン（解約率）対策 — Emport AIが取り組むべきこと
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### 業界平均チャーンレート
+
+| 企業規模 | 月次チャーン |
+|---|---|
+| 大企業向けSaaS | 0.5〜1% |
+| 中小企業向けSaaS | **1〜7%** |
+| **目標値** | **2%以下** |
+
+### 中小企業向けSaaSのチャーン要因
+
+1. **「使い方がわからない」** → オンボーディング不足
+2. **「効果が実感できない」** → ROI可視化なし
+3. **「忘れていた」** → エンゲージメント低下
+4. **「高い」** → 価格vs価値の見合わせ
+
+### Emport AIが今すぐできる対策
+
+```
+対策1: オンボーディングチェックリスト
+  「初回ログイン → 業種設定 → 最初の質問を促す」
+  → チャット開始までの離脱を防ぐ
+
+対策2: 週次メール（LINE）
+  「今週の経営Tips × 3選」「今使える補助金情報」
+  → 習慣化・想起率向上
+
+対策3: 利用状況サマリー
+  「今月○回相談・○個の課題解決・節約できた時間○時間」
+  → ROI可視化 → 解約抑止
+
+対策4: 解約意思表示時のフォロー
+  「解約前に最後に何が悩みですか？（30秒アンケート）」
+  → チャーン理由収集 → サービス改善
+```
+
+**情報源:**
+- [SaaSチャーンレート平均と目安 (TimeSkip)](https://timeskip.co.jp/customersuccess/saas_churnrate)
+- [AIでチャーンを予測して止める (Harmonic Society)](https://harmonic-society.co.jp/what-is-churn-rate/)
+
+---
+
+## 41. Claudeモデル使い分け — Emport AIの最適モデル戦略
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### 2026年5月 Claudeモデルラインアップ
+
+| モデル | 料金（Input/Output per 1M） | 用途 |
+|---|---|---|
+| **Claude Haiku 4.5** | **$1/$5** | 定型・高速・大量 |
+| Claude Sonnet 4.6 | $3/$15 | バランス・主力 |
+| Claude Opus 4.7 | $5/$25 | 複雑推論・高品質 |
+
+### Emport AIの最適戦略
+
+```
+現在（正解）: Haiku 4.5で全チャット対応
+  → 月1万チャットで約$30（4,500円）
+  → 月額4,980円のサブスクで黒字
+
+将来の拡張案:
+  一般的な質問 → Haiku（速い・安い）
+  複雑な財務相談・事業計画 → Sonnet（精度高い）
+  補助金申請書作成・重要な判断 → Opus（最高品質）
+  
+  例: 「chat_complexity」スコアで自動振り分け
+```
+
+### Haiku vs Sonnet 切替の判断基準
+
+| 状況 | 推奨モデル |
+|---|---|
+| 「○○ってなに？」「補助金の種類教えて」 | Haiku |
+| 「財務分析して、改善策も出して」 | Sonnet |
+| 「補助金申請書の経営計画を書いて」 | Opus or Sonnet |
+| 毎回の挨拶・定型応答 | Haiku |
+
+**情報源:**
+- [Claude Sonnet 4.6 vs Opus 4.7使い分け10選 (worktypeslab)](https://www.worktypeslab.com/claude-sonnet-46-vs-opus-47/)
+- [Claude完全ガイド 2026 (Uravation)](https://uravation.com/media/claude-complete-guide-opus-sonnet/)
+
+---
+
+## 42. 次のリサーチ課題（第8ラウンド終了・アレン選定）
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+第9ラウンドで調査予定：
+
+1. **note × Substack 日本語コンテンツ戦略の詳細** — 具体的な投稿スケジュールとテンプレート
+2. **Apple Developer Program 申請手順** — 正式リリースのための最初の一歩
+3. **freee アプリストア掲載要件** — freee連携でユーザー獲得の追加チャネル
+4. **Emport AI プライバシーポリシーのドラフト** — App Store審査通過のための要件
+5. **小規模事業者持続化補助金の詳細** — Emport AIの顧客が最も使いやすい補助金
+6. **React Native / Expo パフォーマンス最適化** — アプリの応答速度改善
+7. **ChatGPTのカスタムGPTs** — 競合分析・Emport AIとの差別化ポイント
+
+---
+
 *調査は継続中。ユーザーが「いい」と言うまで次のトピックを調査して追記します。*
 
 ---
