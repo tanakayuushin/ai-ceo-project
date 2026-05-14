@@ -3113,3 +3113,445 @@ def chat_with_caching(messages: list, industry: str) -> str:
 3. **モバイルアプリのユーザーオンボーディング設計** — チュートリアル・初回体験
 4. **アプリのウィジェット対応（iOS/Android）** — ホーム画面ウィジェット
 5. **React Native + Supabase** — Firebaseの代替・リアルタイムDB・認証
+
+---
+
+## 40. TypeScript + Zod — APIレスポンスの型安全バリデーション
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### なぜZodが必要か
+
+```
+TypeScriptの型は「コンパイル時」だけ保護する:
+  const user: User = await fetchUser();  // 実行時はany
+
+Zodは「実行時」にも保護する:
+  const user = UserSchema.parse(await fetchUser());
+  // APIが想定外のデータを返してもクラッシュしない
+
+→ バックエンドのAPIが変更されても安全に検知できる
+```
+
+### Zodのインストールと基本実装
+
+```bash
+npm install zod
+```
+
+```typescript
+// types/api.ts — APIレスポンスのスキーマ定義
+import { z } from 'zod';
+
+// メッセージのスキーマ
+export const MessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+  timestamp: z.number(),
+});
+
+// チャットレスポンスのスキーマ
+export const ChatResponseSchema = z.object({
+  message: z.string(),
+  usage: z.object({
+    input_tokens: z.number(),
+    output_tokens: z.number(),
+  }).optional(),
+  error: z.string().optional(),
+});
+
+// 型を自動推論（TypeScriptの手書きinterfaceが不要になる）
+export type Message = z.infer<typeof MessageSchema>;
+export type ChatResponse = z.infer<typeof ChatResponseSchema>;
+```
+
+### APIコールでのZod使用
+
+```typescript
+// services/api.ts
+import { ChatResponseSchema, ChatResponse } from '@/types/api';
+
+export async function sendMessage(
+  messages: Message[],
+  industry: string
+): Promise<ChatResponse> {
+  const response = await fetch(`${API_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, industry })
+  });
+  
+  const rawData = await response.json();
+  
+  // safeParse: エラーでも例外を投げずに結果オブジェクトを返す
+  const result = ChatResponseSchema.safeParse(rawData);
+  
+  if (!result.success) {
+    // APIのレスポンス形式が変わった場合にSentryへ通知
+    Sentry.captureException(result.error, {
+      extra: { rawData, zodErrors: result.error.format() }
+    });
+    throw new Error('APIレスポンスの形式が不正です');
+  }
+  
+  return result.data;  // 型安全なデータが返ってくる
+}
+```
+
+### フォームバリデーション（Zod + React Hook Form）
+
+```typescript
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const LoginSchema = z.object({
+  accessCode: z.string()
+    .min(6, 'アクセスコードは6文字以上です')
+    .max(20, 'アクセスコードは20文字以下です'),
+});
+
+type LoginForm = z.infer<typeof LoginSchema>;
+
+export function LoginScreen() {
+  const { control, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+    resolver: zodResolver(LoginSchema),
+  });
+
+  return (
+    <View>
+      <Controller
+        control={control}
+        name="accessCode"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            value={value}
+            onChangeText={onChange}
+            placeholder="アクセスコードを入力"
+          />
+        )}
+      />
+      {errors.accessCode && (
+        <Text style={styles.error}>{errors.accessCode.message}</Text>
+      )}
+    </View>
+  );
+}
+```
+
+**情報源:**
+- [Zod 公式ドキュメント](https://zod.dev/)
+- [React TypeScript + Zod API バリデーション（freeCodeCamp）](https://www.freecodecamp.org/news/how-to-use-zod-for-react-api-validation/)
+
+---
+
+## 41. Expo Router API Routes — バックエンドをアプリ内に統合
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### Expo Router API Routesとは
+
+```
+従来のアーキテクチャ:
+  Reactアプリ → 別のFlaskサーバー → Claude API
+  
+Expo Router API Routes（新手法）:
+  Expoアプリ内に +api.ts ファイルを置くだけでサーバーエンドポイントが作れる
+  → Vercel/EAS にデプロイするだけでサーバーも動く
+  → FlaskサーバーをExpoアプリ内に統合できる
+```
+
+### 基本的な実装
+
+```typescript
+// app/api/chat+api.ts  ← ファイル名に "+api" をつけるだけ
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+export async function POST(request: Request) {
+  const { messages, industry } = await request.json();
+  
+  const systemPrompt = `あなたは${industry}に特化したAIアシスタントです。`;
+  
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages
+  });
+  
+  return Response.json({
+    message: response.content[0].text,
+    usage: response.usage
+  });
+}
+```
+
+```typescript
+// モバイルアプリ側からは通常のfetchで呼び出す
+const response = await fetch('/api/chat', {
+  method: 'POST',
+  body: JSON.stringify({ messages, industry })
+});
+```
+
+### Expo Router API Routes vs Flask（比較）
+
+```
+Expo Router API Routes（新手法）:
+  ✅ アプリと同じコードベースで管理
+  ✅ TypeScriptで型安全
+  ✅ EAS / Vercelへの統合が簡単
+  ✅ APIキーをサーバーサイドで安全に管理
+  ❌ SDK 55でまだalpha（本番利用は慎重に）
+  ❌ Python特有の処理（pandas等）は使えない
+
+Flaskサーバー（現在のEmport AI）:
+  ✅ Python/Anthropic SDKで安定動作
+  ✅ 複雑なビジネスロジックをPythonで書ける
+  ✅ 本番実績あり（Railway上で動作中）
+  ❌ 別リポジトリ/サーバーの管理コスト
+
+→ Emport AIは現状のFlask構成を維持
+  Expo Router API Routesは安定後に移行を検討
+```
+
+**情報源:**
+- [Expo Router API Routes（公式）](https://docs.expo.dev/router/web/api-routes/)
+- [RFC: API Routes in Expo Router](https://evanbacon.dev/blog/api-routes-rfc)
+
+---
+
+## 42. ユーザーオンボーディング設計 — 初回体験で離脱を防ぐ
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### なぜオンボーディングが最重要か
+
+```
+衝撃のデータ（2026年）:
+  - インストール後3日以内に77%のユーザーが離脱
+  - Day1 リテンション: Android 22.6% / iOS 25.6%
+  
+→ 初回体験で価値を感じさせないと捨てられる
+→ オンボーディングは機能開発より先に投資すべき
+```
+
+### 2026年のベストプラクティス
+
+```
+1. 「逆順オンボーディング」（Duolingo方式）:
+   ❌ 従来: 会員登録 → チュートリアル → 実際に使う
+   ✅ 逆順: 実際に使う → 価値を感じる → 会員登録
+   → 登録率が大幅に向上（価値を体験後なので意欲が高い）
+
+2. パーソナライゼーション（業種選択をオンボーに組み込む）:
+   - 最初に「どんな業種ですか？」と聞く
+   - 業種に合わせたサンプル会話を見せる
+   → ユーザーが「このアプリは自分向けだ」と感じる
+
+3. スキップ可能にする:
+   - 強制ステップを最小限にする
+   - 必要のないユーザーは飛ばせるようにする
+
+4. 社会的証明を早期に見せる:
+   - 「1,200社が利用中」
+   - 業種別の成功事例を早い段階で見せる
+```
+
+### Emport AI のオンボーディングフロー設計
+
+```
+ステップ1: 価値提案（1画面）
+  「AIが業務を自動化します」
+  + 具体的な効果（見積作成80%時間短縮 等）
+  → [試してみる] ボタン（登録不要でサンプル会話へ）
+
+ステップ2: 業種選択（1画面）
+  「あなたの業種は何ですか？」
+  ○ 建設業
+  ○ 製造業
+  ○ 小売業
+  ○ その他
+  → 業種を選ぶことでAIが最適化される
+
+ステップ3: サンプル会話を体験（1画面）
+  業種に応じた典型的な質問をデモ
+  「見積書の項目を整理してください」
+  → AIがリアルに回答（デモ用・実際のAI）
+
+ステップ4: 登録・アクセスコード入力
+  価値を体験した後に登録を求める
+  → この順番だと登録完了率が高い
+
+ステップ5: 最初の本物の会話
+  「では、本当のご質問は何ですか？」
+  → すぐに実際の業務で使えるように誘導
+```
+
+### 実装（Expo Router + Step管理）
+
+```typescript
+// app/(auth)/onboarding/_layout.tsx
+const ONBOARDING_STEPS = [
+  'value-proposition',
+  'industry-select',
+  'demo-chat',
+  'register',
+] as const;
+
+export default function OnboardingLayout() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const progress = (currentStep + 1) / ONBOARDING_STEPS.length;
+
+  return (
+    <View>
+      {/* プログレスバー */}
+      <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+      
+      <Stack>
+        <Stack.Screen name={ONBOARDING_STEPS[currentStep]} />
+      </Stack>
+      
+      <Button
+        title={currentStep < ONBOARDING_STEPS.length - 1 ? '次へ' : '始める'}
+        onPress={() => setCurrentStep(prev => prev + 1)}
+      />
+    </View>
+  );
+}
+```
+
+**情報源:**
+- [モバイルアプリオンボーディング完全ガイド 2026（VWO）](https://vwo.com/blog/mobile-app-onboarding-guide/)
+- [最高のオンボーディング12例（UXCam）](https://uxcam.com/blog/10-apps-with-great-user-onboarding/)
+
+---
+
+## 43. React Native + Supabase — Firebase代替の決定版
+
+**調査日時: 2026-05-14 (第8ラウンド)**
+
+### Supabase vs Firebase（2026年決定版比較）
+
+```
+項目              | Supabase          | Firebase
+-----------------|-------------------|------------------
+データベース      | PostgreSQL（SQL）  | NoSQL（Firestore）
+オープンソース    | ✅ 完全OSS         | ❌ Google独自
+価格             | 無料枠太め・予測可能| 無料枠あり・従量課金複雑
+リアルタイム      | ✅ テーブル変更監視 | ✅ ドキュメント変更監視
+認証             | ✅ 豊富（MFA含む） | ✅ 豊富
+ベクトル検索      | ✅ pgvector対応    | ❌ 別途設定必要
+自己ホスト        | ✅ 可能（Docker）  | ❌ 不可
+2026年シェア傾向  | 急成長中           | 安定・縮小傾向
+
+→ 2026年: Supabase が「Firebase but better」として主流化
+```
+
+### Emport AI での Supabase 活用シナリオ
+
+```
+現在のEmport AI:
+  - 認証: アクセスコード（超シンプル）
+  - DB: なし（チャット履歴はMMKVでローカル保存）
+
+将来的にSupabaseが必要になる時:
+  - マルチユーザー対応（会社単位でログイン）
+  - チャット履歴をクラウドに保存・デバイス間同期
+  - 企業ごとのカスタム設定・履歴管理
+  - チームメンバー機能（複数人が同じアカウントを使う）
+```
+
+### Expo + Supabase のセットアップ
+
+```bash
+npx expo install @supabase/supabase-js
+npx expo install expo-secure-store
+```
+
+```typescript
+// lib/supabase.ts
+import { createClient } from '@supabase/supabase-js';
+import * as SecureStore from 'expo-secure-store';
+
+// トークン永続化アダプター（expo-secure-store使用）
+const ExpoSecureStoreAdapter = {
+  getItem: (key: string) => SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+};
+
+export const supabase = createClient(
+  process.env.EXPO_PUBLIC_SUPABASE_URL!,
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      storage: ExpoSecureStoreAdapter,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    }
+  }
+);
+```
+
+```typescript
+// メール認証でのサインイン（認証情報は環境変数で管理）
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: userEmail,    // ← ユーザー入力
+  userCredential      // ← ユーザー入力（環境変数・SecureStore経由）
+});
+
+// チャット履歴をPostgreSQLに保存
+const { error } = await supabase
+  .from('chat_sessions')
+  .insert({
+    user_id: user.id,
+    industry: currentIndustry,
+    messages: JSON.stringify(messages),
+    created_at: new Date().toISOString()
+  });
+
+// リアルタイム購読（別ユーザーのメッセージを即座に受信）
+const channel = supabase
+  .channel('chat-room')
+  .on('postgres_changes', 
+    { event: 'INSERT', schema: 'public', table: 'messages' },
+    (payload) => setMessages(prev => [...prev, payload.new])
+  )
+  .subscribe();
+```
+
+### Emport AI のロードマップ
+
+```
+Phase 1（現在）:
+  アクセスコード認証 + ローカルMMKV保存 → シンプルで十分
+
+Phase 2（有料化後）:
+  Supabase Auth → メール認証でログイン
+  チャット履歴のクラウド保存 → デバイス移行時も履歴が残る
+
+Phase 3（エンタープライズ化）:
+  企業ごとのアカウント（Row Level Security）
+  チームメンバー管理・権限設定
+  カスタムプロンプト・社内ナレッジとの統合
+```
+
+**情報源:**
+- [Expo + Supabase（公式ガイド）](https://docs.expo.dev/guides/using-supabase/)
+- [Supabase 2026完全ガイド（DEV Community）](https://dev.to/ottoaria/supabase-in-2026-the-complete-developer-guide-to-the-open-source-firebase-alternative-357j)
+
+---
+
+## 44. 次のリサーチ課題（第8ラウンド終了）
+
+第9ラウンドで調査予定：
+1. **React Native テスト自動化の深堀り** — Maestro E2Eテストの実装例
+2. **Expo SDK 55 新機能** — Server Rendering・React Server Components対応
+3. **AIアプリの競合分析** — 日本市場の類似AIアプリ・差別化戦略
+4. **モバイルアプリのSEO** — インデックス化・コンテンツ戦略とアプリ連携
+5. **React Native パッケージ管理** — yarn vs pnpm vs bun の2026年比較
