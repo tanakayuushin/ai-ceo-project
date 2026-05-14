@@ -1511,3 +1511,532 @@ Phase 3（将来）:
 3. **モバイルアプリのCrash監視** — Sentry・Firebase Crashlytics設定
 4. **Expo Dev Client / Development Build** — Expo Goを超えたカスタムビルド環境
 5. **React Native Web対応** — 1つのコードベースでWeb+Mobile両対応
+
+---
+
+## 22. Reanimated 4 — workletでUIスレッド60fpsアニメーション
+
+**調査日時: 2026-05-14 (第5ラウンド)**
+
+### なぜ通常のアニメーションは遅いか
+
+```
+❌ JSスレッドのアニメーション（従来）:
+  JS Thread → Bridge → UI Thread → 描画
+  → JSスレッドが重い処理中はアニメーションが詰まる（フレームドロップ）
+
+✅ Reanimated 4（worklet）:
+  UI Thread で直接実行 → JSスレッドが何をしていても60fps維持
+  New Architecture必須（Fabric対応）
+```
+
+### Reanimated 4のインストール
+
+```bash
+npx expo install react-native-reanimated
+# app.json の experiments.newArchEnabled: true が前提
+```
+
+```typescript
+// babel.config.js
+module.exports = {
+  presets: ['babel-preset-expo'],
+  plugins: ['react-native-reanimated/plugin'], // 最後に追加必須
+};
+```
+
+### workletの基本
+
+```typescript
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring,
+  withTiming 
+} from 'react-native-reanimated';
+
+export function AnimatedCard() {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  // useAnimatedStyle は自動的にUIスレッドで実行される
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  const handlePress = () => {
+    // withSpring・withTiming もUIスレッドで動く
+    scale.value = withSpring(0.95, {}, () => {
+      scale.value = withSpring(1); // 押した→元に戻るアニメーション
+    });
+  };
+
+  return (
+    <Animated.View style={[styles.card, animatedStyle]}>
+      <TouchableWithoutFeedback onPress={handlePress}>
+        <View><Text>タップしてみて</Text></View>
+      </TouchableWithoutFeedback>
+    </Animated.View>
+  );
+}
+```
+
+### Reanimated 4の新機能: CSS Animations
+
+```typescript
+// Reanimated 4からCSSアニメーション構文が使えるようになった
+import Animated from 'react-native-reanimated';
+
+const styles = {
+  loadingDot: {
+    animationName: 'pulse',
+    animationDuration: '1s',
+    animationIterationCount: 'infinite',
+  }
+};
+
+// CSSキーフレームをそのまま定義
+// → Webのアニメーション知識がそのまま使える
+```
+
+### チャット送信アニメーション（Emport AI向け）
+
+```typescript
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming,
+  FadeInDown,
+  FadeOutUp
+} from 'react-native-reanimated';
+
+// メッセージが追加される時のアニメーション
+const MessageBubble = React.memo(({ message }) => {
+  return (
+    <Animated.View entering={FadeInDown.duration(300)}>
+      <Text>{message.content}</Text>
+    </Animated.View>
+  );
+});
+
+// AIが考え中のドットアニメーション
+export function ThinkingIndicator() {
+  const dot1 = useSharedValue(0);
+  const dot2 = useSharedValue(0);
+  const dot3 = useSharedValue(0);
+
+  // 各ドットを時差でバウンスさせる
+  useEffect(() => {
+    const bounce = (sv: SharedValue<number>, delay: number) => {
+      setTimeout(() => {
+        sv.value = withSpring(-8, {}, () => {
+          sv.value = withSpring(0);
+        });
+        setInterval(() => {
+          sv.value = withSpring(-8, {}, () => {
+            sv.value = withSpring(0);
+          });
+        }, 900);
+      }, delay);
+    };
+    bounce(dot1, 0);
+    bounce(dot2, 300);
+    bounce(dot3, 600);
+  }, []);
+
+  // 各ドットのスタイルをuseAnimatedStyleで制御
+  // ...
+}
+```
+
+### パフォーマンス比較
+
+```
+Animated API（旧）: JSスレッド依存 → 重い処理中はカクつく
+Reanimated 4:      UIスレッド直接実行 → 常に60fps
+
+推奨アニメーション手法:
+  ✅ レイアウト変化: useAnimatedStyle + useSharedValue
+  ✅ 画面遷移:      Expo Router の built-in transition
+  ✅ ジェスチャー:  react-native-gesture-handler + Reanimated
+  ❌ 非推奨:        Animated.timing（旧API・JSスレッド）
+```
+
+**情報源:**
+- [Reanimated 公式ドキュメント](https://docs.swmansion.com/react-native-reanimated/docs/guides/worklets/)
+- [Reanimated 4でCSSアニメーション（freeCodeCamp）](https://www.freecodecamp.org/news/how-to-create-fluid-animations-with-react-native-reanimated-v4/)
+
+---
+
+## 23. Expo ローカライズ（i18n）— 多言語対応
+
+**調査日時: 2026-05-14 (第5ラウンド)**
+
+### 2026年の推奨スタック
+
+```
+expo-localization  — デバイスの言語設定を取得
+i18next            — 翻訳ランタイム（最も普及）
+react-i18next      — Reactフック（useTranslation）
+```
+
+### セットアップ
+
+```bash
+npx expo install expo-localization
+npm install i18next react-i18next
+```
+
+```typescript
+// i18n.ts
+import * as Localization from 'expo-localization';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+const resources = {
+  ja: {
+    translation: {
+      "welcome": "Emport AIへようこそ",
+      "chat_placeholder": "業種や質問を入力してください",
+      "send": "送信",
+      "industry": {
+        "construction": "建設業",
+        "manufacturing": "製造業",
+        "retail": "小売業"
+      }
+    }
+  },
+  en: {
+    translation: {
+      "welcome": "Welcome to Emport AI",
+      "chat_placeholder": "Enter your industry or question",
+      "send": "Send",
+      "industry": {
+        "construction": "Construction",
+        "manufacturing": "Manufacturing",
+        "retail": "Retail"
+      }
+    }
+  }
+};
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    // デバイスの言語設定を自動取得
+    lng: Localization.getLocales()[0].languageCode ?? 'ja',
+    fallbackLng: 'ja',
+    interpolation: { escapeValue: false }
+  });
+
+export default i18n;
+```
+
+```typescript
+// コンポーネントでの使用
+import { useTranslation } from 'react-i18next';
+
+export function ChatScreen() {
+  const { t } = useTranslation();
+
+  return (
+    <View>
+      <Text>{t('welcome')}</Text>
+      <TextInput placeholder={t('chat_placeholder')} />
+      <Button title={t('send')} />
+    </View>
+  );
+}
+```
+
+### Emport AIでのi18n方針
+
+```
+現状: 日本語のみ → 問題なし
+
+将来対応が必要になる時:
+  - 海外展開時（東南アジア・英語圏）
+  - App Store の多言語メタデータ（ASO目的）
+
+今すぐできる準備:
+  - ハードコードされた文字列を全てi18nキーに置き換える
+  - 翻訳ファイルを外部JSON化（後で追加しやすく）
+```
+
+**情報源:**
+- [Expo Localization 公式](https://docs.expo.dev/versions/latest/sdk/localization/)
+- [i18next + expo-localization 実装ガイド](https://medium.com/@kgkrool/implementing-internationalization-in-expo-react-native-i18next-expo-localization-8ed810ad4455)
+
+---
+
+## 24. Sentry — クラッシュ監視・エラートラッキング
+
+**調査日時: 2026-05-14 (第5ラウンド)**
+
+### Sentry vs Firebase Crashlytics 比較
+
+```
+Sentry:
+  ✅ 無料: 月5,000イベントまで
+  ✅ エラー詳細（スタックトレース・変数値）が見やすい
+  ✅ OTA Update（EAS Update）のコンテキスト対応
+  ✅ パフォーマンス監視も可能
+  ✅ Expo公式に推奨されている
+
+Firebase Crashlytics:
+  ✅ 無料（制限なし）
+  ✅ Androidクラッシュの詳細に強い
+  ❌ React Native の詳細は少し劣る
+  ❌ Expoとの統合が少し複雑
+
+→ Emport AIには Sentry 推奨
+```
+
+### Sentry セットアップ（Expo SDK 53）
+
+```bash
+npx expo install @sentry/react-native
+npx expo customize metro.config.js  # ソースマップ設定
+```
+
+```typescript
+// app/_layout.tsx
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  // OTA Updateのバージョン追跡
+  enableAutoSessionTracking: true,
+  debug: __DEV__,
+  tracesSampleRate: 0.2,  // パフォーマンス追跡（20%サンプリング）
+});
+
+export default Sentry.wrap(RootLayout);
+```
+
+```json
+// app.json にSentryプラグインを追加
+{
+  "expo": {
+    "plugins": [
+      ["@sentry/react-native/expo", {
+        "organization": "emport-ai",
+        "project": "emport-ai-app"
+      }]
+    ]
+  }
+}
+```
+
+### エラーを手動でキャプチャ
+
+```typescript
+import * as Sentry from '@sentry/react-native';
+
+// APIエラーをSentryに送信
+try {
+  const response = await fetch(API_URL);
+} catch (error) {
+  Sentry.captureException(error, {
+    tags: { feature: 'chat', industry: currentIndustry },
+    extra: { userId: user.id, messageCount: messages.length }
+  });
+}
+
+// ユーザーコンテキストの設定（ログイン後）
+Sentry.setUser({ id: userId });
+```
+
+### EAS Build でのソースマップ自動アップロード
+
+```bash
+# .env.local に設定
+SENTRY_AUTH_TOKEN=your_auth_token
+
+# EAS Build時に自動でソースマップがアップロードされる
+# → 難読化されたコードでも読みやすいスタックトレースが取得可能
+```
+
+### 監視すべき主要指標（Emport AI）
+
+```
+Crash-Free Rate:
+  目標: 99.5%以上
+  警告: 99%を下回ったら即調査
+
+主要エラー監視:
+  - AIチャット応答エラー（Railway API障害）
+  - 認証エラー（JWT期限切れ・ネットワーク）
+  - 画面遷移エラー（Expo Routerのナビゲーション）
+```
+
+**情報源:**
+- [Sentry + Expo 公式ガイド](https://docs.expo.dev/guides/using-sentry/)
+- [Sentry React Native ドキュメント](https://docs.sentry.io/platforms/react-native/manual-setup/expo/)
+
+---
+
+## 25. Expo Dev Client (Development Build) — Expo Goを卒業する
+
+**調査日時: 2026-05-14 (第5ラウンド)**
+
+### Expo Go vs Development Build
+
+```
+Expo Go:
+  - Expoが提供するサンドボックスアプリ
+  - インストール不要でQRコードでテスト可能
+  - 固定のネイティブモジュールしか使えない
+  - SDK 53以降: プッシュ通知・一部決済ライブラリが使えない
+  - 学習・プロトタイプに最適
+
+Development Build:
+  - 自分のアプリをDev環境用にビルドしたもの
+  - 任意のネイティブモジュールが使える
+  - expo-dev-client を含む（DevMenuでリロード等が可能）
+  - プッシュ通知・IAP・カスタムSDKが使える
+  - 本番に向けた開発に必須
+```
+
+### Development Buildの作成
+
+```bash
+# expo-dev-clientのインストール
+npx expo install expo-dev-client
+
+# EASでDevelopment Buildを作成（クラウドビルド）
+eas build --profile development --platform ios
+eas build --profile development --platform android
+
+# または ローカルビルド（Mac + Xcodeが必要）
+npx expo run:ios --configuration Debug
+npx expo run:android
+```
+
+### eas.json の設定
+
+```json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  }
+}
+```
+
+### Emport AIの移行タイミング
+
+```
+Expo Goで開発継続できるうちはExpo Goで十分
+以下の機能を実装し始めたらDevelopment Buildへ移行:
+  ❌ プッシュ通知（SDK 53でExpo Go非対応）
+  ❌ RevenueCat（ネイティブIAP）
+  ❌ SSL Certificate Pinning
+  ❌ カスタムネイティブモジュール
+
+→ 現状: まだExpo Goで開発可能
+→ プッシュ通知実装時にDevelopment Buildへ移行する
+```
+
+**情報源:**
+- [Development Builds 公式ガイド](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Expo Go vs Development Builds（expo.dev）](https://expo.dev/blog/expo-go-vs-development-builds)
+
+---
+
+## 26. React Native Web — 1つのコードでiOS/Android/Web対応
+
+**調査日時: 2026-05-14 (第5ラウンド)**
+
+### Expo でWebに対応する
+
+```bash
+# Web対応は最初から含まれている（Expo managed workflow）
+npx expo start --web  # ブラウザで確認
+
+# デプロイ用ビルド
+npx expo export --platform web
+# → dist/ フォルダに静的ファイルが生成される
+```
+
+### 対応状況（2026年）
+
+```
+✅ 動作するもの:
+  - 基本的なUIコンポーネント（View, Text, TouchableOpacity）
+  - React Navigation / Expo Router
+  - Expo SDK の多くのモジュール
+  - Reanimated 4 (Web対応済み)
+  - i18next
+
+❌ Web非対応（モバイルのみ）:
+  - expo-camera
+  - react-native-mmkv（Web版は別途対応が必要）
+  - プッシュ通知（Web Push Notificationsは別実装）
+  - 生体認証
+```
+
+### Platform 別コード分岐
+
+```typescript
+import { Platform } from 'react-native';
+
+// プラットフォームに応じて実装を切り替え
+const saveToken = async (token: string) => {
+  if (Platform.OS === 'web') {
+    localStorage.setItem('token', token);
+  } else {
+    await SecureStore.setItemAsync('token', token);
+  }
+};
+
+// Platform.select でスタイル分岐
+const styles = StyleSheet.create({
+  container: {
+    paddingTop: Platform.select({
+      ios: 44,
+      android: 24,
+      web: 0,
+    })
+  }
+});
+```
+
+### Emport AIでのWeb対応方針
+
+```
+現状の判断: モバイルファーストで開発・Web対応は後回し
+
+理由:
+  1. 中小企業向けはスマートフォンからの利用が主体
+  2. Web対応で複雑さが増す（今は不要）
+  3. PWA（Progressive Web App）で代替可能
+
+将来の検討:
+  - Web版ダッシュボード（管理画面）: Expo Webで実現可能
+  - LP/プライバシーポリシー: 既存のVercel（静的HTML）で十分
+```
+
+**情報源:**
+- [Expo Web開発ガイド（公式）](https://docs.expo.dev/workflow/web/)
+- [React Native Web 2026: One Codebase, All Platforms](https://medium.com/react-native-journal/react-native-for-web-in-2025-one-codebase-all-platforms-b985d8f7db28)
+
+---
+
+## 27. 次のリサーチ課題（第5ラウンド終了）
+
+第6ラウンドで調査予定：
+1. **モバイルアプリのA/Bテスト** — Firebase Remote Config・機能フラグ
+2. **React Native アプリのオフライン対応** — WatermelonDB・SQLite・データ同期
+3. **Expo Camera / 画像認識** — OCR・名刺読み取り・業務書類デジタル化
+4. **App Store レビュー管理戦略** — 良いレビューを増やす・悪いレビューへの対処
+5. **React Native のデバッグ技法** — Flipper・Reactotron・新Architecture Debugger
