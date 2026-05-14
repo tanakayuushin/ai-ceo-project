@@ -1832,6 +1832,278 @@ Emport AIアプリ（月額4,980円）へ誘導
 
 ---
 
+## 65. 建設業 × AI — 飲食業に次ぐ第2の特化候補
+
+**調査日時: 2026-05-14 (第13ラウンド)**
+
+### 建設業の現状と経営課題（2026年）
+
+```
+深刻な問題:
+  - 2024年の時間外労働上限規制（「2024年問題」）で業界が限界
+  - 人手不足は「減少傾向」ではなく「急減」
+  - 現場監督の高齢化・後継者不在
+  - 見積もり精度の低さ（経験職人に依存）
+  
+国の方針:
+  - i-Construction 2.0（2040年まで生産性1.5倍目標）
+  - デジタル化・AI導入補助金2026が建設業にも適用
+```
+
+### 建設業のAI活用最前線
+
+| 活用領域 | 具体例 | 導入企業例 |
+|---|---|---|
+| 施工計画書作成 | AI が10分で下書き生成 | 大成建設 |
+| 図面・設計最適化 | BIM × AI | 清水建設（精度93%達成） |
+| 工程管理 | AI による進捗予測・遅延アラート | 各ゼネコン |
+| 安全管理 | カメラ×AIでヘルメット未着用検知 | 現場特化ベンダー |
+| **見積もり自動化** | **AIによる積算自動化** | **中小向けスタートアップ** |
+
+### Emport AI × 建設業特化モードの価値提案
+
+```
+建設業経営者の典型的な悩み:
+  「工事受注はできるが粗利が管理できない」
+  「社員に残業させないと工期に間に合わない」
+  「補助金（ものづくり補助金等）の申請方法がわからない」
+  「下請け業者への支払いと受取のタイミングがずれてキャッシュフローが厳しい」
+
+Emport AI 建設業特化プロンプト（案）:
+  - 労務費比率・材料費比率の管理（建設業版FL比率）
+  - ものづくり補助金の建設業への適用条件
+  - 工期遅延時のリカバリー戦略
+  - 下請法・建設業法の基本事項
+  - 工事原価管理の考え方
+```
+
+### 建設業 vs 飲食業 — 特化候補比較
+
+| 観点 | 飲食業 | 建設業 |
+|---|---|---|
+| 全国事業者数 | 381万店 | 約50万社 |
+| AI活用意欲 | 高 | **中〜高（2024年問題で急増）** |
+| 月額払いへの抵抗 | 低め | 高め（現場感覚） |
+| 補助金活用ポテンシャル | 高 | **非常に高（ものづくり補助金等）** |
+
+**→ 飲食業を第1フェーズとして進め、建設業は第2フェーズとして並行開発を推奨**
+
+**情報源:**
+- [建設業AI導入2026最新データ (Aixis)](https://aixis.jp/articles/construction-industry-ai-implementation)
+- [建設業AI活用事例6選 (business-ai.jp)](https://business-ai.jp/industry/generative-ai-construction/)
+
+---
+
+## 66. LINE公式アカウント × Flask Webhook — 技術実装設計
+
+**調査日時: 2026-05-14 (第13ラウンド)**
+
+### LINEチャットボットの仕組み
+
+```
+[ユーザーがLINEでメッセージ送信]
+        ↓
+[LINE Messaging API]
+        ↓ Webhook POST
+[Railway上のFlaskアプリ（app.py）]
+        ↓
+[Claude API（Anthropic）で返答生成]
+        ↓
+[LINE APIで返信送信]
+        ↓
+[ユーザーのLINEに返信]
+```
+
+### 実装コード（Flask + LINE SDK）
+
+```python
+# pip install line-bot-sdk flask anthropic
+
+from flask import Flask, request, abort
+from linebot import LineBotApi, WebhookHandler
+from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import anthropic
+
+app = Flask(__name__)
+
+line_bot_api = LineBotApi(os.environ['LINE_CHANNEL_ACCESS_TOKEN'])
+handler = WebhookHandler(os.environ['LINE_CHANNEL_SECRET'])
+
+@app.route("/line/callback", methods=['POST'])
+def line_callback():
+    signature = request.headers['X-Line-Signature']
+    body = request.get_data(as_text=True)
+    handler.handle(body, signature)
+    return 'OK'
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    user_message = event.message.text
+    
+    # Anthropic Claude で返答生成（既存のapp.pyと同じ）
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=1024,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": user_message}]
+    )
+    
+    reply_text = response.content[0].text
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply_text)
+    )
+```
+
+### 実装の難易度と工数
+
+```
+工数見積もり:
+  LINE Developers アカウント設定: 30分
+  Flask側のエンドポイント追加: 1〜2時間
+  Railway環境変数追加: 15分
+  テスト・デバッグ: 1〜2時間
+  合計: 約4〜5時間
+
+費用:
+  LINE公式アカウント（Freeプラン）: 無料（月1,000通まで）
+  LINE公式アカウント（ライトプラン）: 月5,000円（15,000通）
+  
+→ 最初はFreeプランで十分。有料ユーザーが増えたら有料プランへ
+```
+
+### 中高年経営者へのLINE優位性
+
+```
+データ: 40〜60代のスマホ利用時間でLINEが1位
+理由: アプリDLより「友達追加」の方が心理的ハードルが低い
+戦略: 商工会議所セミナー終了時に「LINEで続きの相談もできます」と案内
+```
+
+**情報源:**
+- [Flask LINE ChatBot 実装 (Zenn)](https://zenn.dev/kenken82/articles/ca5e36cf4d5ea1)
+- [LINE Webhook + AI チャットボット (Qiita)](https://qiita.com/piapepper/items/2ffe57471df515006cd8)
+
+---
+
+## 67. X（旧Twitter）マーケティング 投稿テンプレート — Emport AI向け実戦版
+
+**調査日時: 2026-05-14 (第13ラウンド)**
+
+### 2026年Xアルゴリズムの特徴
+
+```
+重視される指標（優先順）:
+  1. エンゲージメント（いいね・リポスト・リプライ・引用）
+  2. 滞在時間（スレッド投稿が有利）
+  3. フォロワーの質（アクティブユーザー）
+
+バズる投稿の3大要素:
+  「共感」「意外性」「実用性」
+  
+最適な投稿時間:
+  平日 8:00〜10:00（通勤中）
+  平日 12:00〜13:00（昼休み）
+  週の最強曜日: 火・水・木
+```
+
+### Emport AI向け 投稿テンプレート10選
+
+**【タイプ1: 数字で驚かせる系】**
+```
+「飲食店の平均廃業率、ご存知ですか？
+
+開業から3年で50%が廃業
+5年で70%が廃業
+10年で90%が廃業
+
+多くの店が閉じる理由は「料理の問題」ではなく
+「経営管理の問題」です。
+
+FL比率を把握していますか？
+```
+
+**【タイプ2: 共感ツイート系】**
+```
+「中小企業経営者のリアルな一日
+
+5:00 工場・現場の始業確認
+7:00 スタッフのシフト調整
+9:00 銀行・税理士に電話
+12:00 見積書作成
+14:00 トラブル対応
+18:00 経理・請求書
+21:00 「明日も休めない...」
+
+経営を相談できる相手、いますか？」
+```
+
+**【タイプ3: ノウハウ系（スレッド）】**
+```
+「補助金で「実質無料」にする経営DX戦略（スレッド）
+
+2026年、中小企業が使える主な補助金↓
+```
+
+**【タイプ4: 問いかけ系】**
+```
+「中小企業経営者の方に質問です。
+
+補助金の申請、今年やりましたか？
+
+[YES] 採択された
+[YES] でも不採択
+[NO] 申請しなかった
+[NO] 知らなかった
+
+実は2026年、使える補助金が増えています。」
+（アンケート機能で3択）
+```
+
+**【タイプ5: AI活用Tips系】**
+```
+「ChatGPTに「経営相談」をしてはいけない理由
+
+× 一般的なアドバイスしか出てこない
+× 日本の補助金制度を知らない
+× 業界（飲食・建設等）の常識を知らない
+
+専門特化したAIじゃないと意味がない。
+中小企業経営者には業種特化AIが必要。」
+```
+
+### X運用カレンダー（週次）
+
+| 曜日 | 内容 | 目的 |
+|---|---|---|
+| 月 | 補助金速報・今週のニュース | 有益情報で認知 |
+| 水 | 経営者の共感ツイート | いいね・RT獲得 |
+| 金 | 業種別Tips（飲食・建設交互） | 専門性の証明 |
+| 随時 | リプライ・エンゲージメント | コミュニティ形成 |
+
+**情報源:**
+- [X企業アカウント運用2026 (digi-co.net)](https://digi-co.net/blog/twitter-co-account/)
+- [Xでバズる投稿の型2026 (shubihiro.com)](https://shubihiro.com/column/twitter-buzz-2025/)
+
+---
+
+## 68. 次のリサーチ課題（第13ラウンド終了・アレン選定）
+
+**調査日時: 2026-05-14 (第13ラウンド)**
+
+第14ラウンドで調査予定：
+
+1. **Emport AI プライバシーポリシー作成** — App Store・Google Play審査を通過するための実際の内容作成
+2. **2026年の補助金申請AI支援サービス** — 「補助金申請書AI生成」特化サービスとの差別化
+3. **Claude Code MCP 自作サーバー開発入門** — Emport AI独自のMCPサーバーを作る可能性
+4. **freee API スコープ一覧と財務データ取得方法** — 実際に取れるデータの詳細
+5. **日本のAI倫理・規制最新動向 2026** — 生成AI事業者に課される具体的な義務
+
+---
+
+---
+
 ## 61. モバイルアプリ オンボーディング設計 — チャーン最小化のUX戦略
 
 **調査日時: 2026-05-14 (第12ラウンド)**
