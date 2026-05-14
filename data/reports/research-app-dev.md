@@ -2536,3 +2536,580 @@ Sentry.withScope((scope) => {
 3. **モバイルアプリのマネタイズ最適化** — Paywall設計・転換率向上の心理学
 4. **React Native パフォーマンス計測** — 具体的な数値目標と計測方法
 5. **Claude API × モバイルアプリ最適化** — Promptキャッシング・コスト削減・レスポンス高速化
+
+---
+
+## 34. Claude API Streaming — リアルタイムAI応答の実装
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### なぜStreamingが重要か
+
+```
+❌ 通常のAPI呼び出し:
+  ユーザーが送信 → 数秒待機（何も表示されない）→ 一気に全文表示
+  → UXが悪い。ユーザーは「フリーズしたかも」と感じる
+
+✅ Streaming:
+  ユーザーが送信 → 即座に文字が1文字ずつ表示されていく（ChatGPTのあれ）
+  → 即座のフィードバックがあり、待ち時間を感じにくい
+  → 実際のレスポンス時間が同じでもUXが劇的に改善
+```
+
+### バックエンド（Flask）でのStreaming実装
+
+```python
+# app.py
+import anthropic
+from flask import Response, stream_with_context
+
+client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
+
+@app.route('/api/chat/stream', methods=['POST'])
+def chat_stream():
+    data = request.json
+    messages = data.get('messages', [])
+    industry = data.get('industry', '汎用')
+    
+    system_prompt = f"""あなたは{industry}に特化したAIアシスタントです。
+    中小企業の経営者・従業員の業務効率化を支援します。"""
+    
+    def generate():
+        with client.messages.stream(
+            model='claude-sonnet-4-6',
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages
+        ) as stream:
+            for text in stream.text_stream:
+                # Server-Sent Events形式で送信
+                yield f"data: {text}\n\n"
+        yield "data: [DONE]\n\n"
+    
+    return Response(
+        stream_with_context(generate()),
+        content_type='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'  # Nginxのバッファリングを無効化
+        }
+    )
+```
+
+### フロントエンド（React Native）でのStreaming受信
+
+```typescript
+// hooks/useStreamingChat.ts
+import { useState, useCallback } from 'react';
+
+export function useStreamingChat() {
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const sendMessage = useCallback(async (
+    messages: Message[],
+    industry: string
+  ) => {
+    setIsStreaming(true);
+    setStreamingText('');
+
+    try {
+      // fetch でSSEを受信
+      const response = await fetch(`${API_URL}/api/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ messages, industry })
+      });
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              setIsStreaming(false);
+              return accumulated;
+            }
+            accumulated += data;
+            setStreamingText(accumulated);  // リアルタイムで更新
+          }
+        }
+      }
+    } catch (error) {
+      setIsStreaming(false);
+      throw error;
+    }
+  }, []);
+
+  return { streamingText, isStreaming, sendMessage };
+}
+```
+
+```typescript
+// コンポーネントでの使用
+export function ChatScreen() {
+  const { streamingText, isStreaming, sendMessage } = useStreamingChat();
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const handleSend = async (text: string) => {
+    const newMessages = [...messages, { role: 'user', content: text }];
+    setMessages(newMessages);
+
+    const response = await sendMessage(newMessages, industry);
+    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+  };
+
+  return (
+    <FlashList
+      data={messages}
+      renderItem={({ item }) => <MessageBubble message={item} />}
+      ListFooterComponent={
+        isStreaming ? (
+          <MessageBubble
+            message={{ role: 'assistant', content: streamingText + '▊' }}
+          />
+        ) : null
+      }
+    />
+  );
+}
+```
+
+**情報源:**
+- [Claude API Streaming 公式ドキュメント](https://platform.claude.com/docs/en/api-reference/overview)
+- [React Native + Claude AI（Design+Code）](https://designcode.io/react-native-ai/)
+
+---
+
+## 35. EAS Submit — App Store / Google Play 自動提出
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### EAS Submit の全体フロー
+
+```
+1. EAS Build でビルド作成
+   eas build --platform ios --profile production
+   
+2. EAS Submit でストアへ自動送信
+   eas submit --platform ios --latest
+   
+3. App Store Connect でメタデータ入力 → 審査提出
+   （メタデータ入力は現状手動が必要）
+```
+
+### iOS（App Store）の設定
+
+```json
+// eas.json に submit 設定を追加
+{
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "tsubeyou081@gmail.com",
+        "ascAppId": "XXXXXXXXXX",  // App Store Connect のApp ID
+        "appleTeamId": "XXXXXXXXXX"
+      }
+    }
+  }
+}
+```
+
+```bash
+# App Store Connectへ自動アップロード（TestFlightに送信）
+eas submit --platform ios --profile production --latest
+
+# ビルドと提出を一気に実行
+eas build --platform ios --profile production --auto-submit
+```
+
+### Android（Google Play）の設定
+
+```bash
+# 初回のみ手動でAABをアップロードしてから、以降はAPI自動化
+# Google Service Account Key が必要（Firebase Console で発行）
+
+# eas.json
+{
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal",  // internal → alpha → beta → production の順
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}
+```
+
+```bash
+# Google Play内部テスターに自動提出
+eas submit --platform android --profile production --latest
+```
+
+### GitHub Actions でCI/CD完結（ビルド→提出→通知）
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Stores
+
+on:
+  push:
+    tags: ['v*']  # v1.0.0 のようなタグでトリガー
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      # ビルド + 自動提出
+      - run: eas build --platform all --profile production --non-interactive --auto-submit
+      
+      # Slack/Discord通知（任意）
+      - name: Notify
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -d '{"text": "✅ App Store/Google Playへの提出完了"}'
+```
+
+### 提出から公開までの目安
+
+```
+App Store（iOS）:
+  提出 → TestFlight: 10-15分
+  審査: 24-48時間（初回は長い場合あり）
+  承認後: 即座に公開 or 日時指定
+
+Google Play（Android）:
+  内部テスト: 即座
+  クローズドテスト → オープンテスト → 本番: 各レビューに数時間
+  本番公開: 審査なし（ポリシー違反のみ拒否）
+```
+
+**情報源:**
+- [EAS Submit 公式ドキュメント](https://docs.expo.dev/submit/introduction/)
+- [EAS Submit Android（公式）](https://docs.expo.dev/submit/android/)
+
+---
+
+## 36. Paywall設計 — 転換率を最大化する心理学
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### 2026年のPaywall最新データ
+
+```
+週次プランが2026年の主役:
+  週次プラン = サブスク収益の55.6%（2026年）
+  年次より週次の方がCVR 1〜7倍高い（カテゴリによる）
+  → 「まず安く試させる」戦略が最も効果的
+
+LTVの差:
+  最良のPaywall構成 vs 最悪: LTVに636%の差
+  A/Bテストする vs しない: 収益に最大40倍の差
+```
+
+### 転換率を上げる心理学的要素
+
+```
+1. 「いつでもキャンセル可能」の明記（最重要）
+   - PaywallのCTAボタン近くに必ず表示
+   - これがないと離脱率が大幅に上がる
+
+2. アンカリング（価格の比較提示）
+   - 月額プラン vs 年額プランを並べる
+   - 年額を推奨として目立たせる（「最もお得」バッジ）
+   - ユーザーに「年額の方が賢い」と感じさせる
+
+3. 無料トライアルの透明性
+   - 「〇日後に請求されます」を明確に表示
+   - トライアル終了前のリマインダーを約束
+   → CVRが最大46%向上（実績あり）
+
+4. 社会的証明
+   - 「1,000社以上が利用」
+   - ★4.8 (234件のレビュー)
+   - 具体的な業種・会社規模の声
+```
+
+### Emport AI の推奨Paywall設計
+
+```
+価格設計（A/Bテスト前の初期案）:
+  
+  🆓 無料プラン:
+    月10回まで無料
+    業種特化なし（汎用のみ）
+  
+  💰 スタンダードプラン（月額）:
+    月額 ¥980/月
+    無制限チャット + 全業種対応
+  
+  🏆 ビジネスプラン（年額 → 推奨として強調）:
+    ¥7,800/年（¥650/月 = 34%割引）
+    + 複数端末・チームメンバー追加
+```
+
+```typescript
+// Paywall画面のベスト構成
+export function PaywallScreen() {
+  return (
+    <View>
+      {/* 価値提案を明確に */}
+      <Text style={styles.headline}>
+        AIが業務を自動化します
+      </Text>
+      <Text style={styles.subheadline}>
+        1,200社以上の中小企業が活用中
+      </Text>
+      
+      {/* 年額を強調 */}
+      <PlanOption
+        title="年間プラン"
+        price="¥650/月"
+        totalPrice="¥7,800/年"
+        badge="最もお得・34%OFF"
+        recommended={true}
+      />
+      <PlanOption
+        title="月間プラン"
+        price="¥980/月"
+        recommended={false}
+      />
+      
+      {/* CTAとキャンセル保証 */}
+      <Button title="7日間無料で試す" onPress={handleSubscribe} />
+      <Text style={styles.guarantee}>
+        いつでもキャンセル可能 · 7日以内なら全額返金
+      </Text>
+      
+      {/* 社会的証明 */}
+      <TestimonialCard
+        company="山田建設（従業員15名）"
+        text="見積書作成時間が80%削減されました"
+      />
+    </View>
+  );
+}
+```
+
+### Superwall — Paywallのリアルタイムテスト
+
+```
+Superwallとは:
+  - Paywallをリモートで変更・A/Bテストできるツール
+  - アプリ再提出なしでPaywallデザイン・価格・コピーを変更
+  - 実績: ある企業がSuperwallで収益48%増加（2026年事例）
+
+→ スケール後に検討。初期はシンプルな実装で十分
+```
+
+**情報源:**
+- [高転換率Paywallの設計（Adapty.io 2026）](https://adapty.io/blog/high-performing-paywall-2026/)
+- [Paywall設計の心理学・10原則（4,500 A/Bテスト分析）](https://stormy.ai/blog/10-mobile-app-paywall-design-principles)
+
+---
+
+## 37. React Native パフォーマンス数値目標
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### 2026年の業界標準ターゲット値
+
+```
+指標             | 目標値          | 警告ライン
+----------------|----------------|------------------
+FPS（通常画面）  | 60fps          | 45fps以下でユーザーが体感
+FPS（スクロール）| 58fps以上      | P99デバイスで計測
+Cold Start（iOS）| 1.2秒以下      | 2.0秒超でユーザーが不満
+Cold Start(Android)| 2.0秒以下  | 3.0秒超で離脱増
+JSスレッド停止  | 100ms以下      | 100ms超で「フリーズ」感
+メモリ使用量    | 150MB以下      | 300MB超でOSがkillする
+Crash-Free率   | 99.5%以上      | 99%以下は即調査
+```
+
+### パフォーマンス計測ツール
+
+```typescript
+// react-native-performance-stats でリアルタイム計測
+import PerformanceStats from 'react-native-performance-stats';
+
+// 開発中にFPS・メモリ・CPU使用率を画面上に表示
+PerformanceStats.start(); // FPSオーバーレイを表示
+
+// DevToolsのPerformance Panelでの計測:
+// 1. Metro起動: npx expo start
+// 2. DevToolsを開く（j を押す）
+// 3. Performance タブ → Record → 操作 → Stop
+// 4. フレームドロップ・JS実行時間を可視化
+```
+
+### ボトルネック別の対処法
+
+```
+FPSが低い:
+  → FlashList に移行（FlatList比10倍）
+  → useAnimatedStyle（Reanimated4）でUIスレッドに移行
+  → React.memoでメッセージコンポーネントを最適化
+
+Cold Startが遅い:
+  → New Architecture + Hermes 1.0 で40%改善
+  → 起動時の不要な初期化処理を遅延（lazy import）
+  → app.jsonのassets prebundlingを有効化
+
+JSスレッド停止:
+  → 重い計算処理をuseWorker（バックグラウンドスレッド）に移行
+  → 大きなJSON処理は分割して処理
+
+メモリ過多:
+  → 画像はexpo-imageでキャッシュ管理
+  → FlashList のコンポーネントリサイクル活用
+  → 不要なEventListenerのクリーンアップ
+```
+
+### Emport AI の最優先パフォーマンス施策
+
+```
+優先度順:
+  1. FlashList 導入（メッセージリスト）← 最大効果
+  2. New Architecture 有効化（app.jsonで1行）
+  3. MessageBubble React.memo 化
+  4. Sentry でCrash-Free率監視
+  5. 画像はすべてexpo-image に置き換え
+```
+
+**情報源:**
+- [React Native Performance 2026 ガイド（RapidNative）](https://www.rapidnative.com/blogs/react-native-performance-optimization-2026-playbook)
+- [React Native パフォーマンス監視（UXCam）](https://uxcam.com/blog/react-native-performance-monitoring/)
+
+---
+
+## 38. Claude API コスト最適化 — Prompt Caching で最大90%削減
+
+**調査日時: 2026-05-14 (第7ラウンド)**
+
+### Claude APIの価格（2026年）
+
+```
+モデル           | 入力          | 出力          | キャッシュ読み
+----------------|--------------|--------------|---------------
+claude-opus-4-7  | $15/MTok    | $75/MTok     | $1.5/MTok（90%OFF）
+claude-sonnet-4-6| $3/MTok     | $15/MTok     | $0.3/MTok（90%OFF）
+claude-haiku-4-5 | $0.8/MTok   | $4/MTok      | $0.08/MTok（90%OFF）
+
+→ Emport AI: claude-sonnet-4-6 を使用（コスト・性能バランス最適）
+→ Prompt Cachingで入力コストを90%削減できる
+```
+
+### Prompt Caching の仕組みと実装
+
+```python
+# バックエンド（Flask）でのPrompt Caching実装
+import anthropic
+
+client = anthropic.Anthropic()
+
+INDUSTRY_PROMPTS = {
+    '建設業': """あなたは建設業に特化したAIアシスタントです。
+    以下の専門知識を持っています:
+    - 建設業の工程管理・原価管理
+    - 見積書・工事請負契約書の作成
+    - 安全管理・品質管理の基礎知識
+    ...(長い業種知識テキスト)...""",
+    
+    '製造業': """あなたは製造業に特化した..."""
+}
+
+def chat_with_caching(messages: list, industry: str) -> str:
+    system_prompt = INDUSTRY_PROMPTS.get(industry, 'あなたは汎用AIアシスタントです。')
+    
+    response = client.messages.create(
+        model='claude-sonnet-4-6',
+        max_tokens=1024,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"}  # ← これがキャッシュの設定
+                # TTL: デフォルト5分（1.25x書き込みコスト）
+                # 5分以内に同じsystem promptへのリクエストはキャッシュヒット
+                # = 入力コストが1/10になる
+            }
+        ],
+        messages=messages
+    )
+    return response.content[0].text
+```
+
+### コスト計算例
+
+```
+条件:
+  - 業種プロンプト: 2,000トークン（キャッシュ対象）
+  - 会話履歴: 平均500トークン
+  - AI回答: 平均300トークン
+  - 月間リクエスト: 10,000回
+
+キャッシュなし:
+  入力: (2,000 + 500) × 10,000 = 25M tokens × $3/MTok = $75/月
+
+キャッシュあり（80%ヒット率と仮定）:
+  キャッシュ書き込み: 2,000 × 10,000 × 20% = 4M tokens × $3.75/MTok = $15
+  キャッシュ読み込み: 2,000 × 10,000 × 80% = 16M tokens × $0.3/MTok = $4.8
+  非キャッシュ入力: 500 × 10,000 = 5M tokens × $3/MTok = $15
+  合計: $34.8/月（54%削減）
+
+→ リクエストが多いほどキャッシュ効果は増大
+```
+
+### コスト削減の全体戦略
+
+```
+1. Prompt Caching（最大90%削減）
+   → 固定のsystem promptにキャッシュを設定
+
+2. モデル選択（3〜10倍の差）
+   → 単純なタスクはHaiku、複雑な業務相談はSonnet
+
+3. Batch API（50%削減）
+   → 急がない処理（レポート生成・夜間バッチ）に使用
+
+4. max_tokens の最適化
+   → 必要以上に大きな値を設定しない
+
+5. 会話履歴の制限（第4ラウンドで設計済み）
+   → 最新20件のみAPIに送信
+```
+
+**情報源:**
+- [Claude API Prompt Caching（公式）](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- [Anthropic API Pricing 2026完全ガイド（finout.io）](https://www.finout.io/blog/anthropic-api-pricing)
+
+---
+
+## 39. 次のリサーチ課題（第7ラウンド終了）
+
+第8ラウンドで調査予定：
+1. **React Native + TypeScript 型安全設計** — APIレスポンスの型定義・Zod バリデーション
+2. **Expo Router ファイルベースAPIルート** — バックエンドをアプリ内に統合する新手法
+3. **モバイルアプリのユーザーオンボーディング設計** — チュートリアル・初回体験
+4. **アプリのウィジェット対応（iOS/Android）** — ホーム画面ウィジェット
+5. **React Native + Supabase** — Firebaseの代替・リアルタイムDB・認証
