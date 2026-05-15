@@ -4337,3 +4337,901 @@ CI/CD:
 ---
 
 *アプリ開発調査完了（第1〜10ラウンド）。「いい」と言われるまで随時追加継続。*
+
+---
+
+## 54. React Native Flexbox レイアウト 2026年ベストプラクティス
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### Flexboxの基本原則（2026年版）
+
+React Nativeは**Webとほぼ同じFlexbox**を採用しているが、デフォルト値が異なる：
+
+| プロパティ | React Native デフォルト | Web デフォルト |
+|-----------|----------------------|--------------|
+| `flexDirection` | `column` | `row` |
+| `alignContent` | `flex-start` | `normal` |
+| `flexShrink` | `0` | `1` |
+
+### 2026年推奨レイアウトパターン
+
+```tsx
+// ✅ 推奨：flex:1 で画面全体を使う
+export default function Screen() {
+  return (
+    <View style={{ flex: 1 }}>           {/* 画面全体 */}
+      <View style={{ flex: 0.3 }}>       {/* 上部30% */}
+        <Header />
+      </View>
+      <View style={{ flex: 0.7 }}>       {/* 下部70% */}
+        <Content />
+      </View>
+    </View>
+  );
+}
+
+// ✅ レスポンシブ：useWindowDimensions でデバイス対応
+import { useWindowDimensions } from 'react-native';
+
+export function ResponsiveLayout() {
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768;
+
+  return (
+    <View style={{
+      flexDirection: isTablet ? 'row' : 'column',
+      padding: width * 0.04,  // 画面幅の4%をパディングに
+    }}>
+      <Card style={{ flex: isTablet ? 0.4 : 1 }} />
+      <Card style={{ flex: isTablet ? 0.6 : 1 }} />
+    </View>
+  );
+}
+```
+
+### よく使うレイアウトパターン
+
+```tsx
+// カード中央配置
+const centerStyle = {
+  flex: 1,
+  justifyContent: 'center',  // 縦方向中央
+  alignItems: 'center',      // 横方向中央
+};
+
+// ヘッダー＋スクロールコンテンツ
+const screenStyle = {
+  flex: 1,
+  // headerは固定高さ、contentはflex:1で残りを埋める
+};
+
+// グリッドレイアウト（2列）
+const gridItem = {
+  width: '48%',
+  margin: '1%',
+};
+
+// スペース均等分割
+const spaceBetween = {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+};
+```
+
+### Pressable（2026年推奨のタップ処理）
+
+```tsx
+// ❌ 非推奨（古い）
+<TouchableOpacity onPress={handlePress}>
+
+// ✅ 推奨（2026年）
+<Pressable
+  onPress={handlePress}
+  style={({ pressed }) => ({
+    opacity: pressed ? 0.7 : 1,
+    transform: [{ scale: pressed ? 0.97 : 1 }],
+  })}
+>
+```
+
+### パーセンテージ vs flex の使い分け
+
+- **flex**: 親の残余スペースを比率で分割 → 動的レイアウトに最適
+- **%**: 親要素の幅/高さの割合 → グリッドやカード幅に最適
+- **固定値**: ヘッダー高さ・アイコンサイズ等の変えてはいけない値に使う
+
+### Emport AIへの応用
+
+```
+現状のEmport AIアプリ（5タブ構成）への適用：
+  - BottomTabBar: 高さ固定（60px）、残りをflex:1のコンテンツエリアへ
+  - ChatScreen: メッセージリストをflex:1、入力欄を固定高さ
+  - レスポンシブ: useWindowDimensionsでiPad対応を将来追加
+  - カード一覧: 横2列グリッド（width:'48%'）でAIメニューを表示
+```
+
+**情報源:**
+- [Layout with Flexbox - React Native公式](https://reactnative.dev/docs/flexbox)
+- [Responsive Layouts in React Native 2026](https://oneuptime.com/blog/post/2026-01-15-react-native-responsive-layouts/view)
+- [Understanding Flexbox in React Native - Medium](https://medium.com/codetodeploy/understanding-layout-and-flexbox-in-react-native-9a6a5b759d42)
+
+---
+
+## 55. Reanimated 4 アニメーション — CSSトランジション & Worklet
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### Reanimated 4の2大アプローチ
+
+```
+1. CSS Transitions API（新機能）
+   → Webの書き心地でアニメーション
+   → 状態変化に自動追随
+   → 初心者向け・シンプル
+
+2. Worklet（従来の強力な機能）
+   → UIスレッド上で直接実行
+   → 60fps保証（JSスレッド詰まっても無関係）
+   → ジェスチャー連動の複雑なアニメーションに最適
+```
+
+**前提条件**: React Native 0.76以上 + New Architecture（Fabric）必須
+
+### CSS Transitions API（Reanimated 4の新機能）
+
+```tsx
+import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+
+// ✅ CSSトランジション風（シンプル）
+function FadeButton({ visible }: { visible: boolean }) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(visible ? 1 : 0, { duration: 300 }),
+    transform: [{ scale: withTiming(visible ? 1 : 0.8, { duration: 300 }) }],
+  }));
+
+  return <Animated.View style={[styles.button, animatedStyle]} />;
+}
+```
+
+### Workletでジェスチャー連動アニメーション
+
+```tsx
+import { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+function DraggableCard() {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      // UIスレッドで直接実行 → 60fps保証
+      translateX.value = event.translationX;
+      translateY.value = event.translationY;
+    })
+    .onEnd(() => {
+      // 指を離したらバネで元の位置に戻る
+      translateX.value = withSpring(0);
+      translateY.value = withSpring(0);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[styles.card, animatedStyle]} />
+    </GestureDetector>
+  );
+}
+```
+
+### よく使うアニメーション関数
+
+| 関数 | 挙動 | 用途 |
+|------|------|------|
+| `withTiming(value, { duration })` | 線形・イージング | フェード、スライド |
+| `withSpring(value)` | バネ物理演算 | ドラッグ後の戻り |
+| `withDelay(ms, animation)` | 遅延実行 | 連続アニメーション |
+| `withSequence(...animations)` | 順番実行 | テキスト入力アニメ |
+| `withRepeat(animation, n)` | 繰り返し | ローディング、点滅 |
+
+### Emport AIへの応用
+
+```
+チャット画面:
+  - メッセージ出現: withTiming(opacity 0→1, duration: 200)
+  - 送信ボタン: withSpring(scale 1→1.1→1) でタップフィードバック
+  - ローディング: withRepeat(withTiming) でパルスアニメーション
+
+AI応答ストリーミング:
+  - テキスト出現時にfadeIn（0.1秒）
+  - 完了時にチェックマークをwithSpringでポップ
+
+ホーム画面:
+  - カード切り替え: withTiming(translateX) でスライド
+```
+
+**情報源:**
+- [Reanimated 4公式ドキュメント](https://docs.swmansion.com/react-native-reanimated/)
+- [How to Create Fluid Animations - FreeCodeCamp](https://www.freecodecamp.org/news/how-to-create-fluid-animations-with-react-native-reanimated-v4/)
+- [Reanimated 4 Tutorial - React Native Relay](https://reactnativerelay.com/article/mastering-react-native-reanimated-4-css-animations-transitions-worklets)
+
+---
+
+## 56. Expo Router v4 ナビゲーション & 画面遷移
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### Expo Router v4の変更点（重要）
+
+```
+⚠️ 破壊的変更（v3→v4）:
+  router.navigate() が router.push() と同じ挙動になった
+  → 旧: navigate()はスタックを賢く管理
+  → 新: navigate()は常にスタックにpush
+  → 対策: router.replace() を使ってスタックを置き換える
+```
+
+### ファイルベースルーティング構造
+
+```
+app/
+├── (tabs)/           ← タブグループ
+│   ├── _layout.tsx   ← タブ設定
+│   ├── index.tsx     ← ホームタブ
+│   ├── chat.tsx      ← AIチャットタブ
+│   └── settings.tsx  ← 設定タブ
+├── (auth)/           ← 認証グループ
+│   ├── login.tsx
+│   └── register.tsx
+├── _layout.tsx       ← ルートレイアウト（認証状態管理）
+└── +not-found.tsx    ← 404ページ
+```
+
+### スクリーン遷移の実装
+
+```tsx
+import { router } from 'expo-router';
+
+// 基本的なナビゲーション
+router.push('/chat');           // スタックにpush
+router.replace('/home');        // 現在のスクリーンを置き換え
+router.back();                  // 戻る
+router.canGoBack();             // 戻れるか確認
+
+// パラメータ付きナビゲーション
+router.push({
+  pathname: '/chat/[id]',
+  params: { id: 'session-123' }
+});
+
+// 型安全なルーティング（TypeScript）
+import { Link } from 'expo-router';
+<Link href="/chat" asChild>
+  <Pressable><Text>チャットへ</Text></Pressable>
+</Link>
+```
+
+### アニメーション付き画面遷移
+
+```tsx
+// _layout.tsx でスタックアニメーションを設定
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return (
+    <Stack
+      screenOptions={{
+        animation: 'slide_from_right',    // iOS標準スライド
+        // animation: 'fade',             // フェード
+        // animation: 'flip',             // フリップ
+        // animation: 'zoom',             // ズーム（新機能）
+        headerShown: false,
+      }}
+    />
+  );
+}
+```
+
+### Zoom Transition（Expo Router独自機能）
+
+```tsx
+// 要素から画面へのズームトランジション
+import { ZoomTransition } from 'expo-router';
+
+// リスト項目をタップしたら詳細画面にズームで遷移
+function ListItem({ item }) {
+  return (
+    <ZoomTransition sharedTransitionTag={`item-${item.id}`}>
+      <Pressable onPress={() => router.push(`/detail/${item.id}`)}>
+        <Image style={{ width: 100, height: 100 }} source={{ uri: item.image }} />
+      </Pressable>
+    </ZoomTransition>
+  );
+}
+```
+
+### モーダル画面の実装
+
+```tsx
+// app/_layout.tsx
+<Stack>
+  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+  <Stack.Screen
+    name="modal"
+    options={{
+      presentation: 'modal',        // iOS: カードモーダル
+      // presentation: 'transparentModal',  // 透明背景モーダル
+      animation: 'slide_from_bottom',
+    }}
+  />
+</Stack>
+```
+
+### Emport AIへの応用
+
+```
+現在の5タブ構成に加えて:
+  - AI相談 → 詳細セッション: slide_from_right
+  - 設定モーダル: presentation:'modal'でボトムシート風
+  - エラー画面: presentation:'transparentModal'でオーバーレイ
+  - オンボーディング: replace()で戻れないフロー設計
+
+重要: v4での router.navigate()→router.replace() の移行を確認
+```
+
+**情報源:**
+- [Expo Router公式ドキュメント](https://docs.expo.dev/router/introduction/)
+- [React Navigation with Expo Router 2026](https://www.codesofphoenix.com/articles/expo/expo-router-nav)
+- [Zoom Transition - Expo Documentation](https://docs.expo.dev/router/advanced/zoom-transition/)
+
+---
+
+## 57. UIコンポーネントライブラリ比較 — NativeWind vs Tamagui vs Gluestack
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### 2026年の主要3ライブラリ比較
+
+| ライブラリ | 週次DL | 特徴 | 推奨ユースケース |
+|-----------|--------|------|----------------|
+| **NativeWind 4.x** | 約40万 | TailwindCSS構文をネイティブで使用 | Webから移行・速い開発 |
+| **Tamagui** | 約7.5万 | 最適化コンパイラで最高パフォーマンス | パフォーマンス最優先 |
+| **Gluestack UI v2** | 約3万 | RSC・Expo対応・アクセシビリティ優秀 | 本格的デザインシステム |
+
+### NativeWind 4.x（最もシェアが高い）
+
+```tsx
+// インストール
+npm install nativewind
+npm install --save-dev tailwindcss
+
+// 使い方：TailwindCSSと全く同じ構文
+import { View, Text, Pressable } from 'react-native';
+
+export function ChatBubble({ message, isUser }) {
+  return (
+    <View className={`
+      max-w-[80%] rounded-2xl px-4 py-3 mb-2
+      ${isUser ? 'bg-blue-600 self-end' : 'bg-gray-100 self-start'}
+    `}>
+      <Text className={isUser ? 'text-white' : 'text-gray-900'}>
+        {message.content}
+      </Text>
+    </View>
+  );
+}
+
+// Container Queries（v4新機能）
+<View className="@container">
+  <Text className="@sm:text-lg @md:text-xl">レスポンシブテキスト</Text>
+</View>
+```
+
+### Tamagui（最高パフォーマンス）
+
+```tsx
+import { Button, Card, Text, XStack, YStack } from 'tamagui';
+
+export function AICard({ title, description }) {
+  return (
+    <Card elevate bordered padding="$4">
+      <YStack gap="$2">
+        <Text fontSize="$6" fontWeight="bold">{title}</Text>
+        <Text fontSize="$4" color="$gray10">{description}</Text>
+        <XStack gap="$2" justifyContent="flex-end">
+          <Button size="$3" variant="outlined">詳細</Button>
+          <Button size="$3" theme="active">使う</Button>
+        </XStack>
+      </YStack>
+    </Card>
+  );
+}
+// ↑ コンパイル時に最適化 → 実行時オーバーヘッドなし
+```
+
+### Gluestack UI v2（アクセシビリティ特化）
+
+```tsx
+import { Button, ButtonText, Input, InputField, VStack } from '@gluestack-ui/themed';
+
+export function LoginForm() {
+  return (
+    <VStack space="md">
+      <Input>
+        <InputField placeholder="メールアドレス" />
+      </Input>
+      <Button>
+        <ButtonText>ログイン</ButtonText>
+      </Button>
+    </VStack>
+  );
+}
+// アクセシビリティ属性が自動付与（WAI-ARIA準拠）
+```
+
+### Emport AIへの推奨選択
+
+```
+【推奨: NativeWind 4.x】
+
+理由:
+  1. 開発速度が最も速い（TailwindCSSの知識が転用できる）
+  2. 週40万DL・コミュニティが最大 → StackOverflow回答が豊富
+  3. Expo SDKと相性良好
+  4. 既存コードへの段階的導入が容易
+
+移行手順:
+  1. npx expo install nativewind tailwindcss
+  2. tailwind.config.js を設定
+  3. babel.config.js に nativewind/babel を追加
+  4. 既存のStyleSheet.create()を徐々にclassName=""に移行
+```
+
+**情報源:**
+- [The 10 best React Native UI libraries 2026 - LogRocket](https://blog.logrocket.com/best-react-native-ui-component-libraries/)
+- [Best React Native libraries with Tailwind 2026 - DEV Community](https://dev.to/ninarao/best-react-native-component-libraries-with-tailwind-support-for-fast-ui-development-in-2026-2fe4)
+- [Tamagui公式](https://tamagui.dev/)
+- [Gluestack UI公式](https://gluestack.io/)
+
+---
+
+## 58. モバイルUX/UIデザイントレンド 2026
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### 2026年の主要UIトレンド
+
+#### 1. ボトムシートUIの覇権
+
+```
+ボトムシートが2026年のメインUIパターン:
+  - Appleがios15でボトムシートを標準化
+  - Googleも Material Design 3でボトムシートを推奨
+  - 適用場面: 詳細情報・フィルター・アクションメニュー・設定
+  
+日本アプリでの活用例:
+  - LINEのメンションピッカー
+  - メルカリの商品詳細シート
+  - PayPayの送金確認
+```
+
+#### 2. グラスモーフィズム（選択的活用）
+
+```tsx
+// 2026年のグラスモーフィズムは「場所を選んで」使う
+const glassStyle = {
+  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  backdropFilter: 'blur(20px)',  // iOS: BlurViewで代替
+  borderWidth: 1,
+  borderColor: 'rgba(255, 255, 255, 0.3)',
+  borderRadius: 16,
+};
+
+// 適用場面: 通知カード・メディアコントロール・コンテキストメニュー
+// 非適用場面: メインコンテンツ・テキスト読みやすさが必要な箇所
+```
+
+#### 3. マイクロインタラクション（UX差別化の鍵）
+
+```tsx
+// いいね！ボタンのマイクロインタラクション
+function LikeButton() {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    scale.value = withSequence(
+      withTiming(1.3, { duration: 100 }),  // 大きく
+      withSpring(1)                         // バネで戻る
+    );
+    // + ハプティックフィードバック（触覚）
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable onPress={handlePress}>
+        <Icon name="heart" />
+      </Pressable>
+    </Animated.View>
+  );
+}
+```
+
+#### 4. AIによるパーソナライズUI（2026年最先端）
+
+```
+AIがUIそのものを変える:
+  - 使用頻度の高い機能を上位に自動配置
+  - 時間帯・場所・利用状況でメニューを変化
+  - ユーザーの行動パターンからレイアウトを最適化
+
+Emport AIへの応用:
+  - 朝: ニュースブリーフィング機能を前面に
+  - 商談後: 議事録整理・メール作成を提案
+  - 夜: SNS投稿スケジューリングを前面に
+```
+
+#### 5. ミニマリズム ≠ シンプル（2026年解釈）
+
+```
+2026年のミニマリズムの定義:
+  - 情報密度を下げる × 機能を減らす
+  - 意図的な余白: 最小margin 16dp（Material Design推奨）
+  - フォーカス: 1画面に1つのプライマリアクション
+  - タイポグラフィ: 見出し/本文の明確な階層（3段階まで）
+
+日本のアプリに特有の注意点:
+  - iOS シェアが高い（日本はiOS優位）→ iOS Human Interface Guidelinesを優先
+  - 日本語フォントはサイズを1-2pt大きめに設定（可読性確保）
+  - 情報量を多く表示する傾向 → スクロール可能なリストより展開式UIを好む
+```
+
+### UIカラーパレット設計（2026年版）
+
+```tsx
+// Emport AI向け推奨カラーシステム
+const colors = {
+  // プライマリ（信頼・テクノロジー）
+  primary: '#1A3B8C',       // ネイビーブルー（ピッチ書と同色系）
+  primaryLight: '#EBF0FF',  // 薄青（背景・カード）
+
+  // セマンティック
+  success: '#22C55E',       // 緑（完了・成功）
+  warning: '#F59E0B',       // 黄（注意・処理中）
+  error: '#EF4444',         // 赤（エラー）
+
+  // ニュートラル（テキスト・背景）
+  textPrimary: '#111827',   // ほぼ黒
+  textSecondary: '#6B7280', // グレー
+  background: '#F9FAFB',    // ほぼ白
+  surface: '#FFFFFF',       // 純白（カード）
+  border: '#E5E7EB',        // 薄いグレー
+
+  // ダークモード対応
+  dark: {
+    background: '#111827',
+    surface: '#1F2937',
+    border: '#374151',
+  }
+};
+```
+
+### Emport AIへの応用
+
+```
+実装優先度:
+  🔴 即時: ボトムシートUI（AI相談の入力欄をボトムシート化）
+  🔴 即時: マイクロインタラクション（送信ボタン・いいね系）
+  🟡 次期: グラスモーフィズム（通知カードに適用）
+  🟡 次期: AIパーソナライズ（時間帯でホーム画面変更）
+  🟢 将来: ダークモード対応
+```
+
+**情報源:**
+- [9 Mobile App Design Trends for 2026 - UXPilot](https://uxpilot.ai/blogs/mobile-app-design-trends)
+- [UI Patterns That Matter in 2026 - Muzli](https://muz.li/blog/whats-changing-in-mobile-app-design-ui-patterns-that-matter-in-2026/)
+- [Mobile UI/UX Design Trends 2026 - UIStudioZ](https://uistudioz.com/blog/mobile-ui-ux-the-design-trends/)
+
+---
+
+## 59. ジェスチャーハンドリング — スワイプ・ドラッグ＆ドロップ
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### react-native-gesture-handler v3 の主要ジェスチャー
+
+```tsx
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+
+// ① タップ
+const tap = Gesture.Tap()
+  .numberOfTaps(1)               // シングルタップ
+  .onStart(() => console.log('タップ'));
+
+// ② ダブルタップ（いいね！など）
+const doubleTap = Gesture.Tap()
+  .numberOfTaps(2)
+  .onStart(() => toggleLike());
+
+// ③ 長押し
+const longPress = Gesture.LongPress()
+  .minDuration(500)
+  .onStart(() => showContextMenu());
+
+// ④ パン（ドラッグ）
+const pan = Gesture.Pan()
+  .onUpdate((e) => {
+    translateX.value = e.translationX;
+  })
+  .onEnd(() => {
+    translateX.value = withSpring(0);
+  });
+
+// 複数ジェスチャーの組み合わせ
+const combined = Gesture.Simultaneous(pan, tap);  // 同時認識
+const exclusive = Gesture.Exclusive(doubleTap, tap); // 優先順位付き
+
+return (
+  <GestureDetector gesture={combined}>
+    <Animated.View style={animatedStyle} />
+  </GestureDetector>
+);
+```
+
+### スワイプで削除（メッセージ・リストアイテム）
+
+```tsx
+import { Swipeable } from 'react-native-gesture-handler';
+
+function SwipeableMessage({ message, onDelete }) {
+  const renderRightActions = () => (
+    <Pressable
+      style={styles.deleteAction}
+      onPress={() => onDelete(message.id)}
+    >
+      <Text style={{ color: 'white' }}>削除</Text>
+    </Pressable>
+  );
+
+  return (
+    <Swipeable
+      renderRightActions={renderRightActions}
+      friction={2}              // スワイプの重さ（1=軽い、2=標準）
+      overshootRight={false}   // 右端を超えてスワイプしない
+    >
+      <MessageBubble message={message} />
+    </Swipeable>
+  );
+}
+```
+
+### ドラッグ＆ドロップ（リスト並び替え）
+
+```tsx
+// react-native-draggable-flatlist を使用
+import DraggableFlatList from 'react-native-draggable-flatlist';
+
+function ReorderableList({ items, onReorder }) {
+  return (
+    <DraggableFlatList
+      data={items}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item, drag, isActive }) => (
+        <Pressable
+          onLongPress={drag}       // 長押しでドラッグ開始
+          style={{
+            backgroundColor: isActive ? '#E5E7EB' : 'white',
+            transform: [{ scale: isActive ? 1.05 : 1 }],
+          }}
+        >
+          <Text>{item.title}</Text>
+        </Pressable>
+      )}
+      onDragEnd={({ data }) => onReorder(data)}
+    />
+  );
+}
+```
+
+### ハプティックフィードバック（触覚）
+
+```tsx
+import * as Haptics from 'expo-haptics';
+
+// ジェスチャーに触覚フィードバックを追加
+const handleSwipeDelete = () => {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+};
+
+const handleLongPress = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+};
+
+const handleSuccess = () => {
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+};
+```
+
+### Emport AIへの応用
+
+```
+チャット画面:
+  - メッセージを左スワイプ → コピー/引用アクション表示
+  - 送信ボタン長押し → 録音モード（将来機能）
+  - プルダウン → チャット履歴リフレッシュ
+
+ホーム画面:
+  - AIカードを長押し → ドラッグで並び替え
+  - 横スワイプ → 業種カテゴリ切り替え
+
+設定画面:
+  - リスト項目スワイプ → 削除オプション表示
+```
+
+**情報源:**
+- [React Native Gesture Handler with Expo 2026](https://www.codesofphoenix.com/articles/expo/react-native-gesture-handler)
+- [Add gestures - Expo Documentation](https://docs.expo.dev/tutorial/gestures/)
+- [Reanimated Swipeable](https://docs.swmansion.com/react-native-gesture-handler/docs/components/reanimated_swipeable/)
+
+---
+
+## 60. ボトムシート & モーダル設計
+
+**調査日時: 2026-05-15 (第11ラウンド)**
+
+### @gorhom/bottom-sheet（2026年デファクトスタンダード）
+
+```bash
+npx expo install @gorhom/bottom-sheet react-native-reanimated react-native-gesture-handler
+```
+
+```tsx
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { useRef, useMemo, useCallback } from 'react';
+
+function ChatScreen() {
+  const bottomSheetRef = useRef<BottomSheet>(null);
+
+  // スナップポイント: 25%, 50%, 90%の高さで止まる
+  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
+
+  const handleOpen = useCallback(() => {
+    bottomSheetRef.current?.expand();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    bottomSheetRef.current?.close();
+  }, []);
+
+  return (
+    <>
+      <MainContent onAIButton={handleOpen} />
+
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}              // -1 = 初期非表示
+        snapPoints={snapPoints}
+        enablePanDownToClose   // 下スワイプで閉じる
+        backgroundStyle={{ borderRadius: 24 }}
+        handleIndicatorStyle={{ backgroundColor: '#ccc', width: 40 }}
+      >
+        <BottomSheetView style={styles.contentContainer}>
+          <AIInputPanel />
+        </BottomSheetView>
+      </BottomSheet>
+    </>
+  );
+}
+```
+
+### BottomSheetModal（スタック対応）
+
+```tsx
+import { BottomSheetModal, BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+
+// Apple Maps風のスタック可能なモーダル
+function App() {
+  const modalRef = useRef<BottomSheetModal>(null);
+
+  const handlePresent = () => modalRef.current?.present();
+  const handleDismiss = () => modalRef.current?.dismiss();
+
+  return (
+    <BottomSheetModalProvider>
+      <View>
+        <Button onPress={handlePresent} title="AI相談を開く" />
+
+        <BottomSheetModal
+          ref={modalRef}
+          index={1}
+          snapPoints={['50%', '90%']}
+          onDismiss={() => console.log('閉じた')}
+        >
+          <BottomSheetView>
+            <AIConsultPanel />
+          </BottomSheetView>
+        </BottomSheetModal>
+      </View>
+    </BottomSheetModalProvider>
+  );
+}
+```
+
+### FlatList/ScrollView対応
+
+```tsx
+import { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+
+// ✅ 通常のFlatListではなくBottomSheetFlatListを使う
+// → ボトムシート内でスクロールとジェスチャーが競合しない
+function ChatHistorySheet() {
+  return (
+    <BottomSheet snapPoints={['50%', '90%']}>
+      <BottomSheetFlatList
+        data={chatHistory}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <ChatItem item={item} />}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+      />
+    </BottomSheet>
+  );
+}
+```
+
+### カスタムドラッグハンドル
+
+```tsx
+const CustomHandle = () => (
+  <View style={styles.handleContainer}>
+    <View style={styles.handle} />
+    <Text style={styles.title}>AI相談</Text>
+  </View>
+);
+
+<BottomSheet handleComponent={CustomHandle}>
+```
+
+### Emport AIへの具体的な実装案
+
+```
+AI相談タブ（現在: 全画面）→ ボトムシート化のメリット:
+
+Before（現在）:
+  AIチャット → 別画面に遷移 → 他の機能を見ながら使えない
+
+After（ボトムシート化）:
+  ホーム画面を見ながら → ボトムシートでAI相談
+  →「今日のニュース」を見ながらAIに質問できる
+  → UXが大幅改善
+
+実装手順:
+  1. @gorhom/bottom-sheet をインストール
+  2. 現在のChatScreen.tsx をBottomSheetView内に移動
+  3. ホームのFABボタン（フローティングボタン）でシート展開
+  4. snapPoints = ['60%', '95%'] で2段階展開
+
+補助金情報モーダル:
+  - BottomSheetModal でプレゼンテーション
+  - FlatListで補助金一覧をスクロール
+```
+
+**情報源:**
+- [@gorhom/bottom-sheet GitHub](https://github.com/gorhom/react-native-bottom-sheet)
+- [React Native Bottom Sheet公式](https://gorhom.github.io/react-native-bottom-sheet/)
+- [Bottom Sheet - Reanimated Examples](https://docs.swmansion.com/react-native-reanimated/examples/bottomsheet/)
+
+---
+
+*第11ラウンド完了（2026-05-15）: セクション54〜60 — レイアウト・アニメーション・ナビゲーション・UIライブラリ・UXトレンド・ジェスチャー・ボトムシート*
