@@ -6710,3 +6710,809 @@ const handleDelete = useCallback((id: string) => {
 ---
 
 *第13ラウンド完了（2026-05-15）: セクション68〜74 — Zustand・TanStack Query v5・カスタムフック・フォルダ構造・MMKV・エラーバウンダリ・FlatList最適化*
+
+
+---
+
+## 第14ラウンド調査（2026-05-15）: CI/CD・プッシュ通知・テスト・リリース・i18n・ディープリンク・OTA更新
+
+### 調査テーマ
+- EAS Build CI/CD（GitHub Actions連携）
+- Expo プッシュ通知
+- テスト戦略（Jest・Testing Library・Maestro）
+- App Store / Google Play 提出（EAS Submit）
+- 国際化（i18n）
+- ディープリンク・ユニバーサルリンク
+- OTA更新（EAS Update）本番運用
+
+---
+
+## 75. EAS Build CI/CD（GitHub Actions連携）
+
+### EAS Workflows の位置づけ
+
+EAS Workflows = GitHub Actions のモバイル拡張版。React Native のビルドで最も面倒な部分（証明書管理・署名・ストア提出）を80%削減。
+
+### GitHub Actions 基本設定
+
+```yaml
+# .github/workflows/eas-build.yml
+name: EAS Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Install and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build on EAS (preview)
+        run: eas build --platform all --profile preview --non-interactive
+```
+
+### EAS Workflows（Expo ネイティブ形式）
+
+```yaml
+# .eas/workflows/create-production-builds.yml
+name: Production Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-android:
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  build-ios:
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit:
+    needs: [build-android, build-ios]
+    type: submit
+    params:
+      android:
+        build_id: ${{ needs.build-android.outputs.build_id }}
+      ios:
+        build_id: ${{ needs.build-ios.outputs.build_id }}
+```
+
+### eas.json ビルドプロファイル設定
+
+```json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development"
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "internal"
+      },
+      "ios": {
+        "appleId": "tsubeyou081@gmail.com",
+        "ascAppId": "YOUR_APP_ID"
+      }
+    }
+  }
+}
+```
+
+### Emport AI CI/CD パイプライン設計
+
+```
+PRマージ   → preview ビルド自動作成 → 内部テスター配布
+mainプッシュ → production ビルド → ストア Internal Track へ自動提出
+OTA更新    → eas update --channel production（JSのみ変更時）
+```
+
+**情報源:**
+- [EAS Workflows - Expo Documentation](https://docs.expo.dev/eas/workflows/get-started/)
+- [expo-github-action GitHub](https://github.com/expo/expo-github-action)
+- [EAS Workflows Blog](https://expo.dev/blog/expo-workflows-automate-your-release-process)
+
+---
+
+## 76. プッシュ通知（Expo Notifications）
+
+### 2026年の重要変更点
+
+**SDK 53からExpo GoでAndroidプッシュ通知が廃止** — 必ずDevelopment Buildを使用すること。
+
+### セットアップ
+
+```bash
+npx expo install expo-notifications expo-device expo-constants
+```
+
+### トークン取得と管理
+
+```typescript
+// hooks/usePushNotifications.ts
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
+export async function registerForPushNotifications(): Promise<string | null> {
+  if (!Device.isDevice) return null; // 実機のみ
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') return null;
+
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+
+  // バックエンドに保存（ユーザーIDと紐付け）
+  await api.savePushToken(token);
+
+  return token;
+}
+```
+
+### 通知ハンドラー（コンポーネント）
+
+```tsx
+// app/_layout.tsx
+export default function RootLayout() {
+  const notificationListener = useRef<Notifications.EventSubscription>();
+  const responseListener = useRef<Notifications.EventSubscription>();
+
+  useEffect(() => {
+    registerForPushNotifications();
+
+    // 通知受信時（フォアグラウンド）
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log('受信:', notification);
+      }
+    );
+
+    // 通知タップ時
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data;
+        // ディープリンクで対応する画面へ遷移
+        router.push(data.url ?? '/');
+      }
+    );
+
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, []);
+}
+```
+
+### バックエンドからの送信（Node.js）
+
+```typescript
+// バックエンド側
+import { Expo } from 'expo-server-sdk';
+
+const expo = new Expo();
+
+async function sendPushNotification(expoPushToken: string, title: string, body: string) {
+  if (!Expo.isExpoPushToken(expoPushToken)) return;
+
+  const messages = [{
+    to: expoPushToken,
+    sound: 'default',
+    title,
+    body,
+    data: { url: '/chat' }, // ディープリンク先
+  }];
+
+  const chunks = expo.chunkPushNotifications(messages);
+  for (const chunk of chunks) {
+    await expo.sendPushNotificationsAsync(chunk);
+  }
+}
+```
+
+### UXベストプラクティス
+
+```
+許可を求るタイミング:
+  x アプリ起動直後（拒否率最高）
+  o ポジティブな体験後（初回チャット完了後など）
+
+頻度の目安:
+  - 週2〜5回が限界（それ以上でオプトアウト率急増）
+  - Emport AI: 新機能リリース・重要アップデートのみ推奨
+
+許可拒否時:
+  - 機能をブロックしない
+  - 設定画面で後から有効化できるUIを提供
+```
+
+**情報源:**
+- [Expo Push Notifications Setup](https://docs.expo.dev/push-notifications/push-notifications-setup/)
+- [Expo Push Notifications Guide 2026](https://reactnativerelay.com/article/react-native-push-notifications-expo-complete-guide-2026)
+
+---
+
+## 77. テスト戦略（Jest・Testing Library・Maestro E2E）
+
+### 2026年の推奨テストスタック
+
+| ツール | 役割 | 比率 |
+|--------|------|------|
+| Jest 30 + RNTL | ユニット・コンポーネントテスト | 70% |
+| Jest + カスタムフックテスト | フックロジック検証 | 20% |
+| Maestro | E2Eテスト（実機・シミュレーター） | 10% |
+
+### Jest + React Native Testing Library
+
+```bash
+npm install --save-dev @testing-library/react-native jest-expo
+```
+
+```typescript
+// __tests__/MessageBubble.test.tsx
+import { render, screen } from '@testing-library/react-native';
+import { MessageBubble } from '../components/MessageBubble';
+
+describe('MessageBubble', () => {
+  it('ユーザーメッセージを正しく表示する', () => {
+    render(<MessageBubble message={{ role: 'user', content: 'こんにちは' }} />);
+    expect(screen.getByText('こんにちは')).toBeTruthy();
+  });
+
+  it('AIメッセージで異なるスタイルが適用される', () => {
+    const { getByTestId } = render(
+      <MessageBubble message={{ role: 'assistant', content: '回答です' }} />
+    );
+    const bubble = getByTestId('bubble');
+    expect(bubble.props.style).toMatchObject({ backgroundColor: '#F0F4FF' });
+  });
+});
+```
+
+### カスタムフックのテスト
+
+```typescript
+// __tests__/useDebounce.test.ts
+import { renderHook, act } from '@testing-library/react-native';
+import { useDebounce } from '../hooks/useDebounce';
+
+jest.useFakeTimers();
+
+test('300ms後にデバウンスされた値を返す', () => {
+  const { result, rerender } = renderHook(
+    ({ value }) => useDebounce(value, 300),
+    { initialProps: { value: 'initial' } }
+  );
+
+  rerender({ value: 'updated' });
+  expect(result.current).toBe('initial'); // まだ更新されていない
+
+  act(() => jest.advanceTimersByTime(300));
+  expect(result.current).toBe('updated');
+});
+```
+
+### Maestro E2E テスト（YAML形式）
+
+```yaml
+# .maestro/flows/chat_flow.yaml
+appId: com.emportai.app
+---
+- launchApp
+- assertVisible: "業種を選択してください"
+- tapOn: "建設業"
+- tapOn: "チャットを開始"
+- assertVisible: "AIアシスタント"
+- inputText:
+    id: "chat-input"
+    text: "現場の安全管理で大変なことは？"
+- tapOn: "送信"
+- waitForAnimationToEnd
+- assertVisible: "安全管理"  # AIが安全管理に言及するか確認
+```
+
+```bash
+# 実行コマンド
+maestro test .maestro/flows/chat_flow.yaml
+
+# EAS Maestro Cloud（CI統合）
+eas build:version:get && maestro cloud --apiKey $MAESTRO_CLOUD_KEY .maestro/
+```
+
+### jest.config.js 設定
+
+```javascript
+// jest.config.js
+module.exports = {
+  preset: 'jest-expo',
+  transformIgnorePatterns: [
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
+  ],
+  setupFilesAfterFramework: ['@testing-library/react-native/extend-expect'],
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/*.stories.tsx',
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+    },
+  },
+};
+```
+
+### Emport AI テスト設計
+
+```
+ユニットテスト:
+  - useDebounce, useNetworkStatus 等のカスタムフック
+  - Zustandストアのアクション
+  - 日付・価格フォーマット関数
+
+コンポーネントテスト:
+  - MessageBubble（ユーザー/AI の表示切り替え）
+  - IndustryCard（選択状態）
+  - SubscriptionBadge（プラン表示）
+
+E2E テスト（Maestro）:
+  - ログイン → 業種選択 → チャット送信
+  - サブスクリプション購入フロー
+  - チャット履歴閲覧
+```
+
+**情報源:**
+- [React Native Testing Guide 2026](https://reactnativerelay.com/article/complete-guide-testing-react-native-apps-2026-unit-tests-e2e-maestro)
+- [Maestro React Native Docs](https://docs.maestro.dev/platform-support/react-native)
+- [React Native Testing 2026: Jest, Detox, Maestro](https://hashnode.com/posts/react-native-testing-in-2026-jest-detox-and-maestro-compared/69fb478e50ecad4533331c4f)
+
+---
+
+## 78. App Store / Google Play 提出（EAS Submit）
+
+### EAS Submit の全体フロー
+
+```
+1. eas build --profile production  → .ipa / .aab ファイル生成
+2. eas submit --platform all       → ストアへ自動アップロード
+3. ストア審査                       → iOS: 1〜2日、Android: 数時間〜1日
+4. リリース                         → 段階的ロールアウト推奨
+```
+
+### 提出前チェックリスト
+
+```
+app.json / app.config.ts:
+  o name: "Emport AI"
+  o slug: "emport-ai"
+  o version: "1.0.0"
+  o android.package: "com.emportai.app"
+  o ios.bundleIdentifier: "com.emportai.app"
+  o ios.buildNumber と android.versionCode
+  o icon: 1024x1024 PNG（透過なし）
+  o splash: 1284x2778 PNG
+
+App Store Connect（iOS）:
+  o Apple Developer Program 加入（年$99）
+  o App Store Connect でアプリ作成
+  o プライバシーポリシーURL
+  o スクリーンショット（各デバイスサイズ）
+
+Google Play Console（Android）:
+  o Developer アカウント（$25 初回のみ）
+  o Service Account Key 取得
+  o 初回は手動アップロード（APIの制限）
+  o コンテンツレーティング設定
+```
+
+### eas submit コマンド
+
+```bash
+# iOS
+eas submit --platform ios --profile production
+
+# Android
+eas submit --platform android --profile production
+
+# 両方同時（ビルドIDを指定）
+eas submit --platform all \
+  --ios-build-id <ios-build-id> \
+  --android-build-id <android-build-id>
+```
+
+### app.config.ts（本番設定）
+
+```typescript
+import { ExpoConfig, ConfigContext } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+  name: 'Emport AI',
+  slug: 'emport-ai',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  splash: { image: './assets/splash.png', resizeMode: 'contain', backgroundColor: '#0A1628' },
+  ios: {
+    bundleIdentifier: 'com.emportai.app',
+    buildNumber: '1',
+    supportsTablet: false,
+    infoPlist: {
+      NSMicrophoneUsageDescription: '音声入力に使用します',
+    },
+  },
+  android: {
+    package: 'com.emportai.app',
+    versionCode: 1,
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#0A1628',
+    },
+    permissions: ['INTERNET', 'CAMERA'],
+  },
+  extra: {
+    eas: { projectId: 'YOUR_EAS_PROJECT_ID' },
+  },
+});
+```
+
+**情報源:**
+- [EAS Submit - Expo Documentation](https://docs.expo.dev/submit/introduction/)
+- [Submit to App Stores](https://docs.expo.dev/deploy/submit-to-app-stores/)
+
+---
+
+## 79. 国際化（i18n）expo-localization + i18next
+
+### 推奨スタック（2026年）
+
+```bash
+npx expo install expo-localization
+npm install i18next react-i18next
+```
+
+### セットアップ
+
+```typescript
+// i18n/index.ts
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import * as Localization from 'expo-localization';
+
+import ja from './locales/ja.json';
+import en from './locales/en.json';
+
+i18n.use(initReactI18next).init({
+  resources: { ja: { translation: ja }, en: { translation: en } },
+  lng: Localization.getLocales()[0]?.languageCode ?? 'ja',
+  fallbackLng: 'ja',
+  interpolation: { escapeValue: false },
+});
+
+export default i18n;
+```
+
+### 翻訳ファイル
+
+```json
+// i18n/locales/ja.json
+{
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "retry": "もう一度試す"
+  },
+  "chat": {
+    "placeholder": "メッセージを入力...",
+    "send": "送信",
+    "title": "AIアシスタント"
+  },
+  "industry": {
+    "select": "業種を選択してください",
+    "construction": "建設業",
+    "fishery": "水産業",
+    "manufacturing": "製造業"
+  }
+}
+```
+
+### コンポーネントでの使用
+
+```tsx
+import { useTranslation } from 'react-i18next';
+
+function ChatScreen() {
+  const { t } = useTranslation();
+
+  return (
+    <View>
+      <Text>{t('chat.title')}</Text>
+      <TextInput placeholder={t('chat.placeholder')} />
+      <Button title={t('chat.send')} onPress={handleSend} />
+    </View>
+  );
+}
+```
+
+### 言語切り替え（設定画面）
+
+```typescript
+import i18n from '../i18n';
+import { setStorageItem } from '../utils/storage';
+
+function changeLanguage(lng: 'ja' | 'en') {
+  i18n.changeLanguage(lng);
+  setStorageItem('language', lng); // 次回起動時に復元
+}
+```
+
+### Emport AI の方針
+
+```
+初期リリース: 日本語のみ（ja.json）
+第2フェーズ: 英語追加（海外展開時）
+端末の言語設定を自動検出し、日本語以外はenにフォールバック
+```
+
+**情報源:**
+- [Expo Localization Documentation](https://docs.expo.dev/versions/latest/sdk/localization/)
+- [i18n in React Native with Expo - Intlayer](https://intlayer.org/doc/environment/react-native-and-expo)
+- [react-i18next GitHub](https://github.com/i18next/react-i18next)
+
+---
+
+## 80. ディープリンク・ユニバーサルリンク（Expo Router）
+
+### 2026年の重要変更
+
+Firebase Dynamic Links が2025年8月で廃止。代替:
+- **Expo Router** 自動ディープリンク（カスタムスキーム）
+- **Universal Links（iOS）+ App Links（Android）** → https:// リンク推奨
+- **Branch.io** → 高度な計測・遅延ディープリンクが必要な場合
+
+### Expo Router の自動ディープリンク
+
+```typescript
+// app.json
+{
+  "expo": {
+    "scheme": "emportai",
+    "web": { "bundler": "metro" }
+  }
+}
+
+// Expo Routerでは全ルートが自動的にディープリンク対応
+// app/chat/[sessionId].tsx → emportai://chat/abc123
+// app/(main)/settings.tsx  → emportai://settings
+```
+
+### ユニバーサルリンク設定（iOS）
+
+```json
+// ios/EmportAI/emportai-associated-domain.json (Apple CDNに配置)
+{
+  "applinks": {
+    "details": [{
+      "appIDs": ["TEAM_ID.com.emportai.app"],
+      "components": [
+        { "/": "/chat/*", "comment": "チャット画面" },
+        { "/": "/invite/*", "comment": "招待リンク" }
+      ]
+    }]
+  }
+}
+```
+
+### 認証アウェアなリダイレクト
+
+```tsx
+// app/(main)/_layout.tsx
+import { Redirect, useSegments } from 'expo-router';
+
+export default function MainLayout() {
+  const { isAuthenticated } = useAuthStore();
+  const segments = useSegments();
+
+  if (!isAuthenticated) {
+    // ログイン後に元の画面に戻れるようにパスを保存
+    const returnPath = segments.join('/');
+    return <Redirect href={`/login?return=${returnPath}`} />;
+  }
+
+  return <Stack />;
+}
+```
+
+### Emport AI ディープリンク設計
+
+```
+emportai://           → ホーム
+emportai://chat/{id}  → 特定チャットセッション
+emportai://invite/{code} → 紹介コード付き招待
+https://emport-ai.vercel.app/chat/{id} → ユニバーサルリンク
+```
+
+**情報源:**
+- [Expo Linking Documentation](https://docs.expo.dev/linking/into-your-app/)
+- [Expo Router Deep Linking Guide 2026](https://reactnativerelay.com/article/deep-linking-react-native-expo-router-universal-links-app-links)
+
+---
+
+## 81. OTA更新（EAS Update）本番運用戦略
+
+### OTA更新の原則
+
+OTA（Over The Air）更新はJavaScript・アセットの変更のみ対象。ネイティブコード変更はフルビルドが必要。
+
+```
+OTA更新で可能:
+  - UIの変更・バグ修正
+  - APIエンドポイントの変更
+  - テキスト・コピーの修正
+  - 新しいJSロジック
+
+フルビルドが必要:
+  - 新しいネイティブモジュール追加
+  - Expo SDK バージョンアップ
+  - app.json の変更（アイコン等）
+```
+
+### EAS Update セットアップ
+
+```bash
+npx expo install expo-updates
+eas update:configure
+```
+
+```json
+// eas.json
+{
+  "build": {
+    "production": {
+      "channel": "production"
+    },
+    "preview": {
+      "channel": "preview"
+    }
+  }
+}
+```
+
+### 段階的ロールアウト（本番ベストプラクティス）
+
+```bash
+# ステップ1: 10%のユーザーに配信
+eas update --channel production --message "バグ修正" --rollout-percentage 10
+
+# ステップ2: 問題なければ50%へ
+eas update:rollout --channel production --rollout-percentage 50
+
+# ステップ3: 全体へ
+eas update:rollout --channel production --rollout-percentage 100
+
+# 問題発生時はロールバック（1コマンド）
+eas update:rollback --channel production
+```
+
+### 自動更新設定
+
+```typescript
+// app/_layout.tsx
+import * as Updates from 'expo-updates';
+
+async function checkForUpdates() {
+  if (!__DEV__) {
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        // ユーザーに通知してからリロード
+        Alert.alert(
+          'アップデートあり',
+          'アプリを再起動して最新版を適用しますか？',
+          [{ text: '後で' }, { text: '今すぐ', onPress: Updates.reloadAsync }]
+        );
+      }
+    } catch (e) {
+      console.error('Update check failed:', e);
+    }
+  }
+}
+
+useEffect(() => {
+  checkForUpdates();
+}, []);
+```
+
+### ブランチ戦略
+
+```
+main       → production チャンネル（本番ユーザー）
+develop    → preview チャンネル（社内テスター）
+feature/*  → development チャンネル（開発者のみ）
+```
+
+### コード署名（セキュリティ）
+
+```bash
+# 署名キーの生成
+expo-updates codesigning:generate --key-output-directory ./.certs
+
+# ビルドに署名を埋め込む
+eas build --profile production
+```
+
+### Emport AI OTA 運用方針
+
+```
+リリース頻度:    週1〜2回（小さな改善を継続）
+段階ロールアウト: 10% → 50% → 100%（各24時間待機）
+監視:           Sentry でクラッシュ率監視
+ロールバック条件: クラッシュ率が0.5%を超えた場合
+```
+
+**情報源:**
+- [EAS Update Production Playbook](https://expo.dev/blog/the-production-playbook-for-ota-updates)
+- [EAS Update Guide 2026](https://reactnativerelay.com/article/react-native-ota-updates-eas-update-rollouts-rollbacks-cicd)
+- [Zero-Downtime OTA Deployment](https://dev.to/jocanola/zero-downtime-deployment-master-over-the-air-ota-updates-in-expo-react-native-4p8a)
+
+---
+
+*第14ラウンド完了（2026-05-15）: セクション75〜81 — EAS Build CI/CD・プッシュ通知・テスト戦略・EAS Submit・i18n・ディープリンク・OTA更新*
