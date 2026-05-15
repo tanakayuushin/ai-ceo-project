@@ -44,7 +44,9 @@ if (Test-Path $settingsPath) {
     Write-Host "      既存の settings.json を $backup にバックアップしました" -ForegroundColor DarkYellow
 }
 
-Set-Content $settingsPath $settings -Encoding UTF8
+# PS5.1の Set-Content -Encoding UTF8 はBOM付きになるため .NET で直接書き込む
+$noBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($settingsPath, $settings, $noBom)
 Write-Host "      OK: $settingsPath" -ForegroundColor Green
 
 # ------------------------------------------------------------------------------
