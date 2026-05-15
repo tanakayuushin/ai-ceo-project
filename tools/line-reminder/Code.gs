@@ -145,6 +145,69 @@ const C_REMINDERS = 6; // "1:20;0:8" → 1日前20時と当日8時
 const C_REMINDED  = 7; // "false" / "1:20|0:8" (送信済みキー) / "done"
 
 
+// ── 月次カレンダー送信 ────────────────────────────────
+
+function sendMonthlyCalendar() {
+  const groupId = getGroupId();
+  if (!groupId) return;
+
+  const now        = new Date();
+  const year       = now.getFullYear();
+  const month      = now.getMonth();
+  const firstDay   = new Date(year, month, 1);
+  const lastDay    = new Date(year, month + 1, 0);
+  const totalDays  = lastDay.getDate();
+
+  // 当月の予定を収集
+  const sheet  = getSheet();
+  const data   = sheet.getDataRange().getValues();
+  const events = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[C_REMINDED - 1] === 'done') continue;
+    const d = parseDate(row[C_DATE - 1]);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate();
+      if (!events[day]) events[day] = [];
+      events[day].push({ name: row[C_NAME - 1], time: row[C_TIME - 1] });
+    }
+  }
+
+  // カレンダーグリッド生成（月曜始まり）
+  const DOW_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
+  const startDow   = (firstDay.getDay() + 6) % 7;
+  let grid = DOW_LABELS.join('  ') + '\n';
+  let row  = Array(startDow).fill('   ');
+  for (let d = 1; d <= totalDays; d++) {
+    const mark = events[d] ? '●' : ' ';
+    row.push(mark + String(d).padStart(2, ' '));
+    if (row.length === 7 || d === totalDays) {
+      grid += row.join(' ') + '\n';
+      row  = [];
+    }
+  }
+
+  // 予定リスト
+  const weekdays  = ['日', '月', '火', '水', '木', '金', '土'];
+  const eventKeys = Object.keys(events).map(Number).sort((a, b) => a - b);
+  let eventList   = '';
+  if (eventKeys.length > 0) {
+    eventList = '\n📌 今月の予定\n';
+    for (const day of eventKeys) {
+      const dow = weekdays[new Date(year, month, day).getDay()];
+      for (const ev of events[day]) {
+        const t = ev.time ? ' ' + formatTimeJapanese(ev.time) : '';
+        eventList += '●' + day + '日(' + dow + ') ' + ev.name + t + '\n';
+      }
+    }
+  } else {
+    eventList = '\n今月の登録予定はありません';
+  }
+
+  push(groupId, '📅 ' + (month + 1) + '月のカレンダー\n\n' + grid + eventList);
+}
+
+
 // ── 定期実行：リマインド送信 ─────────────────────────
 
 function sendReminders() {
@@ -156,6 +219,11 @@ function sendReminders() {
   const now   = new Date();
   const hour  = now.getHours();
   const today = formatDate(now);
+
+  // 毎月1日の8時にカレンダーを送信
+  if (now.getDate() === 1 && hour === 8) {
+    sendMonthlyCalendar();
+  }
 
   for (let i = 1; i < data.length; i++) {
     const row          = data[i];
