@@ -28,7 +28,7 @@ cd ai-ceo-project
 
 ```powershell
 cd setup
-.\install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 これだけで以下が自動セットアップされます：
@@ -36,20 +36,46 @@ cd setup
 - `~/.claude/settings.json` を生成（フックパスをこのPCのパスに合わせて自動書き換え）
 - `~/.claude/projects/<プロジェクトキー>/memory/` にメモリファイルをコピー
 
-### 3. Claude Code を起動
+### 3. 確認スクリプトを実行
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\verify.ps1
+```
+
+**全項目 [OK]** になれば完了。[NG] が出たら表示される修正コマンドを実行して再度 verify.ps1 を実行してください。
+
+### 4. Claude Code を起動
 
 ```powershell
 # リポジトリのルートで起動
-cd C:\path\to\ai-ceo-project
+cd ..
 claude
 ```
 
-### 4. 動作確認
+### 5. 動作確認
 
 Claude Code で以下を送信して確認：
 
 ```
 アレン、今日のブリーフィングをお願いします
+```
+
+許可ダイアログが出ずに応答が返ってくれば自動承認も有効です。
+
+---
+
+## git pull 後の確認手順（既存PCで最新版を取得した後）
+
+```powershell
+git pull
+cd setup
+powershell -ExecutionPolicy Bypass -File .\verify.ps1
+```
+
+[NG] が出た場合は install.ps1 を再実行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 ---
@@ -81,6 +107,7 @@ Claude Code の `/mcp` コマンドで確認・追加できます。
 setup/
 ├── SETUP.md              # この手順書
 ├── install.ps1           # セットアップスクリプト（Windows PowerShell）
+├── verify.ps1            # セットアップ確認スクリプト（git pull後に実行）
 ├── settings_template.json # Claude Code 設定テンプレート
 ├── hooks/                # セキュリティフック（4層）
 │   ├── layer2_bash_guard.py      # 危険Bashコマンドブロック
