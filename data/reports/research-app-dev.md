@@ -5235,3 +5235,832 @@ After（ボトムシート化）:
 ---
 
 *第11ラウンド完了（2026-05-15）: セクション54〜60 — レイアウト・アニメーション・ナビゲーション・UIライブラリ・UXトレンド・ジェスチャー・ボトムシート*
+
+---
+
+## 61. タイポグラフィ & フォントシステム — Expo Google Fonts・可変フォント
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### 2つのフォント読み込み方法
+
+| 方法 | 特徴 | 推奨場面 |
+|------|------|----------|
+| **Config Plugin（埋め込み）** | アプリ起動と同時に利用可能・非同期待ち不要 | 本番アプリ |
+| **useFonts Hook（動的読込）** | iOS/Android/Web全対応・コード変更不要 | プロトタイプ |
+
+### Google Fontsの使い方（最速）
+
+```bash
+# Noto Sans JP（日本語対応）をインストール
+npx expo install @expo-google-fonts/noto-sans-jp expo-font expo-splash-screen
+```
+
+```tsx
+import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    NotoSansJP_400Regular,
+    NotoSansJP_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
+  return <App />;
+}
+
+// 使い方
+<Text style={{ fontFamily: 'NotoSansJP_400Regular', fontSize: 16 }}>
+  日本語テキスト
+</Text>
+```
+
+### タイポグラフィスケール（Emport AI推奨）
+
+```tsx
+// constants/Typography.ts
+export const Typography = {
+  // フォントファミリー
+  fontFamily: {
+    regular: 'NotoSansJP_400Regular',
+    bold: 'NotoSansJP_700Bold',
+    mono: 'SpaceMono_400Regular',
+  },
+
+  // サイズスケール（Material Design 3準拠）
+  fontSize: {
+    xs: 11,   // ラベル・バッジ
+    sm: 13,   // キャプション・補足
+    base: 15, // 本文（日本語は+1〜2pt推奨）
+    md: 17,   // 強調本文
+    lg: 20,   // サブタイトル
+    xl: 24,   // タイトル
+    '2xl': 30, // 大見出し
+    '3xl': 38, // ヒーロー
+  },
+
+  // 行間（line height）
+  lineHeight: {
+    tight: 1.2,   // 見出し
+    normal: 1.5,  // 本文（日本語は1.7推奨）
+    loose: 1.8,   // 長文・説明文
+  },
+
+  // 字間
+  letterSpacing: {
+    tight: -0.5,
+    normal: 0,
+    wide: 0.5,    // 日本語の見出しに効果的
+  },
+};
+```
+
+### 可変フォント（2026年最新）
+
+```
+Variable Fonts のメリット:
+  - 1ファイルで全ウェイト（100〜900）が使える
+  - バンドルサイズ最大80%削減（静的フォント複数 vs 可変フォント1つ）
+  - React Native 0.79 + Fabric が可変フォントをサポート
+
+使用例:
+  Inter Variable → Webに最適（英語メイン）
+  Noto Sans JP → 日本語対応の信頼性No.1
+```
+
+### 日本語フォント特有の注意点
+
+```
+1. サイズを英語より1〜2pt大きめに → 可読性確保
+2. 行間は1.7〜1.8倍 → 漢字の複雑さを補う
+3. letterSpacingは0〜+0.5pt → きつすぎる字間は読みにくい
+4. ボールドはweight:700のみ使用（中間ウェイトは日本語で崩れやすい）
+5. フォント未ロード時はシステムフォント（ヒラギノ/Noto）でフォールバック
+```
+
+**情報源:**
+- [Fonts - Expo Documentation](https://docs.expo.dev/develop/user-interface/fonts/)
+- [expo/google-fonts GitHub](https://github.com/expo/google-fonts)
+- [Add Custom Fonts in Expo 2026](https://javascript.plainenglish.io/add-custom-fonts-in-expo-2025-guide-3611083cddf1)
+
+---
+
+## 62. ダークモード & カラーシステム設計
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### Expoでのダークモード実装（3ステップ）
+
+```tsx
+// Step 1: app.json でダークモード宣言
+{
+  "expo": {
+    "userInterfaceStyle": "automatic"  // "light" | "dark" | "automatic"
+  }
+}
+
+// Step 2: カラー定数ファイル
+// constants/Colors.ts
+const Colors = {
+  light: {
+    text: '#111827',
+    background: '#F9FAFB',
+    surface: '#FFFFFF',
+    primary: '#1A3B8C',
+    border: '#E5E7EB',
+    tint: '#1A3B8C',
+  },
+  dark: {
+    text: '#F9FAFB',
+    background: '#111827',
+    surface: '#1F2937',
+    primary: '#4F7FFF',
+    border: '#374151',
+    tint: '#4F7FFF',
+  },
+};
+
+export default Colors;
+
+// Step 3: useColorScheme で切り替え
+import { useColorScheme } from 'react-native';
+import Colors from '@/constants/Colors';
+
+export function ThemedCard({ children }) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const colors = Colors[colorScheme];
+
+  return (
+    <View style={{
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 16,
+    }}>
+      {children}
+    </View>
+  );
+}
+```
+
+### NativeWindでのダークモード（最もシンプル）
+
+```tsx
+// tailwind.config.js
+module.exports = {
+  darkMode: 'class',  // または 'media'（システム追従）
+};
+
+// コンポーネント
+<View className="bg-white dark:bg-gray-900">
+  <Text className="text-gray-900 dark:text-white">
+    テキスト
+  </Text>
+</View>
+
+// 手動切り替え
+import { colorScheme } from 'nativewind';
+colorScheme.set('dark');    // ダークに固定
+colorScheme.set('light');   // ライトに固定
+colorScheme.set('system');  // システム追従に戻す
+```
+
+### カスタムテーマ Context（手動切り替え＋永続化）
+
+```tsx
+// context/ThemeContext.tsx
+import { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+type Theme = 'light' | 'dark' | 'system';
+
+const ThemeContext = createContext<{
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+  colors: typeof Colors.light;
+}>({ theme: 'system', setTheme: () => {}, colors: Colors.light });
+
+export function ThemeProvider({ children }) {
+  const systemScheme = useColorScheme();
+  const [theme, setThemeState] = useState<Theme>('system');
+
+  const activeScheme = theme === 'system' ? (systemScheme ?? 'light') : theme;
+  const colors = Colors[activeScheme];
+
+  const setTheme = async (t: Theme) => {
+    setThemeState(t);
+    await AsyncStorage.setItem('app_theme', t);  // 永続化
+  };
+
+  useEffect(() => {
+    AsyncStorage.getItem('app_theme').then((saved) => {
+      if (saved) setThemeState(saved as Theme);
+    });
+  }, []);
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme, colors }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export const useTheme = () => useContext(ThemeContext);
+```
+
+### Emport AIへの応用
+
+```
+実装優先度:
+  🔴 即時: NativeWindの dark: クラスをカード・背景に適用
+  🟡 次期: ThemeContext + AsyncStorage で設定画面から切り替え
+  🟢 将来: テーマ設定をバックエンドに同期（デバイス間共有）
+
+ポイント:
+  - 日本の中小企業経営者ターゲット → ダークモードより「見やすいライトモード」を優先
+  - チャート・グラフを使う場合はダークモードで映えるように設計
+```
+
+**情報源:**
+- [Color themes - Expo Documentation](https://docs.expo.dev/develop/user-interface/color-themes/)
+- [Dark Mode - NativeWind](https://www.nativewind.dev/docs/core-concepts/dark-mode)
+- [Implementing Dark/Light Mode with Expo Router](https://medium.com/@vipinnation/implementing-dark-and-light-mode-in-react-native-with-expo-router-a-complete-guide-bf26f32aba31)
+
+---
+
+## 63. React Native Skia — GPU描画・カスタムグラフィックス
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### Skiaとは
+
+```
+@shopify/react-native-skia:
+  - Google Chrome・Flutter・Androidと同じSkiaグラフィックスエンジン
+  - GPU直接描画 → 120fps対応デバイスでも滑らか
+  - 最新: v2.6.x (2026年4月) → React Native 0.79 + React 19 + Expo SDK 55
+  - Canvas・Path・テキスト・グラデーション・シェーダー・フィルター全対応
+```
+
+### 基本的な使い方
+
+```bash
+npx expo install @shopify/react-native-skia
+```
+
+```tsx
+import { Canvas, Circle, Paint, Path, LinearGradient, vec } from '@shopify/react-native-skia';
+
+// 円グラフ（AIスコア表示に使える）
+export function ScoreGauge({ score }: { score: number }) {
+  const size = 200;
+  const strokeWidth = 20;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (score / 100) * circumference;
+
+  return (
+    <Canvas style={{ width: size, height: size }}>
+      {/* 背景円 */}
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        style="stroke"
+        strokeWidth={strokeWidth}
+        color="#E5E7EB"
+      />
+      {/* 進捗円（パスで描画） */}
+      <Path
+        path={`M ${size/2} ${strokeWidth/2} A ${radius} ${radius} 0 ${score > 50 ? 1 : 0} 1 ${size/2 + radius * Math.sin(2 * Math.PI * score/100)} ${size/2 - radius * Math.cos(2 * Math.PI * score/100)}`}
+        style="stroke"
+        strokeWidth={strokeWidth}
+        strokeCap="round"
+        color="#1A3B8C"
+      />
+    </Canvas>
+  );
+}
+
+// グラデーション背景
+export function GradientCard() {
+  return (
+    <Canvas style={{ width: 300, height: 200 }}>
+      <Paint>
+        <LinearGradient
+          start={vec(0, 0)}
+          end={vec(300, 200)}
+          colors={['#1A3B8C', '#4F7FFF']}
+        />
+      </Paint>
+      <RoundedRect x={0} y={0} width={300} height={200} r={16} />
+    </Canvas>
+  );
+}
+```
+
+### Reaniatedとの連携（60fpsアニメーション）
+
+```tsx
+import { useSharedValue, withTiming } from 'react-native-reanimated';
+import { useAnimatedProps } from '@shopify/react-native-skia';
+
+function AnimatedProgress({ target }: { target: number }) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(target, { duration: 1000 });
+  }, [target]);
+
+  // Skia + Reanimated → GPUで60fps保証
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - progress.value),
+  }));
+}
+```
+
+### Emport AIへの応用
+
+```
+使用場面:
+  ① AIスコアゲージ（業務効率化率を円グラフで表示）
+  ② 月次売上チャート（棒グラフ・折れ線グラフ）
+  ③ 補助金申請ステータス（ステップ表示）
+  ④ ローディングアニメーション（ブランドカラーのカスタムスピナー）
+  ⑤ ホーム画面のヒーロービジュアル（グラデーション+アニメーション）
+
+優先度: 🟠 中（基本UIが完成してから追加）
+理由: Skiaは強力だが実装コストが高い。まず標準コンポーネントで形を作り、
+     差別化が必要な画面から順にSkiaへ移行する戦略が最善。
+```
+
+**情報源:**
+- [Skia Game Changer for React Native 2026 - Medium](https://medium.com/@expertappdevs/skia-game-changer-for-react-native-in-2026-f23cb9b85841)
+- [React Native Skia Tutorial 2026 - React Native Relay](https://reactnativerelay.com/article/react-native-skia-tutorial-gpu-graphics-shaders-animations-expo)
+- [@shopify/react-native-skia - Expo Documentation](https://docs.expo.dev/versions/latest/sdk/skia/)
+
+---
+
+## 64. Figma → React Native ワークフロー & デザイントークン
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### 2026年の推奨ワークフロー
+
+```
+Figma Variables（デザイントークン）
+  ↓ Tokens Studio プラグインでJSON出力
+  ↓ Style Dictionary で変換（JSON → TypeScript/NativeWind設定）
+  ↓ CI/CDでGitHubへPR自動作成
+  ↓ React Nativeで直接使用
+```
+
+### Figma Variables → コード変換
+
+```json
+// Figma から出力されるトークンJSON（例）
+{
+  "color": {
+    "primary": { "value": "#1A3B8C", "type": "color" },
+    "primary-light": { "value": "#EBF0FF", "type": "color" },
+    "text-primary": { "value": "#111827", "type": "color" }
+  },
+  "spacing": {
+    "xs": { "value": "4", "type": "spacing" },
+    "sm": { "value": "8", "type": "spacing" },
+    "md": { "value": "16", "type": "spacing" },
+    "lg": { "value": "24", "type": "spacing" }
+  },
+  "borderRadius": {
+    "sm": { "value": "4", "type": "borderRadius" },
+    "md": { "value": "8", "type": "borderRadius" },
+    "lg": { "value": "16", "type": "borderRadius" },
+    "full": { "value": "9999", "type": "borderRadius" }
+  }
+}
+```
+
+```ts
+// Style Dictionary が変換した TypeScript (constants/tokens.ts)
+export const tokens = {
+  color: {
+    primary: '#1A3B8C',
+    primaryLight: '#EBF0FF',
+    textPrimary: '#111827',
+  },
+  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
+  borderRadius: { sm: 4, md: 8, lg: 16, full: 9999 },
+} as const;
+```
+
+### Figma Community Plugin（即座に使える）
+
+```
+「Figma to React Native」プラグイン:
+  - FigmaのフレームをReact Nativeコードに変換
+  - StyleSheet.create()形式で出力
+  - 自動で色・フォント・余白を抽出
+
+使い方:
+  1. Figmaでフレームを選択
+  2. Plugin → Figma to React Native
+  3. コードをコピー → コンポーネントファイルに貼り付け
+  4. 細部を手動調整（80%は使えるコードが生成される）
+```
+
+### Emport AI推奨ワークフロー
+
+```
+現在（コードファースト）:
+  コードで直接デザイン → ファイルに保存 → Figmaなし
+
+推奨（デザインシステム確立後）:
+  Figmaでデザインシステム構築（色・スペーシング・コンポーネント）
+  → tokens.ts にエクスポート
+  → NativeWindの tailwind.config.js と連携
+  → コンポーネント実装
+
+今すぐできること:
+  1. constants/tokens.ts を作成（上記のデザイントークン）
+  2. NativeWindのextend.colorsにtokensを登録
+  3. 全コンポーネントでハードコードされた色をtokensに置き換え
+```
+
+**情報源:**
+- [Figma to React Native - RapidNative](https://www.rapidnative.com/blogs/figma-to-react-native)
+- [Figma to Code: Design Tokens 2026](https://inhaq.com/blog/figma-to-code-design-engineer-workflow)
+- [Automating Figma to React Token Pipeline - Medium](https://medium.com/@alexdev82/automating-the-figma-to-react-design-token-pipeline-3d3cf35c5a19)
+
+---
+
+## 65. スケルトンローディング & シマー効果
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### なぜスケルトンが重要か
+
+```
+研究結果:
+  - スケルトン表示 vs スピナー → ユーザーが「50%速く感じる」
+  - 実際の読み込み時間は同じでも体感が大幅改善
+  - Facebook・LinkedIn・YouTube全てスケルトンを採用
+
+原則:
+  - 実際のコンテンツと同じ形・サイズのプレースホルダーを表示
+  - レイアウトシフトを防ぐ（コンテンツ表示後にガクッとなる問題を解決）
+```
+
+### 推奨ライブラリ（2026年）
+
+```bash
+# react-native-auto-skeleton（ゼロ設定・自動生成）
+npm install react-native-auto-skeleton
+
+# またはカスタム実装（Reanimated使用）
+```
+
+### カスタムスケルトン実装（Reanimated）
+
+```tsx
+import { useEffect } from 'react';
+import Animated, {
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolate
+} from 'react-native-reanimated';
+
+function SkeletonBox({ width, height, borderRadius = 8 }) {
+  const shimmer = useSharedValue(0);
+
+  useEffect(() => {
+    shimmer.value = withRepeat(
+      withTiming(1, { duration: 1000 }),
+      -1,    // 無限繰り返し
+      false  // 往復なし
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(shimmer.value, [0, 0.5, 1], [0.4, 0.8, 0.4]),
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: '#E5E7EB',
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
+// チャットリストのスケルトン
+export function ChatListSkeleton() {
+  return (
+    <View style={{ padding: 16, gap: 12 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+          <SkeletonBox width={48} height={48} borderRadius={24} />  {/* アバター */}
+          <View style={{ flex: 1, gap: 6 }}>
+            <SkeletonBox width="60%" height={14} />   {/* 名前 */}
+            <SkeletonBox width="90%" height={12} />   {/* メッセージ */}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+```
+
+### react-native-auto-skeleton（ゼロ設定）
+
+```tsx
+import Skeleton from 'react-native-auto-skeleton';
+
+// 本番コンポーネント
+function UserCard({ user }) {
+  return (
+    <View>
+      <Image source={{ uri: user.avatar }} />
+      <Text>{user.name}</Text>
+    </View>
+  );
+}
+
+// スケルトン版（構造をそのまま使う）
+<Skeleton loading={isLoading} animation="shimmer">
+  <UserCard user={placeholderUser} />
+</Skeleton>
+// → ローディング中は自動でスケルトンに変換
+```
+
+### Emport AIへの適用箇所
+
+```
+チャット履歴一覧:
+  ロード中 → ChatListSkeleton（上記コード）
+  完了後 → 実際の履歴リスト
+
+AIレスポンス生成中:
+  テキスト領域に3行のSkeletonBox
+  → テキストが届き始めたら順次実際のテキストに切り替え
+
+ホーム画面カード:
+  データ取得中 → カード形のSkeletonBox×4
+  → コンテンツ読み込み後にフェードイン切り替え
+```
+
+**情報源:**
+- [React Native Skeleton Loaders - Medium](https://medium.com/@andrew.chester/react-native-skeleton-loaders-elevate-your-apps-ux-with-shimmering-placeholders-5003b9507117)
+- [react-native-auto-skeleton GitHub](https://github.com/pioner92/react-native-auto-skeleton)
+- [Fast Shimmer Effects - Callstack](https://www.callstack.com/blog/performant-and-cross-platform-shimmers-in-react-native-apps)
+
+---
+
+## 66. アクセシビリティ実装（VoiceOver / TalkBack）
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### アクセシビリティが重要な理由
+
+```
+日本における数字:
+  - 視覚障害者: 約31万人（2023年）
+  - 高齢者（65歳以上）: 約3,500万人 → 文字が見えにくい
+  - 中小企業経営者の平均年齢: 60.3歳（2023年中小企業白書）
+
+→ Emport AIのターゲット（中高年経営者）にとってアクセシビリティは必須
+```
+
+### 基本的なアクセシビリティprops
+
+```tsx
+// ❌ スクリーンリーダーに伝わらない
+<Pressable onPress={handleDelete}>
+  <Icon name="trash" />
+</Pressable>
+
+// ✅ スクリーンリーダーが「削除ボタン」と読み上げる
+<Pressable
+  onPress={handleDelete}
+  accessible={true}
+  accessibilityLabel="このメッセージを削除"
+  accessibilityRole="button"
+  accessibilityHint="タップするとメッセージが削除されます"
+>
+  <Icon name="trash" />
+</Pressable>
+```
+
+### accessibilityRole の主要値
+
+| Role | 用途 | 読み上げ |
+|------|------|----------|
+| `button` | タップ可能な要素 | 「〇〇、ボタン」 |
+| `link` | 外部リンク | 「〇〇、リンク」 |
+| `header` | 画面タイトル | 「〇〇、見出し」 |
+| `image` | 画像 | 「〇〇、画像」 |
+| `checkbox` | チェックボックス | 「〇〇、チェックボックス、オン/オフ」 |
+| `tab` | タブ | 「〇〇、タブ、X/Nのタブ」 |
+| `search` | 検索欄 | 「〇〇、検索フィールド」 |
+
+### フォームのアクセシビリティ
+
+```tsx
+// 入力欄のアクセシビリティ
+<View>
+  <Text nativeID="emailLabel">メールアドレス</Text>
+  <TextInput
+    accessibilityLabelledBy="emailLabel"  // ラベルと入力欄を紐付け
+    accessibilityRequired={true}           // 必須フィールド
+    autoCapitalize="none"
+    keyboardType="email-address"
+    returnKeyType="next"
+  />
+</View>
+
+// エラーメッセージ
+<TextInput
+  accessibilityInvalid={hasError}          // エラー状態を伝える
+  accessibilityErrorMessage={errorMessage}
+/>
+```
+
+### ダイナミックコンテンツの通知
+
+```tsx
+import { AccessibilityInfo } from 'react-native';
+
+// AIがレスポンスを生成完了した時に通知
+const handleAIResponseComplete = (response: string) => {
+  AccessibilityInfo.announceForAccessibility(
+    `AIが回答しました。${response.slice(0, 50)}...`
+  );
+};
+
+// 画面変更の通知
+AccessibilityInfo.setAccessibilityFocus(elementRef.current);
+```
+
+### テスト方法
+
+```
+iOS: 設定 → アクセシビリティ → VoiceOver → ON
+Android: 設定 → ユーザー補助 → TalkBack → ON
+
+チェックリスト:
+  ☐ 全ボタンに accessibilityLabel がある
+  ☐ 画像に代替テキスト (accessibilityLabel) がある
+  ☐ タップ領域が44×44dp以上（Apple HIG基準）
+  ☐ カラーコントラスト比 4.5:1以上（WCAG AA）
+  ☐ フォームにラベルが紐付いている
+  ☐ エラーメッセージが読み上げられる
+```
+
+**情報源:**
+- [Accessibility - React Native公式](https://reactnative.dev/docs/accessibility)
+- [React Native Accessibility Guide 2026 - React Native Relay](https://reactnativerelay.com/article/react-native-accessibility-guide-building-inclusive-apps-expo)
+- [React Native Accessibility - Callstack](https://www.callstack.com/blog/react-native-accessibility)
+
+---
+
+## 67. 画像最適化 — expo-image & BlurHash
+
+**調査日時: 2026-05-15 (第12ラウンド)**
+
+### expo-image vs 標準Image
+
+| 比較項目 | 標準 `<Image>` | `expo-image` |
+|----------|--------------|--------------|
+| キャッシュ | 基本的 | 高度（SDWebImage/Glide） |
+| フォーマット | JPEG/PNG | AVIF/WebP/JPEG/PNG |
+| BlurHash | なし | **内蔵** |
+| フェード遷移 | なし | **内蔵** |
+| パフォーマンス | 標準 | 2〜3倍高速 |
+
+### 基本実装
+
+```bash
+npx expo install expo-image
+```
+
+```tsx
+import { Image } from 'expo-image';
+
+// ✅ 2026年推奨
+<Image
+  source={{ uri: 'https://example.com/photo.jpg' }}
+  placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}  // ロード中のぼかし画像
+  contentFit="cover"           // objectFit と同じ概念
+  transition={200}             // フェードイン時間（ms）
+  cachePolicy="memory-disk"   // メモリ+ディスクキャッシュ
+  style={{ width: 200, height: 200, borderRadius: 12 }}
+/>
+```
+
+### BlurHashの生成
+
+```tsx
+// サーバー側（Node.js）でBlurHashを生成してDBに保存
+import { encode } from 'blurhash';
+
+// または純粋なJS実装（クライアントでも可）
+import * as FileSystem from 'expo-file-system';
+
+// Emport AIの場合: ユーザーアイコンや記事サムネイルのBlurHashを
+// バックエンド（Railway）で事前生成してAPIレスポンスに含める
+
+// APIレスポンス例
+{
+  "user": {
+    "avatar": "https://cdn.example.com/avatar.jpg",
+    "avatarBlurhash": "L6PZfSi_.AyE_3t7t7R**0o#DgR4"
+  }
+}
+```
+
+### 画像プリフェッチ（一覧表示の高速化）
+
+```tsx
+import { Image } from 'expo-image';
+
+// 次の画面の画像を事前に読み込む
+await Image.prefetch([
+  'https://example.com/image1.jpg',
+  'https://example.com/image2.jpg',
+]);
+
+// キャッシュをクリア
+await Image.clearDiskCache();
+await Image.clearMemoryCache();
+```
+
+### SVGアイコンの最適化
+
+```bash
+npx expo install react-native-svg
+```
+
+```tsx
+import Svg, { Path, Circle, G } from 'react-native-svg';
+
+// カスタムアイコンコンポーネント
+function AIIcon({ size = 24, color = '#1A3B8C' }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
+
+// アイコンセットの管理
+// @expo/vector-icons（Ionicons, MaterialIcons等を内包）
+import { Ionicons } from '@expo/vector-icons';
+<Ionicons name="chatbubble-outline" size={24} color="#1A3B8C" />
+```
+
+### Emport AIへの画像最適化戦略
+
+```
+1. ユーザーアイコン:
+   - expo-image + BlurhashでUX改善
+   - contentFit="cover" + borderRadius で丸いアバター
+
+2. 業種選択画面の画像:
+   - prefetch() で次の画面の画像を先読み
+   - AVIF形式で50%サイズ削減
+
+3. チャット内の画像送信（将来機能）:
+   - expo-image-picker で選択
+   - アップロード前に圧縮（quality: 0.7）
+   - サーバー側でBlurHash生成→レスポンスに含める
+
+4. SVGアイコン統一:
+   - react-native-svg + @expo/vector-icons
+   - カスタムアイコンはSVGで作成（ピクセルフリー）
+```
+
+**情報源:**
+- [Image - Expo Documentation](https://docs.expo.dev/versions/latest/sdk/image/)
+- [react-native-blurhash GitHub](https://github.com/mrousavy/react-native-blurhash)
+- [React Native Image Optimization - Medium](https://medium.com/@engin.bolat/react-native-image-optimization-performance-essentials-9e8ce6a1193e)
+
+---
+
+*第12ラウンド完了（2026-05-15）: セクション61〜67 — タイポグラフィ・ダークモード・Skia・Figma連携・スケルトンUI・アクセシビリティ・画像最適化*
