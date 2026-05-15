@@ -33,6 +33,45 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python setup/hooks/layer2_bash_guard.py"
+          },
+          {
+            "type": "command",
+            "command": "python setup/hooks/layer4_file_guard.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python setup/hooks/layer3_secrets_guard.py"
+          },
+          {
+            "type": "command",
+            "command": "python setup/hooks/layer4_file_guard.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python setup/hooks/layer5_audit_log.py"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -40,7 +79,7 @@
             "type": "command",
             "command": "bash -c \"if [ -n $(git status --porcelain 2>/dev/null | head -1) ]; then git add -A && git commit -m auto:$(date +%Y-%m-%d) && git push; fi\"",
             "timeout": 60,
-            "statusMessage": "GitHubにpush中..."
+            "statusMessage": "Pushing to GitHub..."
           }
         ]
       }
