@@ -1,0 +1,20 @@
+# Memory Index
+
+- [Project: AI CEO Company](project_ai_ceo.md) — AI CEOアレンが経営する会社運営プロジェクト。ユーザーはオーナー兼取締役、CEOはアレン
+- [CEO Conduct Rules](feedback_ceo_rules.md) — 不明点は取締役に確認、成果物は必ずファイルに残す（オーナー指示）
+- [Research Before Recommending](feedback_research_before_recommend.md) — サービス・ツールを推薦する前に必ず現在の提供状況を調査してから伝える
+- [回答前に最新情報を検索する](feedback_search_before_answer.md) — 価格・仕様・プランなど回答前に必ずWebSearchで最新情報を確認する（古い情報で誤案内を防ぐ）
+- [Playwright MCPを積極的に使う](feedback_playwright_proactive.md) — URL確認・Webアプリテスト・スクレイピングなど、ブラウザ操作が有効な場面では自律的にPlaywright MCPを使う
+- [インフルエンサー推薦AIツール集](reference_ai_tools.md) — Dan Martell等推薦の100ツール。業種別提案・自社業務・コンテンツ制作・営業自動化の場面で参照する
+- [自律的な提案を行う](feedback_proactive_proposals.md) — 選択肢を並べず、文脈から判断して具体的に提案・実行する
+- [アレンの自律実行を最優先で検討する](feedback_allen_capability_check.md) — ユーザーに依頼する前にアレンが実行できないか死ぬ気で調べる。できないと言ったのにできた場合は重大な失態
+- [週次録音レポート](reference_weekly_reports.md) — ceo/weekly-reports/YYYY-Www.md に保存。会話開始時に読んでユーザーの最近の活動・思考を把握する
+- [AI CEO SaaS 戦略](project_ai_ceo_saas_strategy.md) — 中核ビジネス戦略。コンサル→SaaS転換で年商10億円。詳細は ceo/strategy/ai-ceo-saas-roadmap.md
+- [商工会議所コンタクト状況](project_shokokai_status.md) — 山口・下関商工会議所にはメール送付済み・返信待ち。返信が来たら電話する方針
+- [PayPay銀行 口座開設状況](project_paypay_bank.md) — 申請済みだが未完了・開設完了メール待ち。freee連携用の事業口座として予定
+- [ファイル作成・更新時に自動プッシュ](feedback_auto_push.md) — 成果物作成・更新のたびにアレンがgit pushまで自律実行する（確認不要）
+- [日次ブリーフィングに全インテリジェンスファイルを含める](feedback_daily_briefing_include_all.md) — 01〜10の個別収集ファイル+summary.mdを全て読んで統合提示する（オーナー指示）
+- [自動承認・安全ガード設定](feedback_auto_permissions.md) — settings.json+PreToolUseフック設定済み。危険コマンドのみブロック、それ以外は自動承認
+- [アプリ開発は段階ごとに報告](feedback_app_dev_staged.md) — 新規アプリ・大機能追加は必ずステージ分割し、各ステージ完了時にオーナーへ成果報告してから次へ進む
+- [Emport AIアプリ開発状況](project_emport_app_status.md) — Android修正・ダッシュボードUI完成。次はバックエンドAPI化（APIキー不要化）が最優先
+- [山口大学ベンチャー支援申請](project_yamaguchi_univ.md) — ヒアリングシート提出済み（2026-05-14）。面談・審査結果待ち

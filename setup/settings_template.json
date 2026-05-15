@@ -1,0 +1,98 @@
+{
+  "language": "japanese",
+  "autoUpdatesChannel": "latest",
+  "theme": "dark",
+
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+
+    "allow": [
+      "Read", "Write", "Edit", "MultiEdit",
+      "Glob", "Grep", "TodoWrite", "TodoRead",
+      "WebSearch", "WebFetch",
+
+      "Bash(git *)", "Bash(git status)", "Bash(git diff *)",
+      "Bash(git log *)", "Bash(git add *)", "Bash(git commit *)",
+      "Bash(git pull *)", "Bash(git push origin main)",
+      "Bash(git push)", "Bash(git branch *)", "Bash(git checkout *)",
+      "Bash(git stash *)", "Bash(git merge *)", "Bash(git remote *)",
+      "Bash(git fetch *)", "Bash(git rebase *)", "Bash(git reset *)",
+      "Bash(git restore *)", "Bash(git show *)", "Bash(git tag *)",
+
+      "Bash(python *)", "Bash(python3 *)", "Bash(pip *)", "Bash(pip3 *)",
+      "Bash(node *)", "Bash(npm *)", "Bash(npx *)",
+
+      "Bash(ls *)", "Bash(ls)", "Bash(dir *)", "Bash(dir)",
+      "Bash(cat *)", "Bash(echo *)", "Bash(pwd)", "Bash(cd *)",
+      "Bash(mkdir *)", "Bash(touch *)", "Bash(cp *)", "Bash(mv *)",
+      "Bash(rmdir *)", "Bash(grep *)", "Bash(find *)",
+      "Bash(head *)", "Bash(tail *)", "Bash(wc *)", "Bash(sort *)",
+      "Bash(awk *)", "Bash(sed *)", "Bash(which *)", "Bash(where *)",
+      "Bash(stat *)", "Bash(du *)", "Bash(df *)",
+      "Bash(curl *)", "Bash(wget *)",
+
+      "Bash(Get-ChildItem *)", "Bash(Get-Content *)",
+      "Bash(Set-Location *)", "Bash(New-Item *)",
+      "Bash(Copy-Item *)", "Bash(Move-Item *)",
+      "Bash(Write-Output *)", "Bash(Write-Host *)",
+      "Bash(Select-String *)", "Bash(ConvertTo-Json *)",
+      "Bash(ConvertFrom-Json *)",
+
+      "Bash(gh *)", "Bash(code *)", "Bash(jq *)",
+      "Bash(powershell *)", "Bash(pwsh *)",
+      "Bash(*)"
+    ],
+
+    "deny": [
+      "Bash(rm -rf ~*)", "Bash(rm -rf /*)", "Bash(rm -rf C:\\*)",
+      "Bash(sudo rm *)", "Bash(sudo mkfs*)", "Bash(sudo dd *)",
+      "Bash(git push --force*)", "Bash(git push -f *)", "Bash(git push -f)",
+      "Bash(git clean -fd*)", "Bash(git clean -df*)",
+      "Bash(format *:*)", "Bash(mkfs *)",
+      "Bash(curl * | sh)", "Bash(curl * | bash)",
+      "Bash(wget * | sh)", "Bash(wget * | bash)"
+    ]
+  },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}\\layer2_bash_guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}\\layer4_file_guard.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}\\layer3_secrets_guard.py\""
+          },
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}\\layer4_file_guard.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"{{HOOKS_DIR}}\\layer5_audit_log.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
