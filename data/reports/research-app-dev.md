@@ -6064,3 +6064,649 @@ import { Ionicons } from '@expo/vector-icons';
 ---
 
 *第12ラウンド完了（2026-05-15）: セクション61〜67 — タイポグラフィ・ダークモード・Skia・Figma連携・スケルトンUI・アクセシビリティ・画像最適化*
+
+
+---
+
+## 第13ラウンド調査（2026-05-15）: 状態管理・データフェッチ・カスタムフック・アーキテクチャ・最適化
+
+### 調査テーマ
+- Zustand グローバル状態管理
+- TanStack Query v5 データフェッチング
+- カスタムフック設計パターン
+- フィーチャーベースフォルダ構造
+- MMKV vs AsyncStorage オフライン対応
+- エラーバウンダリ
+- FlatList・メモ化パフォーマンス最適化
+
+---
+
+## 68. Zustand グローバル状態管理 ベストプラクティス 2026
+
+### Zustand が2026年のデファクトスタンダードになった理由
+
+| 比較軸 | Redux | Context API | Zustand |
+|--------|-------|------------|---------|
+| ボイラープレート | 多大 | 少 | 最小 |
+| Provider不要 | x | x | o |
+| TypeScript | 複雑 | 普通 | 優秀 |
+| パフォーマンス | 良 | 問題あり | 優秀 |
+| バンドルサイズ | 大きい | 0 | 1KB |
+
+**2026年の選択基準:**
+- **Zustand**: グローバル状態の8割をカバー（推奨）
+- **Jotai**: アトミック状態（細粒度更新が必要な場合）
+- **Redux**: 大規模エンタープライズのみ
+
+### 基本パターン
+
+```typescript
+// stores/auth.store.ts
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { MMKV } from 'react-native-mmkv';
+
+const storage = new MMKV({ id: 'auth-store' });
+
+interface AuthState {
+  token: string | null;
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (token: string, user: User) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      token: null,
+      user: null,
+      isAuthenticated: false,
+      login: (token, user) => set({ token, user, isAuthenticated: true }),
+      logout: () => set({ token: null, user: null, isAuthenticated: false }),
+    }),
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => ({
+        getItem: (key) => storage.getString(key) ?? null,
+        setItem: (key, value) => storage.set(key, value),
+        removeItem: (key) => storage.delete(key),
+      })),
+    }
+  )
+);
+```
+
+### セレクターパターン（不要な再レンダリングを防ぐ）
+
+```typescript
+// NG: ストア全体を取得 → 何かが変わるたびに再レンダリング
+const { user, token, logout } = useAuthStore();
+
+// OK: 必要なものだけ取得 → 関係する状態が変わったときだけ再レンダリング
+const user = useAuthStore((state) => state.user);
+const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+const logout = useAuthStore((state) => state.logout);
+```
+
+### フィーチャーごとにストアを分割
+
+```
+stores/
+├── auth.store.ts       // 認証状態
+├── chat.store.ts       // チャット画面状態
+├── industry.store.ts   // 業種選択状態
+└── ui.store.ts         // ローディング・モーダル等のUI状態
+```
+
+### devtools ミドルウェア
+
+```typescript
+import { devtools } from 'zustand/middleware';
+
+export const useChatStore = create<ChatState>()(
+  devtools(
+    (set) => ({
+      messages: [],
+      addMessage: (msg) => set(
+        (state) => ({ messages: [...state.messages, msg] }),
+        false,
+        'chat/addMessage'
+      ),
+    }),
+    { name: 'ChatStore' }
+  )
+);
+```
+
+### Emport AI への応用
+
+```
+useAuthStore     → APIキー・ユーザー情報管理
+useIndustryStore → 選択した業種・プロンプト設定
+useChatStore     → 各チャットセッションのメッセージ履歴
+useUIStore       → サイドメニュー開閉・ローディング状態
+```
+
+**情報源:**
+- [Zustand GitHub](https://github.com/pmndrs/zustand)
+- [State Management 2026: Redux vs Zustand](https://medium.com/@abdurrehman1/state-management-in-2026-redux-vs-zustand-vs-context-api-ad5760bfab0b)
+- [Zustand in React Native](https://dev.to/ajmal_hasan/simplifying-state-management-in-react-native-with-zustand-41f2)
+
+---
+
+## 69. TanStack Query v5 データフェッチングパターン
+
+### なぜ TanStack Query か
+
+サーバー状態（APIレスポンス）はZustandで管理してはいけない。TanStack Queryが正解。— 2026年のベストプラクティス
+
+| 機能 | axios単体 | Zustand+axios | TanStack Query |
+|------|-----------|--------------|----------------|
+| キャッシュ | x | 手動 | o自動 |
+| ローディング状態 | 手動 | 手動 | o自動 |
+| バックグラウンド更新 | x | x | o |
+| 楽観的更新 | x | 難しい | o簡単 |
+| 無限スクロール | 手動 | 手動 | o組み込み |
+| オフライン対応 | x | x | o |
+
+### セットアップ
+
+```tsx
+// app/_layout.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
+      retry: 2,
+    },
+  },
+});
+
+export default function RootLayout() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Stack />
+    </QueryClientProvider>
+  );
+}
+```
+
+### クエリキーファクトリーパターン
+
+```typescript
+export const chatKeys = {
+  all: ['chat'] as const,
+  lists: () => [...chatKeys.all, 'list'] as const,
+  history: (sessionId: string) => [...chatKeys.all, 'history', sessionId] as const,
+};
+
+// 無効化
+queryClient.invalidateQueries({ queryKey: chatKeys.lists() });
+```
+
+### React Native 画面フォーカス連動
+
+```typescript
+import { useIsFocused } from '@react-navigation/native';
+
+function ChatHistoryScreen() {
+  const isFocused = useIsFocused();
+  const { data, isLoading } = useQuery({
+    queryKey: chatKeys.lists(),
+    queryFn: api.getChatSessions,
+    subscribed: isFocused, // 画面表示中のみフェッチ
+  });
+}
+```
+
+### ミューテーション + 楽観的更新
+
+```typescript
+const sendMessage = useMutation({
+  mutationFn: (message: string) => api.sendChat({ message, industry }),
+  onMutate: async (message) => {
+    await queryClient.cancelQueries({ queryKey: chatKeys.history(sessionId) });
+    const previous = queryClient.getQueryData(chatKeys.history(sessionId));
+    queryClient.setQueryData(chatKeys.history(sessionId), (old: Message[]) => [
+      ...old,
+      { id: Date.now(), role: 'user', content: message, pending: true },
+    ]);
+    return { previous };
+  },
+  onError: (_err, _message, context) => {
+    queryClient.setQueryData(chatKeys.history(sessionId), context?.previous);
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: chatKeys.history(sessionId) });
+  },
+});
+```
+
+### 無限スクロールパターン
+
+```typescript
+const { data, fetchNextPage, hasNextPage } = useInfiniteQuery({
+  queryKey: chatKeys.lists(),
+  queryFn: ({ pageParam = 0 }) => api.getChatSessions({ offset: pageParam, limit: 20 }),
+  getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextOffset : undefined,
+  initialPageParam: 0,
+});
+
+<FlatList
+  data={data?.pages.flatMap(page => page.items)}
+  onEndReached={() => hasNextPage && fetchNextPage()}
+/>
+```
+
+### Emport AI への応用
+
+```
+チャット履歴         → useQuery + キャッシュ
+メッセージ送信       → useMutation + 楽観的更新
+セッション一覧       → useInfiniteQuery
+```
+
+**情報源:**
+- [TanStack Query React Native Docs](https://tanstack.com/query/v5/docs/framework/react/react-native)
+- [TanStack Query v5 Complete Guide](https://medium.com/@pratikjadhav6632/tanstack-query-react-query-v5-the-complete-guide-for-building-smarter-react-applications-8fdf482212e5)
+
+---
+
+## 70. カスタムフック設計パターン 2026
+
+### 設計原則
+
+1. **単一責任**: 1つのフックは1つのことだけやる
+2. **戻り値はオブジェクト**: 2つ以上の値はオブジェクトで返す（配列は避ける）
+3. **型安全**: TypeScriptジェネリクスを活用
+4. **テスト可能**: 副作用を外部から注入できる設計
+
+### 主要パターン集
+
+```typescript
+// パターン1: データフェッチカスタムフック
+function useChatHistory(sessionId: string) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: chatKeys.history(sessionId),
+    queryFn: () => api.getChatHistory(sessionId),
+    enabled: !!sessionId,
+  });
+  return { messages: data ?? [], isLoading, error, refetch };
+}
+
+// パターン2: デバウンスフック
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+// パターン3: MMKV永続化フック
+function useMMKVState<T>(key: string, defaultValue: T) {
+  const [value, setValue] = useState<T>(() => {
+    const stored = storage.getString(key);
+    return stored ? JSON.parse(stored) : defaultValue;
+  });
+  const set = useCallback((newValue: T) => {
+    setValue(newValue);
+    storage.set(key, JSON.stringify(newValue));
+  }, [key]);
+  return [value, set] as const;
+}
+
+// パターン4: ネットワーク状態フック
+function useNetworkStatus() {
+  const [isConnected, setIsConnected] = useState(true);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsConnected(state.isConnected ?? true);
+    });
+    return unsubscribe;
+  }, []);
+  return { isConnected, isOffline: !isConnected };
+}
+```
+
+### Emport AI への応用
+
+```
+useChatSession(id)      → チャット管理（送信・履歴・状態）
+useIndustrySelector()   → 業種選択と保存
+useSubscription()       → サブスクリプション状態確認
+useNetworkStatus()      → オフライン時のUI分岐
+useDebounce(query, 500) → 検索入力のデバウンス
+```
+
+**情報源:**
+- [React Custom Hooks 2026 - TheLinuxCode](https://thelinuxcode.com/react-custom-hooks-in-2026-a-practical-guide-to-cleaner-components-fewer-bugs-and-faster-product-delivery/)
+- [React Design Patterns - TurboDocx](https://www.turbodocx.com/blog/react-design-patterns)
+
+---
+
+## 71. フィーチャーベースフォルダ構造（Expo推奨）
+
+### Expo公式推奨構造（2026年）
+
+```
+app/                        ← Expo Router（ファイルベースルーティング）
+├── (auth)/
+│   ├── login.tsx
+│   └── register.tsx
+├── (main)/
+│   ├── index.tsx
+│   ├── chat/
+│   │   ├── index.tsx
+│   │   └── [sessionId].tsx
+│   └── settings.tsx
+└── _layout.tsx
+
+src/
+├── features/
+│   ├── auth/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── api.ts
+│   │   └── store.ts
+│   ├── chat/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── api.ts
+│   │   └── store.ts
+│   └── industry/
+│       ├── components/
+│       ├── hooks/
+│       └── constants.ts
+│
+├── shared/
+│   ├── components/
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   └── ErrorMessage.tsx
+│   ├── hooks/
+│   │   ├── useDebounce.ts
+│   │   └── useNetworkStatus.ts
+│   └── utils/
+│       ├── api-client.ts
+│       └── storage.ts
+│
+└── constants/
+    ├── colors.ts
+    └── config.ts
+```
+
+### 命名規則
+
+```
+コンポーネント:  PascalCase     → MessageBubble.tsx
+フック:         camelCase      → useChatHistory.ts
+ストア:         use-*-store.ts → use-chat-store.ts
+スクリーン:     kebab-case     → chat-history-screen.tsx
+```
+
+### Emport AI フォルダ設計
+
+```
+features/
+├── auth/        → サインイン・プラン確認
+├── chat/        → AIチャット機能（メイン）
+├── industry/    → 業種選択
+├── history/     → チャット履歴管理
+└── settings/    → アカウント・通知設定
+```
+
+**情報源:**
+- [Expo Folder Structure Best Practices](https://expo.dev/blog/expo-app-folder-structure-best-practices)
+- [React Folder Structure 2026 - Robin Wieruch](https://www.robinwieruch.de/react-folder-structure/)
+- [React Native Project Structure - Tricentis](https://www.tricentis.com/learn/react-native-project-structure)
+
+---
+
+## 72. オフライン対応ストレージ（MMKV vs AsyncStorage vs SecureStore）
+
+### 2026年の選択基準
+
+| ライブラリ | 速度 | 暗号化 | 同期API | 用途 |
+|-----------|------|--------|---------|------|
+| MMKV | 30倍速 | o AES | o | ユーザー設定・アプリ状態 |
+| AsyncStorage | 遅い | x | x | 非推奨（Expo Goで非対応化） |
+| expo-secure-store | 普通 | o iOS Keychain | x | APIトークン・パスワード |
+| SQLite (Drizzle) | 速い | オプション | o | 複雑なデータ・全文検索 |
+
+### MMKV セットアップ
+
+```typescript
+// utils/storage.ts
+import { MMKV } from 'react-native-mmkv';
+
+export const appStorage = new MMKV({ id: 'app-preferences' });
+
+export function getStorageItem<T>(key: string): T | null {
+  const value = appStorage.getString(key);
+  return value ? JSON.parse(value) : null;
+}
+
+export function setStorageItem<T>(key: string, value: T): void {
+  appStorage.set(key, JSON.stringify(value));
+}
+```
+
+### Zustand + MMKV 永続化（推奨パターン）
+
+```typescript
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set) => ({
+      theme: 'system',
+      language: 'ja',
+      selectedIndustry: null,
+      setTheme: (theme) => set({ theme }),
+      setIndustry: (industry) => set({ selectedIndustry: industry }),
+    }),
+    {
+      name: 'settings',
+      storage: createJSONStorage(() => ({
+        getItem: (key) => appStorage.getString(key) ?? null,
+        setItem: (key, value) => appStorage.set(key, value),
+        removeItem: (key) => appStorage.delete(key),
+      })),
+    }
+  )
+);
+```
+
+### セキュリティ分類
+
+```
+MMKV（平文）:              テーマ・言語設定、業種選択状態
+expo-secure-store（Keychain）: JWTトークン、ユーザーID
+SQLite（Drizzle ORM）:     チャットメッセージ全文（検索対応）
+```
+
+**情報源:**
+- [MMKV vs AsyncStorage vs SecureStore 2026 - PkgPulse](https://www.pkgpulse.com/guides/react-native-mmkv-vs-async-storage-vs-expo-secure-store-2026)
+- [react-native-mmkv GitHub](https://github.com/mrousavy/react-native-mmkv)
+
+---
+
+## 73. エラーバウンダリとクラッシュハンドリング
+
+### Expo Router のネイティブエラーバウンダリ
+
+```tsx
+// app/chat/[sessionId].tsx
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>問題が発生しました</Text>
+      <Text style={styles.message}>{error.message}</Text>
+      <Button title="もう一度試す" onPress={retry} />
+    </View>
+  );
+}
+```
+
+### 部分的エラーバウンダリ（機能単位で局所化）
+
+```tsx
+class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  retry = () => this.setState({ hasError: false, error: null });
+
+  render() {
+    const { hasError, error } = this.state;
+    if (hasError && error) {
+      return this.props.fallback?.(error, this.retry) ?? <Text>エラーが発生しました</Text>;
+    }
+    return this.props.children;
+  }
+}
+
+// 使い方
+<ErrorBoundary fallback={(err, retry) => (
+  <ErrorCard message={err.message} onRetry={retry} />
+)}>
+  <ChatHistoryList />
+</ErrorBoundary>
+```
+
+### イベントハンドラのエラーハンドリング
+
+```typescript
+// エラーバウンダリは onPress 等イベントをキャッチしない
+// try/catch が必要
+const handleSendMessage = async () => {
+  try {
+    await sendMessage.mutateAsync(inputText);
+    setInputText('');
+  } catch (error) {
+    if (error instanceof APIError && error.status === 429) {
+      Alert.alert('使用制限', 'しばらく時間をおいて再度お試しください');
+    } else {
+      Alert.alert('エラー', 'メッセージの送信に失敗しました');
+    }
+  }
+};
+```
+
+### Emport AI エラー設計
+
+```
+画面レベル:  Expo Router ErrorBoundary（致命的エラー）
+機能レベル:  部分的ErrorBoundary（チャットリスト・設定画面等）
+API通信:    useMutation onError + Alert通知
+監視:       Sentry（本番クラッシュ追跡、無料プランで十分）
+```
+
+**情報源:**
+- [Expo Router Error Handling](https://docs.expo.dev/router/error-handling/)
+- [React Native Error Boundaries](https://www.reactnative.university/blog/react-native-error-boundaries)
+
+---
+
+## 74. FlatList・メモ化によるパフォーマンス最適化
+
+### FlatList 最適化チェックリスト
+
+```tsx
+const keyExtractor = useCallback((item: Message) => item.id, []);
+const getItemLayout = useCallback((_: any, index: number) => ({
+  length: MESSAGE_HEIGHT,
+  offset: MESSAGE_HEIGHT * index,
+  index,
+}), []);
+
+<FlatList
+  data={messages}
+  renderItem={renderMessage}
+  keyExtractor={keyExtractor}
+  getItemLayout={getItemLayout}  // 最大インパクトの最適化（固定高さの場合）
+  maxToRenderPerBatch={10}
+  windowSize={5}
+  initialNumToRender={15}
+  removeClippedSubviews
+/>
+```
+
+### アイテムコンポーネントのメモ化
+
+```tsx
+const MessageBubble = React.memo(({ message }: { message: Message }) => {
+  return (
+    <View style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.aiBubble]}>
+      <Text>{message.content}</Text>
+    </View>
+  );
+}, (prev, next) => prev.message.id === next.message.id);
+
+const renderMessage = useCallback(({ item }: { item: Message }) => (
+  <MessageBubble message={item} />
+), []);
+```
+
+### FlashList: FlatList の置き換え（Shopify製）
+
+```tsx
+import { FlashList } from '@shopify/flash-list';
+
+<FlashList
+  data={messages}
+  renderItem={renderMessage}
+  estimatedItemSize={70}
+  keyExtractor={keyExtractor}
+/>
+```
+
+**FlashList vs FlatList 比較:**
+| 指標 | FlatList | FlashList |
+|------|----------|-----------|
+| 10,000件スクロール | フレームドロップ | 60fps維持 |
+| 移行コスト | — | estimatedItemSizeのみ追加 |
+| API互換性 | 基準 | ほぼ同一 |
+
+### useMemo・useCallback の正しい使い方
+
+```tsx
+// useMemo: 計算コストが高い値にのみ
+const filteredMessages = useMemo(
+  () => messages.filter(m => m.role !== 'system'),
+  [messages]
+);
+
+// useCallback: 子コンポーネントに渡す関数にのみ
+const handleDelete = useCallback((id: string) => {
+  deleteMessage(id);
+}, [deleteMessage]);
+
+// 不要な最適化は避ける（コスト > 効果になる）
+// 単純な文字列結合や、親が再レンダリングしない関数には使わない
+```
+
+### Emport AI パフォーマンス設計
+
+```
+チャット画面:     FlashList + MessageBubble(React.memo)
+業種選択グリッド: FlatList(固定高さ) + getItemLayout
+履歴一覧:        FlashList + TanStack Query無限スクロール
+全体:            Zustand セレクター最適化でProvider不要
+```
+
+**情報源:**
+- [FlatList Optimization Guide - obytes](https://www.obytes.com/blog/a-guide-to-optimizing-flatlists-in-react-native)
+- [React Native Performance Optimization 2026](https://www.agilesoftlabs.com/blog/2026/03/react-native-performance-optimization)
+- [Boosting RN Performance: FlatList, Memo & useCallback](https://medium.com/@chandangupta86/boosting-react-native-performance-flatlist-memo-usecallback-b6cea3471711)
+
+---
+
+*第13ラウンド完了（2026-05-15）: セクション68〜74 — Zustand・TanStack Query v5・カスタムフック・フォルダ構造・MMKV・エラーバウンダリ・FlatList最適化*
