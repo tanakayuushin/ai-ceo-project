@@ -16,6 +16,7 @@
 - [日次ブリーフィングに全インテリジェンスファイルを含める](feedback_daily_briefing_include_all.md) — 01〜10の個別収集ファイル+summary.mdを全て読んで統合提示する（オーナー指示）
 - [自動承認・安全ガード設定](feedback_auto_permissions.md) — settings.json+PreToolUseフック設定済み。危険コマンドのみブロック、それ以外は自動承認
 - [他PC確認スキル: verify.ps1](feedback_cross_pc_verify.md) — git pull後・新PC移行後は setup/verify.ps1 で全項目チェック。NG項目はinstall.ps1再実行で修復
+- [push後アドバイス](feedback_post_push_advice.md) — git push後は変更内容に応じた他PCへの反映手順を必ず伝える（setup変更→verify.ps1、アプリ→npm install、ドキュメント→git pullのみ）
 - [アプリ開発は段階ごとに報告](feedback_app_dev_staged.md) — 新規アプリ・大機能追加は必ずステージ分割し、各ステージ完了時にオーナーへ成果報告してから次へ進む
 - [Emport AIアプリ開発状況](project_emport_app_status.md) — Android修正・ダッシュボードUI完成。次はバックエンドAPI化（APIキー不要化）が最優先
 - [山口大学ベンチャー支援申請](project_yamaguchi_univ.md) — ヒアリングシート提出済み（2026-05-14）。面談・審査結果待ち
