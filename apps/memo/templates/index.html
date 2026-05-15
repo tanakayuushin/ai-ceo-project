@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>メモアプリ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+           background: #f0f2f5; color: #333; min-height: 100vh; }
+
+    header { background: #4f46e5; color: white; padding: 16px 24px;
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    header h1 { font-size: 20px; font-weight: 700; }
+
+    .container { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+
+    /* 入力フォーム */
+    .form-card { background: white; border-radius: 12px; padding: 20px;
+                 box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .form-card h2 { font-size: 15px; color: #666; margin-bottom: 14px; }
+    input[type=text], textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 15px; font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    input[type=text]:focus, textarea:focus { outline: none; border-color: #4f46e5; }
+    textarea { height: 80px; resize: vertical; margin-top: 10px; }
+    .btn-add { margin-top: 12px; width: 100%; padding: 11px;
+               background: #4f46e5; color: white; border: none;
+               border-radius: 8px; font-size: 15px; font-weight: 600;
+               cursor: pointer; transition: background 0.2s; }
+    .btn-add:hover { background: #4338ca; }
+
+    /* メモ一覧 */
+    .count { font-size: 13px; color: #888; margin-bottom: 12px; }
+    .memo-card { background: white; border-radius: 12px; padding: 16px 18px;
+                 margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+                 display: flex; justify-content: space-between; align-items: flex-start;
+                 gap: 12px; }
+    .memo-content { flex: 1; min-width: 0; }
+    .memo-title { font-weight: 600; font-size: 15px; word-break: break-word; }
+    .memo-body { color: #555; font-size: 14px; margin-top: 6px;
+                 white-space: pre-wrap; word-break: break-word; }
+    .memo-date { font-size: 11px; color: #aaa; margin-top: 8px; }
+    .btn-del { background: none; border: 1px solid #e0e0e0; color: #bbb;
+               border-radius: 6px; padding: 4px 10px; font-size: 13px;
+               cursor: pointer; white-space: nowrap; flex-shrink: 0;
+               transition: all 0.2s; }
+    .btn-del:hover { border-color: #f44336; color: #f44336; background: #fff5f5; }
+
+    .empty { text-align: center; color: #bbb; padding: 40px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header><h1>📝 メモアプリ</h1></header>
+  <div class="container">
+
+    <div class="form-card">
+      <h2>新しいメモを追加</h2>
+      <form method="POST" action="/add">
+        <input type="text" name="title" placeholder="タイトル *" required>
+        <textarea name="body" placeholder="内容（任意）"></textarea>
+        <button type="submit" class="btn-add">追加する</button>
+      </form>
+    </div>
+
+    <div class="count">{{ memos|length }} 件のメモ</div>
+
+    {% if memos %}
+      {% for memo in memos %}
+      <div class="memo-card">
+        <div class="memo-content">
+          <div class="memo-title">{{ memo.title }}</div>
+          {% if memo.body %}
+          <div class="memo-body">{{ memo.body }}</div>
+          {% endif %}
+          <div class="memo-date">{{ memo.created }}</div>
+        </div>
+        <form method="POST" action="/delete/{{ memo.id }}">
+          <button type="submit" class="btn-del">削除</button>
+        </form>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">メモがまだありません</div>
+    {% endif %}
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>食事管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+           background: #f5f7fa; color: #333; min-height: 100vh; }
+
+    header { background: #16a34a; color: white; padding: 14px 20px;
+             display: flex; align-items: center; justify-content: space-between;
+             box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    header h1 { font-size: 18px; font-weight: 700; }
+
+    /* 日付ナビ */
+    .date-nav { display: flex; align-items: center; justify-content: center;
+                gap: 12px; padding: 14px 16px; background: white;
+                border-bottom: 1px solid #e5e7eb; }
+    .date-nav a { background: #f3f4f6; border: none; padding: 6px 14px;
+                  border-radius: 20px; font-size: 14px; color: #555;
+                  text-decoration: none; font-weight: 500; }
+    .date-nav a:hover { background: #e5e7eb; }
+    .date-label { font-size: 16px; font-weight: 700; color: #111; }
+    .today-badge { font-size: 11px; background: #16a34a; color: white;
+                   padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+
+    .container { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+    /* カロリーサマリー */
+    .summary { background: white; border-radius: 12px; padding: 16px 20px;
+               margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+               display: flex; align-items: center; justify-content: space-between; }
+    .cal-total { font-size: 28px; font-weight: 800; color: #16a34a; }
+    .cal-label { font-size: 13px; color: #888; margin-top: 2px; }
+    .cal-goal { text-align: right; }
+    .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px;
+                    margin-top: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #16a34a; border-radius: 4px;
+                     transition: width 0.4s; }
+    .progress-fill.over { background: #ef4444; }
+
+    /* 食事カード */
+    .meal-section { margin-bottom: 14px; }
+    .section-header { font-size: 13px; font-weight: 700; color: #666;
+                      padding: 6px 4px; display: flex; justify-content: space-between; }
+    .meal-card { background: white; border-radius: 10px; padding: 12px 14px;
+                 margin-bottom: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+                 display: flex; align-items: center; justify-content: space-between; }
+    .meal-info { flex: 1; }
+    .meal-name { font-weight: 600; font-size: 14px; }
+    .meal-cal { color: #16a34a; font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .btn-del { background: none; border: none; color: #d1d5db; font-size: 18px;
+               cursor: pointer; padding: 4px 8px; line-height: 1; }
+    .btn-del:hover { color: #ef4444; }
+    .empty-type { color: #bbb; font-size: 13px; padding: 8px 4px; }
+
+    /* 追加フォーム */
+    .add-card { background: white; border-radius: 12px; padding: 18px;
+                margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+    .add-card h2 { font-size: 14px; font-weight: 700; color: #555; margin-bottom: 12px; }
+    .form-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+    .form-row input, .form-row select {
+      flex: 1; min-width: 100px; padding: 9px 11px; border: 1px solid #e5e7eb;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+    }
+    .form-row input:focus, .form-row select:focus { outline: none; border-color: #16a34a; }
+    .cal-input { max-width: 110px; }
+    .btn-add { width: 100%; padding: 11px; background: #16a34a; color: white;
+               border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+               cursor: pointer; margin-top: 4px; }
+    .btn-add:hover { background: #15803d; }
+
+    .type-emoji { margin-right: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🥗 食事管理</h1>
+  {% if not is_today %}
+  <a href="/?date={{ today }}" style="color:white;font-size:13px;text-decoration:none;background:rgba(255,255,255,0.2);padding:5px 12px;border-radius:14px;">今日へ</a>
+  {% endif %}
+</header>
+
+<!-- 日付ナビ -->
+<div class="date-nav">
+  <a href="/?date={{ prev_date }}">‹</a>
+  <span class="date-label">
+    {{ target | replace('-', '/') }}
+    {% if is_today %}<span class="today-badge">今日</span>{% endif %}
+  </span>
+  <a href="/?date={{ next_date }}">›</a>
+</div>
+
+<div class="container">
+
+  <!-- カロリーサマリー -->
+  {% set goal = 2000 %}
+  {% set pct = [[(total_cal / goal * 100)|int, 0]|max, 100]|min %}
+  <div class="summary">
+    <div>
+      <div class="cal-total">{{ total_cal }} <span style="font-size:16px;color:#888">kcal</span></div>
+      <div class="cal-label">本日の合計カロリー</div>
+    </div>
+    <div class="cal-goal">
+      <div style="font-size:13px;color:#888">目標 {{ goal }} kcal</div>
+      <div style="font-size:13px;color:{% if total_cal > goal %}#ef4444{% else %}#16a34a{% endif %};font-weight:600;margin-top:2px;">
+        残り {{ goal - total_cal }} kcal
+      </div>
+      <div class="progress-bar" style="width:140px;margin-top:6px;">
+        <div class="progress-fill {% if total_cal > goal %}over{% endif %}" style="width:{{ pct }}%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 食事タイプ別一覧 -->
+  {% set emojis = {'朝食': '🌅', '昼食': '☀️', '夕食': '🌙', '間食': '🍪'} %}
+  {% for meal_type in meal_types %}
+  {% set items = grouped[meal_type] %}
+  <div class="meal-section">
+    <div class="section-header">
+      <span><span class="type-emoji">{{ emojis[meal_type] }}</span>{{ meal_type }}</span>
+      {% if items %}<span style="color:#16a34a;">{{ items|sum(attribute='calories') }} kcal</span>{% endif %}
+    </div>
+    {% if items %}
+      {% for m in items %}
+      <div class="meal-card">
+        <div class="meal-info">
+          <div class="meal-name">{{ m.name }}</div>
+          <div class="meal-cal">{{ m.calories }} kcal</div>
+        </div>
+        <form method="POST" action="/delete/{{ m.id }}">
+          <input type="hidden" name="date" value="{{ target }}">
+          <button type="submit" class="btn-del">×</button>
+        </form>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-type">未記録</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- 追加フォーム -->
+  <div class="add-card">
+    <h2>＋ 食事を追加</h2>
+    <form method="POST" action="/add">
+      <input type="hidden" name="date" value="{{ target }}">
+      <div class="form-row">
+        <input type="text" name="name" placeholder="食事名（例：ご飯・納豆）" required style="flex:2;">
+        <select name="type">
+          {% for t in meal_types %}
+          <option value="{{ t }}">{{ emojis[t] }} {{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <input type="number" name="calories" placeholder="カロリー (kcal)" class="cal-input" min="0" value="0">
+      </div>
+      <button type="submit" class="btn-add">追加する</button>
+    </form>
+  </div>
+
+</div>
+</body>
+</html>
