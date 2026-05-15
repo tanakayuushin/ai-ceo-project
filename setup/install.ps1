@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # Allen (AI CEO) セットアップスクリプト
 # 新しいPCでこのスクリプトを実行すると、全ての設定が再現されます。
 #
@@ -58,10 +58,10 @@ Write-Host "[3/4] メモリファイルをインストール..." -ForegroundColo
 # 例: C:\Users\foo\Documents\ai-ceo-project
 #   → c--Users-foo-Documents-ai-ceo-project
 $rawPath = $REPO_ROOT
-$projectKey = $rawPath `
-    -replace '^[A-Za-z]:', { $_.Value.ToLower() } `
-    -replace '[:\\/ ]', '-' `
-    -replace '-+', '-'
+# Claude Codeのプロジェクトキー生成: ドライブ文字小文字化 + 非英数字をすべて'-'に置換
+# 例: C:\Users\foo\OneDrive\デスクトップ\ai-ceo-project → c--Users-foo-OneDrive--------ai-ceo-project
+# ※ PS5.1ではスクリプトブロック置換が使えないため文字列操作で実装
+$projectKey = $rawPath[0].ToString().ToLower() + ($rawPath.Substring(1) -replace '[^a-zA-Z0-9]', '-')
 
 $targetMemDir = "$MEM_DIR\$projectKey\memory"
 New-Item -ItemType Directory -Force $targetMemDir | Out-Null
