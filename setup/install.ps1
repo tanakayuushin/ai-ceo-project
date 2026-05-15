@@ -1,12 +1,9 @@
-﻿# ==============================================================================
-# Allen (AI CEO) セットアップスクリプト
-# 新しいPCでこのスクリプトを実行すると、全ての設定が再現されます。
+# Allen AI CEO - Setup Script
+# Run this script on a new PC to reproduce all Allen configurations.
 #
-# 使い方:
-#   PowerShell を管理者権限で起動し、以下を実行:
-#   cd <このリポジトリのパス>\setup
-#   .\install.ps1
-# ==============================================================================
+# Usage:
+#   cd <repo>\setup
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1
 
 $ErrorActionPreference = "Stop"
 
@@ -17,82 +14,65 @@ $HOOKS_DIR  = "$CLAUDE_DIR\hooks"
 $MEM_DIR    = "$CLAUDE_DIR\projects"
 
 Write-Host ""
-Write-Host "=== Allen AI CEO セットアップ開始 ===" -ForegroundColor Cyan
+Write-Host "=== Allen AI CEO Setup ===" -ForegroundColor Cyan
 Write-Host "REPO : $REPO_ROOT"
 Write-Host "HOME : $env:USERPROFILE"
 Write-Host ""
 
-# ------------------------------------------------------------------------------
-# 1. ~/.claude/hooks/ にセキュリティフックをコピー
-# ------------------------------------------------------------------------------
-Write-Host "[1/4] セキュリティフックをインストール..." -ForegroundColor Yellow
+# Step 1: Copy security hooks to ~/.claude/hooks/
+Write-Host "[1/4] Installing security hooks..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force $HOOKS_DIR | Out-Null
 Copy-Item "$SETUP_DIR\hooks\*.py" $HOOKS_DIR -Force
 Write-Host "      OK: $HOOKS_DIR" -ForegroundColor Green
 
-# ------------------------------------------------------------------------------
-# 2. ~/.claude/settings.json を生成（フックパスを実際のパスに置換）
-# ------------------------------------------------------------------------------
-Write-Host "[2/4] settings.json を生成..." -ForegroundColor Yellow
-$template = Get-Content "$SETUP_DIR\settings_template.json" -Raw
+# Step 2: Generate ~/.claude/settings.json (replace {{HOOKS_DIR}} with actual path)
+Write-Host "[2/4] Generating settings.json..." -ForegroundColor Yellow
+$template = [System.IO.File]::ReadAllText("$SETUP_DIR\settings_template.json", (New-Object System.Text.UTF8Encoding($false)))
 $settings = $template -replace '\{\{HOOKS_DIR\}\}', ($HOOKS_DIR -replace '\\', '\\')
 $settingsPath = "$CLAUDE_DIR\settings.json"
 
 if (Test-Path $settingsPath) {
     $backup = "$CLAUDE_DIR\settings.json.bak"
     Copy-Item $settingsPath $backup -Force
-    Write-Host "      既存の settings.json を $backup にバックアップしました" -ForegroundColor DarkYellow
+    Write-Host "      Backed up existing settings.json to $backup" -ForegroundColor DarkYellow
 }
 
-# PS5.1の Set-Content -Encoding UTF8 はBOM付きになるため .NET で直接書き込む
+# Write as UTF-8 without BOM (PS5.1 Set-Content -Encoding UTF8 adds BOM which breaks JSON parsing)
 $noBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($settingsPath, $settings, $noBom)
 Write-Host "      OK: $settingsPath" -ForegroundColor Green
 
-# ------------------------------------------------------------------------------
-# 3. メモリファイルをプロジェクト用ディレクトリにコピー
-#    Claude Code はプロジェクトパスをキーとしてメモリを管理するため、
-#    このPC上のリポジトリパスに合わせたディレクトリを作成します。
-# ------------------------------------------------------------------------------
-Write-Host "[3/4] メモリファイルをインストール..." -ForegroundColor Yellow
-
-# リポジトリの絶対パスをClaude Codeのプロジェクトキー形式に変換
-# 例: C:\Users\foo\Documents\ai-ceo-project
-#   → c--Users-foo-Documents-ai-ceo-project
+# Step 3: Copy memory files to project-keyed directory
+# Claude Code manages memory per project path. Convert absolute path to key format.
+# Example: C:\Users\foo\OneDrive\Desktop\ai-ceo-project -> c--Users-foo-OneDrive--Desktop--ai-ceo-project
+Write-Host "[3/4] Installing memory files..." -ForegroundColor Yellow
 $rawPath = $REPO_ROOT
-# Claude Codeのプロジェクトキー生成: ドライブ文字小文字化 + 非英数字をすべて'-'に置換
-# 例: C:\Users\foo\OneDrive\デスクトップ\ai-ceo-project → c--Users-foo-OneDrive--------ai-ceo-project
-# ※ PS5.1ではスクリプトブロック置換が使えないため文字列操作で実装
 $projectKey = $rawPath[0].ToString().ToLower() + ($rawPath.Substring(1) -replace '[^a-zA-Z0-9]', '-')
 
 $targetMemDir = "$MEM_DIR\$projectKey\memory"
 New-Item -ItemType Directory -Force $targetMemDir | Out-Null
 Copy-Item "$SETUP_DIR\memory\*.md" $targetMemDir -Force
 Write-Host "      OK: $targetMemDir" -ForegroundColor Green
-Write-Host "      ($((Get-ChildItem $targetMemDir).Count) 件のメモリファイル)" -ForegroundColor DarkGray
+Write-Host "      ($((Get-ChildItem $targetMemDir).Count) memory files)" -ForegroundColor DarkGray
 
-# ------------------------------------------------------------------------------
-# 4. Python の確認
-# ------------------------------------------------------------------------------
-Write-Host "[4/4] Python を確認..." -ForegroundColor Yellow
+# Step 4: Verify Python installation
+Write-Host "[4/4] Checking Python..." -ForegroundColor Yellow
 try {
     $pyVer = python --version 2>&1
     Write-Host "      OK: $pyVer" -ForegroundColor Green
 } catch {
-    Write-Host "      WARNING: python コマンドが見つかりません。" -ForegroundColor Red
-    Write-Host "      https://www.python.org/ から Python をインストールしてください。" -ForegroundColor Red
-    Write-Host "      フックはPythonが必要です。" -ForegroundColor Red
+    Write-Host "      WARNING: python command not found." -ForegroundColor Red
+    Write-Host "      Install Python from https://www.python.org/" -ForegroundColor Red
+    Write-Host "      Hooks require Python to run." -ForegroundColor Red
 }
 
-# ------------------------------------------------------------------------------
-# 完了
-# ------------------------------------------------------------------------------
 Write-Host ""
-Write-Host "=== セットアップ完了 ===" -ForegroundColor Cyan
+Write-Host "=== Setup Complete ===" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "次のステップ:" -ForegroundColor White
-Write-Host "  1. Claude Code を起動（または再起動）" -ForegroundColor Gray
-Write-Host "  2. このリポジトリ ($REPO_ROOT) で Claude Code を開く" -ForegroundColor Gray
-Write-Host "  3. 動作確認: 'アレン、今日のブリーフィングをお願いします' と話しかける" -ForegroundColor Gray
+Write-Host "Next steps:" -ForegroundColor White
+Write-Host "  1. Run verify.ps1 to confirm all settings are correct" -ForegroundColor Gray
+Write-Host "     powershell -ExecutionPolicy Bypass -File .\verify.ps1" -ForegroundColor Gray
+Write-Host "  2. Start (or restart) Claude Code" -ForegroundColor Gray
+Write-Host "  3. Open this repo in Claude Code: $REPO_ROOT" -ForegroundColor Gray
 Write-Host ""
-Write-Host "メモ: GitHub token や API key は .env ファイルに別途設定が必要です。" -ForegroundColor DarkYellow
+Write-Host "Note: API keys must be configured separately in the .env file." -ForegroundColor DarkYellow

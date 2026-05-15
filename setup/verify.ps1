@@ -1,19 +1,17 @@
-﻿# ==============================================================================
-# Allen AI CEO — セットアップ確認スクリプト
-# git pull 後にこのスクリプトを実行して全項目が OK か確認する
+# Allen AI CEO - Setup Verification Script
+# Run this after git pull or install.ps1 to confirm all settings are correct.
 #
-# 使い方:
-#   cd ai-ceo-project\setup
+# Usage:
+#   cd <repo>\setup
 #   powershell -ExecutionPolicy Bypass -File .\verify.ps1
-# ==============================================================================
 
 $REPO_ROOT  = Split-Path -Parent $PSScriptRoot
 $CLAUDE_DIR = "$env:USERPROFILE\.claude"
 $HOOKS_DIR  = "$CLAUDE_DIR\hooks"
 $MEM_DIR    = "$CLAUDE_DIR\projects"
 
-$ok  = 0
-$ng  = 0
+$ok = 0
+$ng = 0
 
 function Pass($msg) { Write-Host "  [OK] $msg" -ForegroundColor Green;  $script:ok++ }
 function Fail($msg) { Write-Host "  [NG] $msg" -ForegroundColor Red;    $script:ng++ }
@@ -23,183 +21,155 @@ function Section($title) {
     Write-Host "--- $title ---" -ForegroundColor Cyan
 }
 
+function HasBom($path) {
+    $b = [System.IO.File]::ReadAllBytes($path)
+    return ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)
+}
+
+function RemoveBom($path) {
+    $enc   = New-Object System.Text.UTF8Encoding($true)
+    $noBom = New-Object System.Text.UTF8Encoding($false)
+    $text  = [System.IO.File]::ReadAllText($path, $enc)
+    [System.IO.File]::WriteAllText($path, $text, $noBom)
+}
+
 Write-Host ""
-Write-Host "=== Allen AI CEO セットアップ確認 ===" -ForegroundColor Cyan
+Write-Host "=== Allen AI CEO Setup Verification ===" -ForegroundColor Cyan
 Write-Host "REPO : $REPO_ROOT"
 Write-Host "HOME : $env:USERPROFILE"
 
-# ------------------------------------------------------------------------------
-# 1. ~/.claude/settings.json
-# ------------------------------------------------------------------------------
-Section "1. settings.json（自動承認設定）"
+# --- 1. ~/.claude/settings.json ---
+Section "1. settings.json (auto-approval)"
 
 $settingsPath = "$CLAUDE_DIR\settings.json"
 if (-not (Test-Path $settingsPath)) {
-    Fail "settings.json が存在しない → install.ps1 を実行してください"
+    Fail "settings.json not found -- run install.ps1 first"
 } else {
-    # BOMチェック
-    $bytes = [System.IO.File]::ReadAllBytes($settingsPath)
-    if ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
-        Fail "settings.json がBOM付き → Claude Codeが読めない"
-        Write-Host "       修正コマンド:" -ForegroundColor DarkYellow
-        Write-Host "       `$b=[System.IO.File]::ReadAllText('$settingsPath',(New-Object System.Text.UTF8Encoding(`$true)))" -ForegroundColor DarkGray
-        Write-Host "       [System.IO.File]::WriteAllText('$settingsPath',`$b,(New-Object System.Text.UTF8Encoding(`$false)))" -ForegroundColor DarkGray
+    if (HasBom $settingsPath) {
+        Write-Host "  [!!] settings.json has BOM -- fixing automatically..." -ForegroundColor Yellow
+        RemoveBom $settingsPath
+        if (HasBom $settingsPath) { Fail "Could not remove BOM from settings.json" }
+        else                      { Pass "settings.json BOM removed (now OK)" }
     } else {
-        Pass "settings.json BOMなし"
+        Pass "settings.json: no BOM"
     }
 
-    # JSON構文チェック
     try {
         $json = Get-Content $settingsPath -Raw | ConvertFrom-Json
-        Pass "settings.json JSON構文OK"
-
-        # defaultMode確認
+        Pass "settings.json: valid JSON"
         $mode = $json.permissions.defaultMode
         if ($mode -eq "bypassPermissions") {
-            Pass "defaultMode = bypassPermissions（自動承認有効）"
+            Pass "defaultMode = bypassPermissions (auto-approval enabled)"
         } else {
-            Fail "defaultMode = '$mode'（bypassPermissions ではない）"
+            Fail "defaultMode = '$mode' (expected: bypassPermissions)"
         }
     } catch {
-        Fail "settings.json JSON構文エラー: $_"
+        Fail "settings.json: JSON parse error -- $_"
     }
 }
 
-# ------------------------------------------------------------------------------
-# 2. セキュリティフック
-# ------------------------------------------------------------------------------
-Section "2. セキュリティフック（~/.claude/hooks/）"
+# --- 2. Security hooks ---
+Section "2. Security hooks (~/.claude/hooks/)"
 
-$hooks = @("layer2_bash_guard.py", "layer3_secrets_guard.py", "layer4_file_guard.py", "layer5_audit_log.py")
+$hooks = @("layer2_bash_guard.py","layer3_secrets_guard.py","layer4_file_guard.py","layer5_audit_log.py")
 foreach ($h in $hooks) {
-    if (Test-Path "$HOOKS_DIR\$h") {
-        Pass "$h"
-    } else {
-        Fail "$h が存在しない"
-    }
+    if (Test-Path "$HOOKS_DIR\$h") { Pass $h }
+    else                           { Fail "$h missing" }
 }
 
-# ------------------------------------------------------------------------------
-# 3. Python
-# ------------------------------------------------------------------------------
-Section "3. Python（フック実行に必要）"
+# --- 3. Python ---
+Section "3. Python (required for hooks)"
 
 try {
     $pyVer = python --version 2>&1
     Pass "Python: $pyVer"
-} catch {
-    Fail "python コマンドが見つからない → https://www.python.org/ からインストール"
-}
-
-# フックが実際に動くかテスト
-try {
     $testInput = '{"tool_name":"Bash","tool_input":{"command":"echo test"}}'
-    $result = $testInput | python "$HOOKS_DIR\layer2_bash_guard.py" 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Pass "layer2_bash_guard.py 動作確認OK"
-    } else {
-        Fail "layer2_bash_guard.py が exit $LASTEXITCODE を返した"
-    }
+    $null = $testInput | python "$HOOKS_DIR\layer2_bash_guard.py" 2>&1
+    if ($LASTEXITCODE -eq 0) { Pass "layer2_bash_guard.py runs OK" }
+    else                     { Fail "layer2_bash_guard.py exited $LASTEXITCODE" }
 } catch {
-    Fail "フックのテスト実行に失敗: $_"
+    Fail "python not found -- install from https://www.python.org/"
 }
 
-# ------------------------------------------------------------------------------
-# 4. メモリファイル
-# ------------------------------------------------------------------------------
-Section "4. アレンのメモリ（~/.claude/projects/）"
+# --- 4. Memory files ---
+Section "4. Allen memory (~/.claude/projects/)"
 
 $projectKey = $REPO_ROOT[0].ToString().ToLower() + ($REPO_ROOT.Substring(1) -replace '[^a-zA-Z0-9]', '-')
 $memDir = "$MEM_DIR\$projectKey\memory"
 
 if (Test-Path $memDir) {
     $count = (Get-ChildItem $memDir -Filter "*.md").Count
-    if ($count -ge 10) {
-        Pass "メモリ $count 件 → $memDir"
-    } else {
-        Warn "メモリが $count 件しかない（19件あるはず）→ install.ps1 を再実行"
-    }
+    if ($count -ge 10) { Pass "Memory: $count files found" }
+    else               { Warn "Memory: only $count files (expected 19+) -- re-run install.ps1" }
 } else {
-    Fail "メモリディレクトリが存在しない → $memDir"
+    Fail "Memory directory not found: $memDir"
 }
 
-# ------------------------------------------------------------------------------
-# 5. プロジェクト .claude/settings.json（自動プッシュ等）
-# ------------------------------------------------------------------------------
-Section "5. プロジェクト設定（.claude/settings.json）"
+# --- 5. Project .claude/settings.json ---
+Section "5. Project settings (.claude/settings.json)"
 
 $projSettings = "$REPO_ROOT\.claude\settings.json"
 if (Test-Path $projSettings) {
-    $bytes2 = [System.IO.File]::ReadAllBytes($projSettings)
-    if ($bytes2[0] -eq 0xEF -and $bytes2[1] -eq 0xBB -and $bytes2[2] -eq 0xBF) {
-        Fail ".claude/settings.json がBOM付き（git pullで最新版を取得してください）"
+    if (HasBom $projSettings) {
+        Write-Host "  [!!] .claude/settings.json has BOM -- fixing automatically..." -ForegroundColor Yellow
+        RemoveBom $projSettings
+        if (HasBom $projSettings) { Fail "Could not remove BOM from .claude/settings.json" }
+        else                      { Pass ".claude/settings.json BOM removed (now OK)" }
     } else {
-        Pass ".claude/settings.json BOMなし"
+        Pass ".claude/settings.json: no BOM"
     }
     try {
         Get-Content $projSettings -Raw | ConvertFrom-Json | Out-Null
-        Pass ".claude/settings.json JSON構文OK"
+        Pass ".claude/settings.json: valid JSON"
     } catch {
-        Fail ".claude/settings.json JSON構文エラー"
+        Fail ".claude/settings.json: JSON parse error"
     }
 } else {
-    Fail ".claude/settings.json が存在しない"
+    Fail ".claude/settings.json not found"
 }
 
-# ------------------------------------------------------------------------------
-# 6. git 状態（リポジトリが最新か）
-# ------------------------------------------------------------------------------
-Section "6. git 状態"
+# --- 6. Git status ---
+Section "6. Git status"
 
 Push-Location $REPO_ROOT
 try {
     git fetch origin main --quiet 2>$null
     $behind = git rev-list HEAD..origin/main --count 2>$null
-    if ($behind -eq "0" -or $behind -eq "") {
-        Pass "リポジトリは最新（origin/main と同期済み）"
-    } else {
-        Warn "origin/main より $behind コミット遅れている → git pull を実行"
-    }
+    if ($behind -eq "0" -or $behind -eq "") { Pass "Repo is up to date with origin/main" }
+    else                                     { Warn "$behind commit(s) behind origin/main -- run: git pull" }
 
-    $status = git status --porcelain 2>$null
-    if (-not $status) {
-        Pass "未コミットの変更なし"
-    } else {
-        Warn "未コミットの変更あり（$($status.Count) 件）"
-    }
+    $dirty = git status --porcelain 2>$null
+    if (-not $dirty) { Pass "No uncommitted changes" }
+    else             { Warn "Uncommitted changes ($($dirty.Count) files)" }
 } catch {
-    Warn "git fetch に失敗（ネットワーク確認）"
+    Warn "git fetch failed (check network)"
 } finally {
     Pop-Location
 }
 
-# ------------------------------------------------------------------------------
-# 7. Claude Code のインストール確認
-# ------------------------------------------------------------------------------
+# --- 7. Claude Code CLI ---
 Section "7. Claude Code CLI"
 
 try {
     $claudeVer = claude --version 2>&1
     Pass "Claude Code: $claudeVer"
 } catch {
-    Fail "claude コマンドが見つからない → npm install -g @anthropic-ai/claude-code"
+    Fail "claude not found -- run: npm install -g @anthropic-ai/claude-code"
 }
 
-# ------------------------------------------------------------------------------
-# 結果サマリー
-# ------------------------------------------------------------------------------
+# --- Summary ---
 Write-Host ""
 Write-Host "=======================================" -ForegroundColor Cyan
 if ($ng -eq 0) {
-    Write-Host "  全項目OK ($ok/$($ok+$ng)) — セットアップ完了！" -ForegroundColor Green
-    Write-Host "  Claude Code を起動して動作確認してください。" -ForegroundColor Gray
+    Write-Host "  All checks passed ($ok/$($ok+$ng)) -- Setup complete!" -ForegroundColor Green
+    Write-Host "  Start Claude Code and test with: git status" -ForegroundColor Gray
 } else {
-    Write-Host "  NG あり ($ng 件) — 上記の [NG] 項目を修正してください" -ForegroundColor Red
+    Write-Host "  $ng check(s) failed -- fix [NG] items above" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  まず試すこと:" -ForegroundColor Yellow
+    Write-Host "  Quick fix:" -ForegroundColor Yellow
     Write-Host "    git pull" -ForegroundColor Gray
     Write-Host "    powershell -ExecutionPolicy Bypass -File .\install.ps1" -ForegroundColor Gray
-    Write-Host "    → その後このスクリプトを再実行" -ForegroundColor Gray
+    Write-Host "    powershell -ExecutionPolicy Bypass -File .\verify.ps1" -ForegroundColor Gray
 }
 Write-Host "=======================================" -ForegroundColor Cyan
 Write-Host ""
