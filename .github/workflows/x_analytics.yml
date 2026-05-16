@@ -15,21 +15,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch X metrics & generate report
-        id: analyze
+      - name: Fetch own post metrics
         env:
           X_CONSUMER_KEY: ${{ secrets.X_CONSUMER_KEY }}
           X_CONSUMER_SECRET: ${{ secrets.X_CONSUMER_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
-        run: |
-          python tools/social-media/fetch_x_metrics.py 2>&1 | tee /tmp/analytics_result.txt
-          echo "result=$(tail -1 /tmp/analytics_result.txt)" >> $GITHUB_OUTPUT
+        run: python tools/social-media/fetch_x_metrics.py
 
-      - name: Commit report
+      - name: Fetch competitor & buzz post analysis
+        env:
+          X_CONSUMER_KEY: ${{ secrets.X_CONSUMER_KEY }}
+          X_CONSUMER_SECRET: ${{ secrets.X_CONSUMER_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: python tools/social-media/competitor_analysis.py
+
+      - name: Commit reports
         run: |
           git config user.email "tsubeyou081@gmail.com"
           git config user.name "GitHub Actions"
-          git add data/reports/x-analytics.md
-          git diff --staged --quiet || git commit -m "analytics: X投稿パフォーマンスレポート更新 $(date +%Y-%m-%d)"
+          git add data/reports/x-analytics.md data/reports/x-competitor-analysis.md
+          git diff --staged --quiet || git commit -m "analytics: X分析レポート更新 $(date +%Y-%m-%d)"
           git push
