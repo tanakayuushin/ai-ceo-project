@@ -14,7 +14,7 @@ Soundcore文字起こし → Claude要約 → Notion自動保存システム
 ANTHROPIC_API_KEY=sk-ant-...
 NOTION_TOKEN=secret_...
 NOTION_PAGE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  ← 保存先NotionページのID
-SOUNDCORE_INBOX=C:\Users\tsube\OneDrive\Soundcore\inbox
+SOUNDCORE_INBOX=C:\\Users\\tsube\\OneDrive\\Soundcore\\inbox
 """
 
 import os
@@ -27,6 +27,10 @@ import urllib.error
 import ssl
 from pathlib import Path
 from datetime import datetime
+
+# Windows console UTF-8 output (avoids cp932 emoji errors)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
     from watchdog.observers import Observer
