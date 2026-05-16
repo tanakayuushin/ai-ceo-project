@@ -1,94 +1,69 @@
-# Soundcore→Notion自動同期をWindowsログイン時に自動起動するセットアップ
-# 管理者権限不要
+# Soundcore -> Notion auto-sync: Windows startup setup (no admin required)
 
-$ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$ProjectRoot = Split-Path -Parent (Split-Path -Parent $ScriptDir)
-$EnvFile     = Join-Path $ProjectRoot ".env"
-$MainScript  = Join-Path $ScriptDir "soundcore_to_notion.py"
-$WrapperVbs  = Join-Path $ScriptDir "start_silent.vbs"
-$StartupDir  = [Environment]::GetFolderPath("Startup")
+$ScriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot  = Split-Path -Parent (Split-Path -Parent $ScriptDir)
+$EnvFile      = Join-Path $ProjectRoot ".env"
+$MainScript   = Join-Path $ScriptDir "soundcore_to_notion.py"
+$WrapperVbs   = Join-Path $ScriptDir "start_silent.vbs"
+$StartupDir   = [Environment]::GetFolderPath("Startup")
 $ShortcutPath = Join-Path $StartupDir "SoundcoreNotion.lnk"
 
-Write-Host "=== Soundcore→Notion 自動起動セットアップ ===" -ForegroundColor Cyan
+Write-Host "=== Soundcore -> Notion Setup ===" -ForegroundColor Cyan
 
-# 依存パッケージインストール
-Write-Host "`n[1/4] 依存パッケージをインストール中..." -ForegroundColor Yellow
+# Step 1: Install pip dependencies
+Write-Host "`n[1/4] Installing pip packages..." -ForegroundColor Yellow
 pip install -r (Join-Path $ScriptDir "requirements.txt") --quiet
-Write-Host "  完了" -ForegroundColor Green
+Write-Host "  Done." -ForegroundColor Green
 
-# .envの存在チェック
+# Step 2: Check .env
 if (-not (Test-Path $EnvFile)) {
-    Write-Host "`n[警告] .env ファイルが見つかりません: $EnvFile" -ForegroundColor Red
-    Write-Host "以下の内容を .env に追記してください:"
+    Write-Host "`n[WARN] .env not found: $EnvFile" -ForegroundColor Red
+    Write-Host "Please add to .env:"
     Write-Host "  ANTHROPIC_API_KEY=sk-ant-xxxxxx"
     Write-Host "  NOTION_TOKEN=secret_xxxxxx"
-    Write-Host "  NOTION_DATABASE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    Write-Host "  NOTION_PAGE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     Write-Host "  SOUNDCORE_INBOX=C:\Users\tsube\OneDrive\Soundcore\inbox"
 }
 
-# バックグラウンド起動用VBSラッパー作成（コンソールウィンドウを非表示）
-Write-Host "`n[2/4] 起動ラッパーを作成中..." -ForegroundColor Yellow
-$vbsContent = @"
-' Soundcore→Notion バックグラウンド起動ラッパー
-Dim WShell
-Set WShell = CreateObject("WScript.Shell")
+# Step 3: Create VBS wrapper (runs Python silently, no console window)
+# Python script loads .env itself, so VBS only needs to launch it.
+Write-Host "`n[2/4] Creating VBS launcher..." -ForegroundColor Yellow
 
-' .envを読み込んで環境変数をセット
-Dim fso, f, line, parts
-Set fso = CreateObject("Scripting.FileSystemObject")
-Dim envPath : envPath = "$EnvFile"
-If fso.FileExists(envPath) Then
-    Set f = fso.OpenTextFile(envPath, 1)
-    Do While Not f.AtEndOfStream
-        line = Trim(f.ReadLine())
-        If Len(line) > 0 And Left(line,1) <> "#" Then
-            parts = Split(line, "=", 2)
-            If UBound(parts) = 1 Then
-                WShell.Environment("Process")(Trim(parts(0))) = Trim(parts(1))
-            End If
-        End If
-    Loop
-    f.Close
-End If
+# Build VBS line using [char]34 (double-quote) to avoid PowerShell quote confusion
+$q = [char]34
+$vbsRunLine = "WShell.Run " + $q + "python " + $q + $q + $MainScript + $q + $q + $q + ", 0, False"
 
-' Pythonスクリプトをバックグラウンドで起動
-WShell.Run "python ""$MainScript""", 0, False
-"@
-$vbsContent | Out-File -FilePath $WrapperVbs -Encoding utf8
-Write-Host "  完了: $WrapperVbs" -ForegroundColor Green
+$vbsLines = @(
+    "' Soundcore -> Notion silent launcher",
+    "Dim WShell",
+    "Set WShell = CreateObject(" + $q + "WScript.Shell" + $q + ")",
+    $vbsRunLine
+)
+Set-Content -Path $WrapperVbs -Value $vbsLines -Encoding ASCII
+Write-Host "  Created: $WrapperVbs" -ForegroundColor Green
 
-# スタートアップショートカット作成
-Write-Host "`n[3/4] スタートアップショートカットを作成中..." -ForegroundColor Yellow
+# Step 4: Create Startup shortcut pointing to wscript.exe + VBS
+Write-Host "`n[3/4] Creating Startup shortcut..." -ForegroundColor Yellow
 $WshShell = New-Object -ComObject WScript.Shell
 $shortcut = $WshShell.CreateShortcut($ShortcutPath)
-$shortcut.TargetPath  = $WrapperVbs
-$shortcut.Description = "Soundcore→Notion自動同期"
+$shortcut.TargetPath  = "wscript.exe"
+$shortcut.Arguments   = "`"$WrapperVbs`""
+$shortcut.Description = "Soundcore Notion auto-sync"
 $shortcut.Save()
-Write-Host "  完了: $ShortcutPath" -ForegroundColor Green
+Write-Host "  Created: $ShortcutPath" -ForegroundColor Green
 
-# 監視フォルダ作成
-Write-Host "`n[4/4] 監視フォルダを作成中..." -ForegroundColor Yellow
-$InboxPath = "C:\Users\tsube\OneDrive\Soundcore\inbox"
-New-Item -ItemType Directory -Force -Path $InboxPath | Out-Null
-New-Item -ItemType Directory -Force -Path "C:\Users\tsube\OneDrive\Soundcore\archive" | Out-Null
-Write-Host "  受信フォルダ: $InboxPath" -ForegroundColor Green
-Write-Host "  アーカイブ  : C:\Users\tsube\OneDrive\Soundcore\archive" -ForegroundColor Green
+# Step 5: Create inbox/archive folders
+Write-Host "`n[4/4] Creating inbox/archive folders..." -ForegroundColor Yellow
+$InboxPath   = "C:\Users\tsube\OneDrive\Soundcore\inbox"
+$ArchivePath = "C:\Users\tsube\OneDrive\Soundcore\archive"
+New-Item -ItemType Directory -Force -Path $InboxPath   | Out-Null
+New-Item -ItemType Directory -Force -Path $ArchivePath | Out-Null
+Write-Host "  Inbox  : $InboxPath" -ForegroundColor Green
+Write-Host "  Archive: $ArchivePath" -ForegroundColor Green
 
-Write-Host "`n=== セットアップ完了 ===" -ForegroundColor Cyan
-Write-Host @"
-
-【次のステップ】
-1. .env に以下を追記してください:
-   ANTHROPIC_API_KEY=sk-ant-xxxxxx
-   NOTION_TOKEN=secret_xxxxxx
-   NOTION_DATABASE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-
-2. Soundcoreアプリで文字起こし後、テキストをエクスポート:
-   保存先 → OneDrive\Soundcore\inbox
-
-3. 自動でClaudeが要約してNotionに保存されます
-
-4. 今すぐテストする場合:
-   python "$MainScript"
-
-"@ -ForegroundColor White
+Write-Host "`n=== Setup Complete ===" -ForegroundColor Cyan
+Write-Host "Next steps:"
+Write-Host "  1. Confirm .env has: ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_PAGE_ID"
+Write-Host "  2. Export Soundcore transcript to: $InboxPath"
+Write-Host "  3. Test now: python $MainScript"
+Write-Host "  4. Will auto-start on next Windows login."
