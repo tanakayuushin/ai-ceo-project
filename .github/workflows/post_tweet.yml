@@ -1,9 +1,10 @@
 name: Post Tweet to X
 
 on:
-  push:
-    paths:
-      - 'departments/marketing/x-posts/pending/*.txt'
+  schedule:
+    - cron: '0 0 * * *'   # 9:00 JST
+    - cron: '0 3 * * *'   # 12:00 JST
+    - cron: '0 9 * * *'   # 18:00 JST
 
 jobs:
   post:
@@ -14,13 +15,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Get pending tweet file
         id: find
         run: |
-          FILE=$(git diff --name-only HEAD~1 HEAD -- 'departments/marketing/x-posts/pending/*.txt' | head -1)
+          FILE=$(ls departments/marketing/x-posts/pending/*.txt 2>/dev/null | sort | head -1)
           echo "file=$FILE" >> $GITHUB_OUTPUT
           echo "Found: $FILE"
 
@@ -53,17 +52,28 @@ jobs:
             RESULT_LINE="**投稿結果**: 失敗（${RESULT}）"
           fi
 
-          # 既存のmdファイルの投稿ステータス行を更新
           if [ -f "$RESULT_FILE" ]; then
-            sed -i "s/\*\*投稿ステータス\*\*:.*/${RESULT_LINE}/" "$RESULT_FILE"
-            # 行が見つからない場合は末尾に追記
-            grep -q "投稿結果" "$RESULT_FILE" || echo -e "\n---\n\n${RESULT_LINE}" >> "$RESULT_FILE"
+            grep -q "投稿結果" "$RESULT_FILE" \
+              && sed -i "s|.*投稿結果.*|${RESULT_LINE}|" "$RESULT_FILE" \
+              || echo -e "\n---\n\n${RESULT_LINE}" >> "$RESULT_FILE"
+          else
+            {
+              echo "# X投稿 ${DATE}"
+              echo ""
+              echo "## 投稿文"
+              echo ""
+              cat "$FILE"
+              echo ""
+              echo "---"
+              echo ""
+              echo "${RESULT_LINE}"
+            } > "$RESULT_FILE"
           fi
 
-          # pendingファイルを削除
           rm "$FILE"
-          # pendingディレクトリが空なら.gitkeepを置く
-          find departments/marketing/x-posts/pending -maxdepth 0 -empty 2>/dev/null && touch departments/marketing/x-posts/pending/.gitkeep || true
+          if [ -z "$(ls departments/marketing/x-posts/pending/*.txt 2>/dev/null)" ]; then
+            touch departments/marketing/x-posts/pending/.gitkeep
+          fi
 
           git config user.email "tsubeyou081@gmail.com"
           git config user.name "GitHub Actions"
