@@ -226,7 +226,7 @@ export default function HomeScreen() {
             { icon: 'chatbubbles', label: 'AI相談', sub: '24時間対応', color: Colors.accent, screen: 'Chat' },
             { icon: 'cash', label: '補助金', sub: '最大450万円', color: '#4CAF50', screen: 'Subsidy' },
             { icon: 'document-text', label: '商談メモ', sub: `${memoCount}件保存中`, color: '#2196F3', screen: 'Memo' },
-            { icon: 'settings', label: '設定', sub: 'APIキー管理', color: Colors.textSecondary, screen: 'Settings' },
+            { icon: 'settings', label: '設定', sub: 'アプリ情報', color: Colors.textSecondary, screen: 'Settings' },
           ].map((item) => (
             <TouchableOpacity
               key={item.screen}
