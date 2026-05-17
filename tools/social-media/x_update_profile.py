@@ -59,10 +59,10 @@ def oauth1_header(method, url, body_params, consumer_key, consumer_secret, token
 PROFILE = {
     "name": "Emport AI｜中小企業のAI導入支援",
     "description": (
-        "中小企業のAI導入・DX化を支援する個人事業主\n"
-        "IT導入補助金・省力化補助金を活用したAI導入が専門\n"
+        "中小企業の「人手不足・残業・ムダな作業」をAIで解決\n"
+        "IT導入補助金・省力化補助金で実質負担を抑えて導入\n"
         "製造・建設・飲食・小売業の経営者様へ\n"
-        "30分無料AI相談受付中 → リンク先から予約"
+        "30分無料相談受付中 → リンク先から予約"
     ),
     "location": "山口県",
     "url": "https://web-production-e1bc3.up.railway.app",
