@@ -64,11 +64,10 @@
 ---
 
 ### #6 Loom 動画メッセージ
-- **状態**: アカウント作成完了・録画待ち（メールアドレス変更は手動操作が必要）
-- **アカウント**: tsubeyou081@gmail.com（Google認証→Atlassian）→ yuubisinesu@gmail.comへの切替は手動パスワード入力が必要
-- **メール変更手順**: id.atlassian.com → メール設定 → yuubisinesu@gmail.com入力 → 変更を保存 → 確認メール内のリンクをクリック → Atlassianパスワード入力して確認
+- **状態**: 完了（yuubisinesu@gmail.com で新規Atlassianアカウント作成・ログイン確認・2026-05-17）
+- **アカウント**: yuubisinesu@gmail.com（Google認証→Atlassian 新規登録）
+- **ワークスペース**: emport-ai
 - **ダッシュボード**: https://www.loom.com/looms/videos
-- **ワークスペース**: tsubeyou081
 - **録画方法**: Chrome拡張 or デスクトップアプリをインストールして録画
 - **動画スクリプト**: `tools/content-generator/loom_script_emport_ai.md` 参照
 - **備考**: オンボーディングは最初の録画後に完了（Playwright不可のため手動録画が必要）
