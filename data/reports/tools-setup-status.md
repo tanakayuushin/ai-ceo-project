@@ -137,6 +137,15 @@
 - **Emport AI活用**: スクリプトを入力するだけでAllenのAIアバターが日本語で話すサービス紹介動画を生成。商工会議所向けLP動画・X投稿用リール・Loom代替
 - **次のステップ**: 「Emport AIサービス紹介動画」をHeyGenで生成してX・HubSpotに配布
 
+### #16 Cloudflare 無料プラン
+- **状態**: 完了（アカウント作成・ダッシュボードログイン確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **アカウントID**: e8a467ae5c796e22e8018d4d0885dfd3
+- **ダッシュボードURL**: https://dash.cloudflare.com/e8a467ae5c796e22e8018d4d0885dfd3
+- **無料プラン機能**: CDN・DDoS対策・Zero Trust（50ユーザーまで無料）・Cloudflare Tunnel
+- **プロファイル設定**: Professional / Executive & Founder / 1名 / Application Security
+- **次のステップ**: 独自ドメイン取得後に「Connect a domain」でEmport AIサイトを接続。Zero TrustでRailwayアプリをTunnelで保護
+
 ### #15 GitHub MCP（修正済み）
 - **状態**: 設定修正完了（`github-mcp-custom`パッケージに変更）
 - **原因**: `@github/mcp-server`はnpmに存在しないパッケージだった
@@ -151,5 +160,4 @@
 |---|--------|------|--------|
 | 7 | EAS Build | アプリストア申請 | ★★★ |
 | 11 | Brevo | メールマーケティング（SMS認証待ち） | ★☆☆ |
-| 16 | Cloudflare | 無料CDN・DDoS対策・Zero Trust | ★★☆ |
 | 17 | L Message（エルメ） | LINE自動化（無料） | ★☆☆ |
