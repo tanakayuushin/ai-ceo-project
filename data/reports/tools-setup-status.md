@@ -51,6 +51,16 @@
 - **内容**: タイトル・課題提起・会社紹介・業種別事例・ロードマップ・料金プラン・補助金支援・CTA・クロージング
 - **テーマ**: ダークブルー系プロフェッショナルデザイン
 
+### #8 Looker Studio KPIダッシュボード
+- **状態**: データ接続完了・チャート追加は手動で実施（Canvas操作のため）
+- **アカウント**: yuubisinesu@gmail.com（Google認証）
+- **レポートURL**: https://datastudio.google.com/u/0/reporting/69c03c8a-c87e-4d93-941f-5ef3162f78b5/page/9iRyF/edit
+- **データソース**: Emport AI KPI Dashboard（Google スプレッドシート）
+- **スプレッドシートURL**: https://docs.google.com/spreadsheets/d/1-z9LhwakMCSKl59U2h3SyCz46oRoIN3W6UcmfjadBxw/edit
+- **KPIフィールド**: AI相談件数・月次目標・X投稿数・Xインプレッション・リード獲得数・補助金申請数・売上（万円）・月
+- **データ期間**: 2026-01〜2026-06（6ヶ月分）
+- **次のステップ**: Looker Studio でチャートを手動追加（スコアカード・折れ線・棒グラフ）
+
 ---
 
 ### #6 Loom 動画メッセージ
@@ -62,6 +72,17 @@
 - **動画スクリプト**: `tools/content-generator/loom_script_emport_ai.md` 参照
 - **備考**: オンボーディングは最初の録画後に完了（Playwright不可のため手動録画が必要）
 
+### #9 Notta 議事録自動化
+- **状態**: 完了
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://app.notta.ai/7262664717078478848/dashboard
+- **会議予定URL**: https://app.notta.ai/7262664717078478848/meetings
+- **Googleカレンダー連携**: tsubeyou081@gmail.com 接続済み（calendar.events + calendar.readonly）
+- **無料枠**: 月120分の文字起こし（フリープラン）・カレンダー会議自動参加20回分
+- **機能**: 録音開始・ファイルアップロード・Web会議文字起こし・URLからの文字起こし・AI要約
+- **Notta Bot**: Googleカレンダーの会議に自動参加して文字起こし・議事録生成
+- **利用リセット**: 2026-06-04 17:50
+
 ---
 
 ## 🚧 未導入（優先順）
@@ -69,6 +90,4 @@
 | # | ツール | 目的 | 難易度 |
 |---|--------|------|--------|
 | 7 | EAS Build | アプリストア申請 | ★★★ |
-| 8 | Looker Studio | KPIダッシュボード | ★★☆ |
-| 9 | Notta | 議事録自動化 | ★☆☆ |
 | 10 | n8n on Railway | 自動化ワークフロー | ★★☆ |
