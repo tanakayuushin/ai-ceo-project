@@ -126,7 +126,7 @@
 - **認証**: Bearerトークン（`N8N_MCP_TOKEN` 環境変数に保存済み）
 - **Claude Code設定**: `claude mcp add --transport http n8n-mcp` で追加済み
 - **機能**: Claude CodeからAPIなしでn8nワークフローを直接ビルド・実行・管理可能
-- **次のステップ**: n8n UIでMCP対応ワークフローを「Enable workflows」してClaude Codeから呼び出せるよう設定
+- **MCP公開ワークフロー**: `Tally受信テスト（Webhook）` を Claude Code から呼び出し可能に設定済み
 
 ---
 
