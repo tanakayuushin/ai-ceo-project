@@ -65,7 +65,7 @@ PROFILE = {
         "30分無料相談受付中 → リンク先から予約"
     ),
     "location": "山口県",
-    "url": "https://web-production-e1bc3.up.railway.app",
+    "url": "https://www.jicoo.com/t/FNs9T5F423Pm/e/U_S3ek97",
 }
 # ============================================================
 
