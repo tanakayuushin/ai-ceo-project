@@ -251,6 +251,18 @@
 
 ---
 
+### #29 Tidio（AIチャットボット・リード獲得）
+- **状態**: 完了（tsubeyou081@gmail.com でメール登録・メール確認コード認証・ダッシュボード到達確認）
+- **アカウント**: tsubeyou081@gmail.com（メール登録）
+- **ダッシュボードURL**: https://www.tidio.com/panel/conversations
+- **設定**: Allen / Generate leads / Website (via live chat) / AI Agent automation ON
+- **無料プラン（Free Forever）**: 50会話/月・AIチャットボット・ライブチャット・基本フロー
+- **主な機能**: ウェブサイトへのチャットウィジェット設置・AIが自動応答・リード情報収集・HubSpot/Slack連携
+- **Emport AI活用**: emportai.comへのチャットウィジェット設置→訪問者のAI無料相談申込を自動受付・Jicoo予約リンクを案内・HubSpotにリード自動登録
+- **利用開始**: 2026-05-17
+
+---
+
 ## 🚧 未導入（優先順）
 
 | # | ツール | 目的 | 難易度 | 備考 |
