@@ -120,6 +120,14 @@
 - **利用方法**: プロンプトに `use context7` と記述するだけ
 - **料金**: 無料（Upstashのオープンソースプロジェクト）
 
+### #13 n8n Instance-level MCP
+- **状態**: 完了
+- **MCPサーバーURL**: `https://n8n-production-6fd0.up.railway.app/mcp-server/http`
+- **認証**: Bearerトークン（`N8N_MCP_TOKEN` 環境変数に保存済み）
+- **Claude Code設定**: `claude mcp add --transport http n8n-mcp` で追加済み
+- **機能**: Claude CodeからAPIなしでn8nワークフローを直接ビルド・実行・管理可能
+- **次のステップ**: n8n UIでMCP対応ワークフローを「Enable workflows」してClaude Codeから呼び出せるよう設定
+
 ---
 
 ## 🚧 未導入（優先順）
