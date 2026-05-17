@@ -263,6 +263,19 @@
 
 ---
 
+### #30 Activepieces（Zapier代替・ワークフロー自動化）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証新規登録・プラットフォーム「Emport AI」作成・ダッシュボード到達確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://cloud.activepieces.com/flows
+- **プラットフォーム名**: Emport AI
+- **無料プラン**: 1,000タスク/月・無制限フロー・100+コネクター（Gmail/HubSpot/Slack/Notion/Discord等）
+- **主な機能**: GmailトリガーでHubSpot自動登録・Slackへのアラート送信・定期レポート生成・フォーム→PDF→Discord自動化の移設先候補
+- **Zapierより優れる点**: オープンソース・自己ホスト可能・Railway+Dockerで無制限タスク化・日本語UI対応
+- **Emport AI活用**: 商工会議所メール返信→HubSpotコンタクト自動追加→Slack「新リード獲得！」通知 / X投稿→GitHub→Notionへの自動同期フロー構築
+- **利用開始**: 2026-05-17
+
+---
+
 ## 🚧 未導入（優先順）
 
 | # | ツール | 目的 | 難易度 | 備考 |
