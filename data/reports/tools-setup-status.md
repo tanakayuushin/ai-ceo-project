@@ -237,6 +237,20 @@
 
 ---
 
+### #27 Fathom（AI商談録音・自動要約）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証新規登録・オンボーディング完了）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://fathom.video/
+- **設定**: Sales / an executive / HubSpot連携予定 / 全カレンダー自動録音 ON
+- **Googleカレンダー連携**: tsubeyou081@gmail.com 接続済み（calendar.events.readonly）
+- **無料プラン（永久無料）**: 無制限録音・AI要約・アクションアイテム抽出・HubSpot/Slack同期
+- **主な機能**: Google Meet/Zoom会議の自動録音・書き起こし・AI要約・CRM自動更新・「Ask Fathom」でミーティング内容をAIに質問
+- **デスクトップアプリ**: Windows版インストーラーあり（https://fathom.video/zoomless/onboarding/download）
+- **Emport AI活用**: 商工会議所・クライアントとのGoogle Meet相談を自動録音→AI要約→HubSpotにCRM登録。商談内容の漏れなしフォローアップ
+- **利用開始**: 2026-05-17
+
+---
+
 ## 🚧 未導入（優先順）
 
 | # | ツール | 目的 | 難易度 | 備考 |
