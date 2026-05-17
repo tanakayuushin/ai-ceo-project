@@ -45,7 +45,7 @@
 
 ### #5 Gamma 提案書テンプレート
 - **状態**: 完了
-- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **アカウント**: yuubisinesu@gmail.com（Google認証・2026-05-17切替済み）
 - **作成ドキュメント**: Emport AIによるAI導入支援提案書（10スライド）
 - **ドキュメントURL**: https://gamma.app/docs/Emport-AIAI-r210yhsdqwdkamg
 - **内容**: タイトル・課題提起・会社紹介・業種別事例・ロードマップ・料金プラン・補助金支援・CTA・クロージング
@@ -64,8 +64,9 @@
 ---
 
 ### #6 Loom 動画メッセージ
-- **状態**: アカウント作成完了・録画待ち
-- **アカウント**: tsubeyou081@gmail.com（Google認証→Atlassian）
+- **状態**: アカウント作成完了・録画待ち（メールアドレス変更は手動操作が必要）
+- **アカウント**: tsubeyou081@gmail.com（Google認証→Atlassian）→ yuubisinesu@gmail.comへの切替は手動パスワード入力が必要
+- **メール変更手順**: id.atlassian.com → メール設定 → yuubisinesu@gmail.com入力 → 変更を保存 → 確認メール内のリンクをクリック → Atlassianパスワード入力して確認
 - **ダッシュボード**: https://www.loom.com/looms/videos
 - **ワークスペース**: tsubeyou081
 - **録画方法**: Chrome拡張 or デスクトップアプリをインストールして録画
@@ -90,7 +91,7 @@
 - **デプロイ先**: Railway（ingenious-loveプロジェクト内）
 - **Docker Image**: n8nio/n8n
 - **公開URL**: https://n8n-production-6fd0.up.railway.app
-- **管理者メール**: tsubeyou081@gmail.com
+- **管理者メール**: yuubisinesu@gmail.com（tsubeyou081@gmail.comから変更済み・2026-05-17）
 - **管理者名**: Allen EmportAI
 - **パスワード**: 環境変数として管理（`EmportAI2026!`）
 - **APIキー**: `N8N_API_KEY` として Windows ユーザー環境変数に設定済み（末尾: ...oFBM）
@@ -130,7 +131,7 @@
 
 ### #14 HeyGen AIアバター動画
 - **状態**: 完了（無料プランでアカウント作成済み）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **アカウント**: yuubisinesu@gmail.com（Google認証・2026-05-17切替済み）
 - **ダッシュボードURL**: https://app.heygen.com/home
 - **無料プラン**: 動画3本/月・1分/本・720p・ウォーターマーク付き・クレジットカード不要
 - **主な機能**: AIアバター動画生成・テキストから動画・写真からアバター動画・175言語翻訳・Loom形式のサービス紹介動画
@@ -139,7 +140,7 @@
 
 ### #16 Cloudflare 無料プラン
 - **状態**: 完了（アカウント作成・ダッシュボードログイン確認）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）→ yuubisinesuへの切替は手動操作が必要（パスワード認証のため）
 - **アカウントID**: e8a467ae5c796e22e8018d4d0885dfd3
 - **ダッシュボードURL**: https://dash.cloudflare.com/e8a467ae5c796e22e8018d4d0885dfd3
 - **無料プラン機能**: CDN・DDoS対策・Zero Trust（50ユーザーまで無料）・Cloudflare Tunnel
@@ -194,8 +195,8 @@
 ---
 
 ### #25 Perplexity AI（AIリサーチ・情報収集）
-- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証ログイン確認）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）→ Perplexityユーザー名: `tsubeyou0825590`
+- **状態**: 完了（yuubisinesu@gmail.com でGoogle認証ログイン確認・2026-05-17切替済み）
+- **アカウント**: yuubisinesu@gmail.com（Google認証）
 - **ダッシュボードURL**: https://www.perplexity.ai/
 - **無料プラン**: 1日5回 Pro検索・無制限スタンダード検索・スペース機能・Computer機能（アーティファクト生成）
 - **主な機能**: Web検索AI・リアルタイム情報取得・ソース付き回答・スペースでチーム共有・PDF/画像分析
@@ -205,7 +206,7 @@
 
 ### #24 v0.dev（Vercel AIコンポーネント生成）
 - **状態**: 完了（tsubeyou081@gmail.com でGoogle認証新規登録・ログイン確認）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）→ Vercelユーザー名: `tsubeyou081-5871`
+- **アカウント**: tsubeyou081@gmail.com（Google認証）→ Vercelユーザー名: `tsubeyou081-5871`（yuubisinesuへの切替はSMS認証が必要なため手動対応）
 - **ダッシュボードURL**: https://v0.app/
 - **チャット一覧**: https://v0.app/chats
 - **無料プラン**: 月200クレジット・React/Next.jsコンポーネント生成・shadcn/ui対応
@@ -215,8 +216,8 @@
 ---
 
 ### #23 bolt.new（AIフルスタックアプリ生成）
-- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証ログイン確認）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **状態**: 完了（yuubisinesu@gmail.com でGoogle認証ログイン確認・2026-05-17切替済み）
+- **アカウント**: yuubisinesu@gmail.com（Google認証）
 - **ダッシュボードURL**: https://bolt.new/
 - **プロジェクト一覧**: https://bolt.new/projects
 - **無料プラン**: テキストでフルスタックWebアプリ生成・Figma/GitHub連携・無制限ビュー
@@ -252,8 +253,8 @@
 ---
 
 ### #29 Tidio（AIチャットボット・リード獲得）
-- **状態**: 完了（tsubeyou081@gmail.com でメール登録・メール確認コード認証・ダッシュボード到達確認）
-- **アカウント**: tsubeyou081@gmail.com（メール登録）
+- **状態**: 完了（yuubisinesu@gmail.com にメールアドレス変更完了・2026-05-17）
+- **アカウント**: yuubisinesu@gmail.com（メール登録・tsubeyou081@gmail.comから変更済み）
 - **ダッシュボードURL**: https://www.tidio.com/panel/conversations
 - **設定**: Allen / Generate leads / Website (via live chat) / AI Agent automation ON
 - **無料プラン（Free Forever）**: 50会話/月・AIチャットボット・ライブチャット・基本フロー
