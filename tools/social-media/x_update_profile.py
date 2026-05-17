@@ -65,7 +65,7 @@ PROFILE = {
         "💬 無料AI相談受付中 → リンク先から予約"
     ),
     "location": "山口県",
-    "url": "https://emport-ai-production.up.railway.app",
+    "url": "https://web-production-e1bc3.up.railway.app",
 }
 # ============================================================
 
