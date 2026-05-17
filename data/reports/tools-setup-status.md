@@ -128,6 +128,21 @@
 - **機能**: Claude CodeからAPIなしでn8nワークフローを直接ビルド・実行・管理可能
 - **MCP公開ワークフロー**: `Tally受信テスト（Webhook）` を Claude Code から呼び出し可能に設定済み
 
+### #14 HeyGen AIアバター動画
+- **状態**: 完了（無料プランでアカウント作成済み）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://app.heygen.com/home
+- **無料プラン**: 動画3本/月・1分/本・720p・ウォーターマーク付き・クレジットカード不要
+- **主な機能**: AIアバター動画生成・テキストから動画・写真からアバター動画・175言語翻訳・Loom形式のサービス紹介動画
+- **Emport AI活用**: スクリプトを入力するだけでAllenのAIアバターが日本語で話すサービス紹介動画を生成。商工会議所向けLP動画・X投稿用リール・Loom代替
+- **次のステップ**: 「Emport AIサービス紹介動画」をHeyGenで生成してX・HubSpotに配布
+
+### #15 GitHub MCP（修正済み）
+- **状態**: 設定修正完了（`github-mcp-custom`パッケージに変更）
+- **原因**: `@github/mcp-server`はnpmに存在しないパッケージだった
+- **修正**: `github-mcp-custom stdio`に変更済み（~/.claude.json）
+- **有効化**: Claude Code再起動後に `github: ✓ Connected` になる予定
+
 ---
 
 ## 🚧 未導入（優先順）
@@ -136,3 +151,5 @@
 |---|--------|------|--------|
 | 7 | EAS Build | アプリストア申請 | ★★★ |
 | 11 | Brevo | メールマーケティング（SMS認証待ち） | ★☆☆ |
+| 16 | Cloudflare | 無料CDN・DDoS対策・Zero Trust | ★★☆ |
+| 17 | L Message（エルメ） | LINE自動化（無料） | ★☆☆ |
