@@ -3,8 +3,10 @@ name: Post Tweet to X
 on:
   workflow_dispatch:
   schedule:
+    - cron: '0 22 * * *'  # 7:00 JST
     - cron: '0 0 * * *'   # 9:00 JST
     - cron: '0 3 * * *'   # 12:00 JST
+    - cron: '0 6 * * *'   # 15:00 JST
     - cron: '0 9 * * *'   # 18:00 JST
 
 jobs:
