@@ -225,6 +225,18 @@
 
 ---
 
+### #26 Apollo.io（AIセールス・リード獲得）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証新規登録・ダッシュボード到達確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://app.apollo.io/#/people
+- **会社情報**: Emport AI / emportai.com / Founder & CEO
+- **無料プラン**: 月50件エクスポート・メール10,000件/月・シーケンス自動化・CRM連携
+- **主な機能**: 2.1億件企業/個人DBからリード検索・メールシーケンス自動送信・LinkedIn連携・HubSpot/Salesforce CRM同期
+- **Emport AI活用**: 商工会議所会員・製造業・小売業の意思決定者をDB検索→自動メールシーケンスでアウトバウンド営業自動化
+- **利用開始**: 2026-05-17
+
+---
+
 ## 🚧 未導入（優先順）
 
 | # | ツール | 目的 | 難易度 | 備考 |
