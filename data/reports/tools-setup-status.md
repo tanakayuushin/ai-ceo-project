@@ -162,6 +162,16 @@
 
 ---
 
+### #22 Canva AI（デザイン自動生成）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証ログイン確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://www.canva.com/
+- **無料プラン**: Magic Design（AIデザイン自動生成）月30回・背景除去・Magic Eraser・テンプレート無制限
+- **Emport AI活用**: X投稿ビジュアル・セミナー告知バナー・提案書サムネイル・名刺デザインをAIで量産
+- **即使用可能機能**: Magic Design（デザイン自動生成）・Magic Media（AI画像生成）・BG Remover（背景除去）
+
+---
+
 ### #21 STUDIO（ノーコードLP制作）
 - **状態**: アカウント登録済み・確認メール送信済み（tsubeyou081@gmail.com）
 - **アカウント**: tsubeyou081@gmail.com
@@ -182,6 +192,36 @@
 - **次のステップ**: tsubeyou081@gmail.com の受信箱で弥生からの確認コードを確認して入力する
 
 ---
+
+### #25 Perplexity AI（AIリサーチ・情報収集）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証ログイン確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）→ Perplexityユーザー名: `tsubeyou0825590`
+- **ダッシュボードURL**: https://www.perplexity.ai/
+- **無料プラン**: 1日5回 Pro検索・無制限スタンダード検索・スペース機能・Computer機能（アーティファクト生成）
+- **主な機能**: Web検索AI・リアルタイム情報取得・ソース付き回答・スペースでチーム共有・PDF/画像分析
+- **Emport AI活用**: 競合他社調査・補助金最新情報収集・業界トレンドリサーチ・クライアント向け市場調査
+
+---
+
+### #24 v0.dev（Vercel AIコンポーネント生成）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証新規登録・ログイン確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）→ Vercelユーザー名: `tsubeyou081-5871`
+- **ダッシュボードURL**: https://v0.app/
+- **チャット一覧**: https://v0.app/chats
+- **無料プラン**: 月200クレジット・React/Next.jsコンポーネント生成・shadcn/ui対応
+- **主な機能**: テキストでUIコンポーネント生成・コード出力・GitHub連携・デザインシステム対応
+- **Emport AI活用**: LP・管理画面・商工会議所向けフォームUIをテキストで即時生成。bolt.newと組み合わせてフルスタック開発
+
+---
+
+### #23 bolt.new（AIフルスタックアプリ生成）
+- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証ログイン確認）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **ダッシュボードURL**: https://bolt.new/
+- **プロジェクト一覧**: https://bolt.new/projects
+- **無料プラン**: テキストでフルスタックWebアプリ生成・Figma/GitHub連携・無制限ビュー
+- **主な機能**: React/Next.js/Vite対応・AI自動テスト・デザインシステム連携・SupabaseDB連携
+- **Emport AI活用**: クライアント向けAIツールのプロトタイプを数分で生成・商工会議所向けデモアプリ作成・LP高速プロトタイピング
 
 ---
 
