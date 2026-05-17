@@ -138,8 +138,8 @@
 - **次のステップ**: 「Emport AIサービス紹介動画」をHeyGenで生成してX・HubSpotに配布
 
 ### #16 Cloudflare 無料プラン
-- **状態**: 完了（アカウント作成・ダッシュボードログイン確認）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）→ yuubisinesuへの切替は手動操作が必要（パスワード認証のため）
+- **状態**: 完了（アカウント作成・ダッシュボードログイン確認・メールアドレス切替済み）
+- **アカウント**: yuubisinesu@gmail.com（メールアドレス変更完了・2026-05-17）
 - **アカウントID**: e8a467ae5c796e22e8018d4d0885dfd3
 - **ダッシュボードURL**: https://dash.cloudflare.com/e8a467ae5c796e22e8018d4d0885dfd3
 - **無料プラン機能**: CDN・DDoS対策・Zero Trust（50ユーザーまで無料）・Cloudflare Tunnel
