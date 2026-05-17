@@ -99,6 +99,21 @@
 - **プライベートURL**: n8n.railway.internal
 - **推奨ワークフロー**: Tally→HubSpot連携・X投稿スケジュール・Notta議事録→Notion保存
 
+### #11 Brevo メールマーケティング
+- **状態**: アカウント作成中（電話番号SMS認証待ち）
+- **アカウント**: tsubeyou081@gmail.com（Google認証）
+- **オンボーディングURL**: https://onboarding.brevo.com/account/register/phone
+- **入力済み情報**: Allen Tsube / Emport AI / Yamaguchi, Japan / 0-1 employee / 1-300 contacts
+- **無料プラン**: 300メール/日・無制限コンタクト・メールキャンペーン・トランザクションメール
+- **次のステップ**: 電話番号を入力してSMS認証コードを受け取る（手動操作が必要）
+
+### #12 Context7 MCP（ライブラリドキュメント）
+- **状態**: 完了
+- **インストールコマンド**: `claude mcp add context7 npx @upstash/context7-mcp`
+- **機能**: Claude Codeがリアルタイムで最新ライブラリドキュメントを参照可能
+- **利用方法**: プロンプトに `use context7` と記述するだけ
+- **料金**: 無料（Upstashのオープンソースプロジェクト）
+
 ---
 
 ## 🚧 未導入（優先順）
@@ -106,3 +121,4 @@
 | # | ツール | 目的 | 難易度 |
 |---|--------|------|--------|
 | 7 | EAS Build | アプリストア申請 | ★★★ |
+| 11 | Brevo | メールマーケティング（SMS認証待ち） | ★☆☆ |
