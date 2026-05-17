@@ -152,6 +152,14 @@
 - **修正**: `github-mcp-custom stdio`に変更済み（~/.claude.json）
 - **有効化**: Claude Code再起動後に `github: ✓ Connected` になる予定
 
+### #17 L Message（エルメ）LINE自動化
+- **状態**: 認証メール送信済み・メール確認待ち（tsubeyou081@gmail.com）
+- **アカウント**: tsubeyou081@gmail.com
+- **登録URL**: https://step.lme.jp/register_user/null
+- **無料プラン**: 1,000通/月・5万人友だちまで・カレンダー予約機能・ステップ配信・セグメント配信
+- **Emport AI活用**: 相談申込み後の自動フォローアップ・セミナー参加者へのステップ配信・商工会議所会員への一斉配信
+- **次のステップ**: tsubeyou081@gmail.com のメールを確認してアカウント登録URLをクリックし、LINE公式アカウントを連携する
+
 ---
 
 ## 🚧 未導入（優先順）
@@ -160,4 +168,3 @@
 |---|--------|------|--------|
 | 7 | EAS Build | アプリストア申請 | ★★★ |
 | 11 | Brevo | メールマーケティング（SMS認証待ち） | ★☆☆ |
-| 17 | L Message（エルメ） | LINE自動化（無料） | ★☆☆ |
