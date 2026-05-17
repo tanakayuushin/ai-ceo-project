@@ -85,9 +85,24 @@
 
 ---
 
+### #10 n8n on Railway 自動化ワークフロー
+- **状態**: 完了
+- **デプロイ先**: Railway（ingenious-loveプロジェクト内）
+- **Docker Image**: n8nio/n8n
+- **公開URL**: https://n8n-production-6fd0.up.railway.app
+- **管理者メール**: tsubeyou081@gmail.com
+- **管理者名**: Allen EmportAI
+- **パスワード**: 環境変数として管理（`EmportAI2026!`）
+- **ポート**: 5678（Railway Magic 自動検出）
+- **ライセンス**: 無料ライセンスキー送信済み（tsubeyou081@gmail.com宛）
+- **無料機能**: Advanced debugging・Execution search and tagging・Folders
+- **プライベートURL**: n8n.railway.internal
+- **推奨ワークフロー**: Tally→HubSpot連携・X投稿スケジュール・Notta議事録→Notion保存
+
+---
+
 ## 🚧 未導入（優先順）
 
 | # | ツール | 目的 | 難易度 |
 |---|--------|------|--------|
 | 7 | EAS Build | アプリストア申請 | ★★★ |
-| 10 | n8n on Railway | 自動化ワークフロー | ★★☆ |
