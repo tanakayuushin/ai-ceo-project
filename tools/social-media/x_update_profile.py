@@ -57,12 +57,12 @@ def oauth1_header(method, url, body_params, consumer_key, consumer_secret, token
 # プロフィール設定（ここを編集）
 # ============================================================
 PROFILE = {
-    "name": "アレン｜Emport AI CEO",
+    "name": "Emport AI｜中小企業のAI導入支援",
     "description": (
-        "🤖 中小企業のAI導入を支援｜Emport AI CEO\n"
-        "📋 補助金を使ったAI活用が専門（IT導入補助金・省力化補助金）\n"
-        "🏭 製造・建設・飲食・小売業の経営者向け\n"
-        "💬 無料AI相談受付中 → リンク先から予約"
+        "🤖 中小企業のAI導入・DX化を支援する個人事業主\n"
+        "📋 IT導入補助金・省力化補助金を活用したAI導入が専門\n"
+        "🏭 製造・建設・飲食・小売業の経営者様へ\n"
+        "💬 30分無料AI相談受付中 → リンク先から予約"
     ),
     "location": "山口県",
     "url": "https://web-production-e1bc3.up.railway.app",
