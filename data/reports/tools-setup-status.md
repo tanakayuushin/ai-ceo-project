@@ -204,8 +204,8 @@
 ---
 
 ### #24 v0.dev（Vercel AIコンポーネント生成）
-- **状態**: 完了（tsubeyou081@gmail.com でGoogle認証新規登録・ログイン確認）
-- **アカウント**: tsubeyou081@gmail.com（Google認証）→ Vercelユーザー名: `tsubeyou081-5871`（yuubisinesuへの切替はSMS認証が必要なため手動対応）
+- **状態**: 完了（yuubisinesu@gmail.com でGoogle認証新規登録・ログイン確認・2026-05-17切替済み）
+- **アカウント**: yuubisinesu@gmail.com（Google認証・Vercelチーム名: `emport-ai`）
 - **ダッシュボードURL**: https://v0.app/
 - **チャット一覧**: https://v0.app/chats
 - **無料プラン**: 月200クレジット・React/Next.jsコンポーネント生成・shadcn/ui対応
