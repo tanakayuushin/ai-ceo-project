@@ -53,11 +53,21 @@
 
 ---
 
+### #6 Loom 動画メッセージ
+- **状態**: アカウント作成完了・録画待ち
+- **アカウント**: tsubeyou081@gmail.com（Google認証→Atlassian）
+- **ダッシュボード**: https://www.loom.com/looms/videos
+- **ワークスペース**: tsubeyou081
+- **録画方法**: Chrome拡張 or デスクトップアプリをインストールして録画
+- **動画スクリプト**: `tools/content-generator/loom_script_emport_ai.md` 参照
+- **備考**: オンボーディングは最初の録画後に完了（Playwright不可のため手動録画が必要）
+
+---
+
 ## 🚧 未導入（優先順）
 
 | # | ツール | 目的 | 難易度 |
 |---|--------|------|--------|
-| 6 | Loom | サービス紹介動画作成 | ★☆☆ |
 | 7 | EAS Build | アプリストア申請 | ★★★ |
 | 8 | Looker Studio | KPIダッシュボード | ★★☆ |
 | 9 | Notta | 議事録自動化 | ★☆☆ |
