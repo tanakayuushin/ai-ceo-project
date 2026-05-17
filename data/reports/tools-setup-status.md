@@ -86,18 +86,24 @@
 ---
 
 ### #10 n8n on Railway 自動化ワークフロー
-- **状態**: 完了
+- **状態**: 完了（ワークフロー2件作成・稼働中）
 - **デプロイ先**: Railway（ingenious-loveプロジェクト内）
 - **Docker Image**: n8nio/n8n
 - **公開URL**: https://n8n-production-6fd0.up.railway.app
 - **管理者メール**: tsubeyou081@gmail.com
 - **管理者名**: Allen EmportAI
 - **パスワード**: 環境変数として管理（`EmportAI2026!`）
+- **APIキー**: `N8N_API_KEY` として Windows ユーザー環境変数に設定済み（末尾: ...oFBM）
+- **APIキー有効期限**: 2026-06-15
 - **ポート**: 5678（Railway Magic 自動検出）
 - **ライセンス**: 無料ライセンスキー送信済み（tsubeyou081@gmail.com宛）
 - **無料機能**: Advanced debugging・Execution search and tagging・Folders
 - **プライベートURL**: n8n.railway.internal
-- **推奨ワークフロー**: Tally→HubSpot連携・X投稿スケジュール・Notta議事録→Notion保存
+- **作成済みワークフロー**:
+  - `Tally受信テスト（Webhook）` [ID: hiGoNktw5yYdLukf] — **アクティブ稼働中**
+    - Webhook URL: `https://n8n-production-6fd0.up.railway.app/webhook/tally-lead`
+  - `Tally フォーム送信 → Gmail通知` [ID: 0lqsNHmCIsIMzP38] — Gmail OAuth認証待ち
+- **次のステップ**: n8n Credentials で Gmail OAuth2 を設定（Google Cloud Console でOAuthクライアント作成が必要）
 
 ### #11 Brevo メールマーケティング
 - **状態**: アカウント作成中（電話番号SMS認証待ち）
