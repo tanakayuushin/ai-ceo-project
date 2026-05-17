@@ -1,12 +1,12 @@
 name: X Analytics Report
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 1 * * 0'  # 毎週日曜 10:00 JST
-  workflow_dispatch:       # 手動実行も可能
+    - cron: '0 1 * * 1'   # 毎週月曜 10:00 JST
 
 jobs:
-  analyze:
+  analytics:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,26 +15,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch own post metrics
+      - name: Run analytics
         env:
           X_CONSUMER_KEY: ${{ secrets.X_CONSUMER_KEY }}
           X_CONSUMER_SECRET: ${{ secrets.X_CONSUMER_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
-        run: python tools/social-media/fetch_x_metrics.py
-
-      - name: Fetch competitor & buzz post analysis
-        env:
-          X_CONSUMER_KEY: ${{ secrets.X_CONSUMER_KEY }}
-          X_CONSUMER_SECRET: ${{ secrets.X_CONSUMER_SECRET }}
-          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
-          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
-        run: python tools/social-media/competitor_analysis.py
-
-      - name: Commit reports
         run: |
-          git config user.email "tsubeyou081@gmail.com"
+          python tools/social-media/x_analytics.py 2>&1 | tee /tmp/analytics.log
+          cat /tmp/analytics.log
+
+      - name: Commit report
+        run: |
+          git config user.email "yuubisinesu@gmail.com"
           git config user.name "GitHub Actions"
-          git add data/reports/x-analytics.md data/reports/x-competitor-analysis.md
-          git diff --staged --quiet || git commit -m "analytics: X分析レポート更新 $(date +%Y-%m-%d)"
+          git add departments/marketing/x-posts/engagement-report.md
+          git diff --staged --quiet || git commit -m "analytics: Xエンゲージメントレポート更新 $(date '+%Y-%m-%d')"
           git push
