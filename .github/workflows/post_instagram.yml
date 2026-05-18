@@ -1,0 +1,46 @@
+name: Post to Instagram
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * *'  # 7:00 JST
+    - cron: '0 1 * * *'   # 10:00 JST
+    - cron: '0 4 * * *'   # 13:00 JST
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find pending post
+        id: find
+        run: |
+          FILE=$(ls departments/marketing/instagram-posts/pending/*.jpg departments/marketing/instagram-posts/pending/*.png 2>/dev/null | sort | head -1)
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "Found: $FILE"
+
+      - name: Post to Instagram
+        if: steps.find.outputs.file != ''
+        id: post
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IMGBB_API_KEY: ${{ secrets.IMGBB_API_KEY }}
+        run: |
+          python tools/social-media/post_to_instagram.py --image "${{ steps.find.outputs.file }}" 2>&1 | tee /tmp/result.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+          echo "result=$(cat /tmp/result.txt | tail -5)" >> $GITHUB_OUTPUT
+
+      - name: Commit results
+        if: steps.find.outputs.file != ''
+        run: |
+          git config user.email "tsubeyou081@gmail.com"
+          git config user.name "GitHub Actions"
+          git add -A
+          git diff --staged --quiet || git commit -m "Instagram posted: $(basename ${{ steps.find.outputs.file }} .jpg) $(date +%Y-%m-%d)"
+          git push
