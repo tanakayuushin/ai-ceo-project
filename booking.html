@@ -364,15 +364,100 @@
       background: var(--white);
       border: 1px solid var(--slate-200);
       border-radius: var(--radius);
-      overflow: hidden;
-      min-height: 700px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 480px;
+      padding: 40px;
     }
 
-    .booking-widget iframe {
-      width: 100%;
-      height: 750px;
-      border: none;
+    .booking-cta-inner {
+      text-align: center;
+      max-width: 400px;
+    }
+
+    .booking-cta-icon {
+      font-size: 3.5rem;
+      margin-bottom: 24px;
       display: block;
+    }
+
+    .booking-cta-inner h3 {
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--slate-900);
+      margin-bottom: 12px;
+    }
+
+    .booking-cta-inner > p {
+      font-size: 0.92rem;
+      color: var(--slate-500);
+      line-height: 1.7;
+      margin-bottom: 32px;
+    }
+
+    .booking-open-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--indigo), var(--indigo-light));
+      color: var(--white);
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: 18px 36px;
+      border-radius: 50px;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(67,56,202,0.35);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .booking-open-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(67,56,202,0.45);
+    }
+
+    .booking-cta-note {
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: var(--slate-400);
+    }
+
+    .booking-steps {
+      display: flex;
+      gap: 0;
+      margin-top: 40px;
+      border-top: 1px solid var(--slate-100);
+      padding-top: 32px;
+    }
+
+    .booking-step {
+      flex: 1;
+      text-align: center;
+      padding: 0 12px;
+      position: relative;
+    }
+
+    .booking-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -6px;
+      top: 10px;
+      color: var(--slate-300);
+      font-size: 1rem;
+    }
+
+    .booking-step-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--indigo);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .booking-step-text {
+      font-size: 0.78rem;
+      color: var(--slate-600);
+      font-weight: 600;
     }
 
     /* ========== FAQ ========== */
@@ -652,14 +737,32 @@
           </div>
         </div>
 
-        <!-- 右：Jicooカレンダー -->
+        <!-- 右：予約ボタン -->
         <div class="booking-widget">
-          <iframe
-            src="https://www.jicoo.com/t/FNs9T5F423Pm/e/U_S3ek97"
-            title="AI無料相談（30分）予約カレンダー"
-            allow="camera; microphone"
-            loading="lazy"
-          ></iframe>
+          <div class="booking-cta-inner">
+            <span class="booking-cta-icon">📅</span>
+            <h3>空き日程を確認して予約</h3>
+            <p>ご都合の良い日時をお選びください。<br>予約完了後、Google MeetのURLをお送りします。</p>
+            <a href="https://www.jicoo.com/t/FNs9T5F423Pm/e/U_S3ek97" target="_blank" class="booking-open-btn">
+              📅 空き日程を確認して予約する
+            </a>
+            <p class="booking-cta-note">別タブで予約ページが開きます</p>
+
+            <div class="booking-steps">
+              <div class="booking-step">
+                <span class="booking-step-num">STEP 1</span>
+                <span class="booking-step-text">日時を選ぶ</span>
+              </div>
+              <div class="booking-step">
+                <span class="booking-step-num">STEP 2</span>
+                <span class="booking-step-text">情報を入力</span>
+              </div>
+              <div class="booking-step">
+                <span class="booking-step-num">STEP 3</span>
+                <span class="booking-step-text">予約完了</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
