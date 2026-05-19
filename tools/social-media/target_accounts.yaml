@@ -1,0 +1,79 @@
+# Emport AI - X リプライ・フォロー ターゲットアカウント
+# 最終更新: 2026-05-19
+#
+# 分類:
+#   tier_a: 大アカウント（5万+フォロワー）→ 話題を見つけてリプライで露出を稼ぐ
+#   tier_b: 中アカウント（1千〜5万）→ 会話が成立しやすい。毎日5〜10件リプライ主力
+#   tier_c: 地域・ニッチ（〜1千）→ 山口・九州・中小企業特化。将来の見込み客直結
+
+accounts:
+
+  # ===== Tier A: 大アカウント（トレンド把握・リプライで拡散） =====
+  tier_a:
+    - username: shota7180
+      name: 木内翔大 / SHIFT AI代表
+      followers: 134000
+      theme: AI活用・中小企業向けAIコミュニティ・日本AI先進国化
+      reply_angle: AI導入の現場感・山口での実践事例を添える
+      follow_priority: today
+
+    - username: masahirochaen
+      name: チャエン / デジライズCEO
+      followers: 120000
+      theme: AIニュース毎日発信・最新AI動向
+      reply_angle: ニュースへの「中小企業目線」コメント・山口での応用例
+      follow_priority: today
+
+    - username: fladdict
+      name: 深津貴之 / THE GUILD
+      followers: 178000
+      theme: AI活用・UX・サービスデザイン
+      reply_angle: 中小企業のAI利活用への具体的な質問・感想
+      follow_priority: today
+
+    - username: meti_chusho
+      name: 中小企業庁（公式）
+      followers: 50000
+      theme: 補助金・中小企業政策・IT導入補助金
+      reply_angle: 補助金情報に「山口の事業者はこう使える」という付加情報
+      follow_priority: today
+
+  # ===== Tier B: 中アカウント（毎日リプライの主力） =====
+  tier_b:
+    - username: SHIFT_AI_PR
+      name: SHIFT AI（法人アカウント）
+      followers: 20000
+      theme: AI活用セミナー・企業向けAI教育
+      reply_angle: 地方中小企業へのAI展開・山口での実装可能性
+
+    - username: DX_sme_japan
+      name: 中小企業DX推進（検索で発見次第追加）
+      followers: 5000
+      theme: 中小企業DX全般
+      reply_angle: 現場の声・具体的な導入ステップ
+
+    # 以下は今後フォロー調査で追加予定
+    # - IT導入補助金関連アカウント
+    # - 山口・広島・九州エリアの経営者
+    # - 商工会議所系アカウント
+
+  # ===== Tier C: 地域・ニッチ =====
+  tier_c:
+    - username: yamacci_pr
+      name: 山口商工会議所（確認要）
+      followers: unknown
+      theme: 山口地域経済・企業支援
+      reply_angle: 地域経済活性化×AI活用
+
+# ===== リプライ戦略メモ =====
+# 黄金フォーマット（140字以内）:
+#   感想（1行） + 自分の経験・知識（1〜2行） + 質問（1行）
+#
+# NG:
+#   - 宣伝・サービス誘導
+#   - 同じ文章を複数アカウントに貼り付け
+#   - エンゲベイト（「いいね・RTして」）
+#
+# 1日の目標リプライ数:
+#   フェーズ1（〜100人）: 15〜30件
+#   フェーズ2（100〜500人）: 30〜50件
