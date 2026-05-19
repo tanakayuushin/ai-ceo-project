@@ -12,7 +12,7 @@
 
 | 資産 | URL / 場所 | 状態 |
 |------|-----------|------|
-| 公式Webサイト | https://emport-ai.vercel.app | 稼働中 |
+| 公式Webサイト | https://emport-ai-website.vercel.app | 稼働中 |
 | 公式X（SNS） | https://x.com/AI_chuusyou | 稼働中・自動投稿中 |
 | 予約ページ | https://www.jicoo.com/t/FNs9T5F423Pm/e/U_S3ek97 | 稼働中 |
 | 業務支援Webアプリ | Railway上で稼働中（ログイン制） | 稼働中 |
