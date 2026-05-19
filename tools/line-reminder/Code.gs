@@ -164,10 +164,13 @@ function sendMonthlyCalendar() {
 
   const ssId      = getSheetId();
   const gid       = calSheet.getSheetId();
+  const lastRow   = calSheet['_lastRow'] || 20;
   const token     = ScriptApp.getOAuthToken();
+  const range     = encodeURIComponent('A1:G' + lastRow);
   const exportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId +
     '/export?format=png&gid=' + gid +
-    '&scale=2&portrait=false&fitw=true&gridlines=false';
+    '&range=' + range +
+    '&scale=3&portrait=false&fitw=true&gridlines=false';
 
   const res = UrlFetchApp.fetch(exportUrl, {
     headers: { 'Authorization': 'Bearer ' + token },
@@ -219,76 +222,157 @@ function buildCalendarSheet(year, month) {
   }
 
   const totalWeeks = Math.ceil((startDow + totalDays) / 7);
+  const today      = new Date();
+  const todayDay   = (today.getFullYear() === year && today.getMonth() === month)
+    ? today.getDate() : -1;
+  const WEEKDAYS   = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // 列幅・行高
-  for (let c = 1; c <= 7; c++) cal.setColumnWidth(c, 78);
-  cal.setRowHeight(1, 38);
-  cal.setRowHeight(2, 26);
-  for (let r = 3; r < 3 + totalWeeks; r++) cal.setRowHeight(r, 58);
+  // ── 列幅・行高 ──
+  for (let c = 1; c <= 7; c++) cal.setColumnWidth(c, 100);
+  cal.setRowHeight(1, 48);   // タイトル
+  cal.setRowHeight(2, 30);   // 曜日
+  for (let w = 0; w < totalWeeks; w++) {
+    let hasEv = false;
+    for (let dc = 0; dc < 7; dc++) {
+      const day = w * 7 + dc - startDow + 1;
+      if (day >= 1 && day <= totalDays && events[day]) { hasEv = true; break; }
+    }
+    cal.setRowHeight(3 + w, hasEv ? 88 : 58);
+  }
 
-  // タイトル行
+  // ── タイトル ──
   const titleR = cal.getRange(1, 1, 1, 7);
   titleR.merge();
   titleR.setValue(year + '年' + (month + 1) + '月');
   titleR.setBackground('#dc2626').setFontColor('#ffffff')
-    .setFontSize(16).setFontWeight('bold')
+    .setFontSize(20).setFontWeight('bold')
     .setHorizontalAlignment('center').setVerticalAlignment('middle');
 
-  // 曜日ヘッダー
-  const DOW     = ['月', '火', '水', '木', '金', '土', '日'];
+  // ── 曜日ヘッダー ──
+  const DOW      = ['月', '火', '水', '木', '金', '土', '日'];
   const dowRange = cal.getRange(2, 1, 1, 7);
   dowRange.setValues([DOW]);
-  dowRange.setBackground('#7f1d1d').setFontColor('#ffffff')
-    .setFontSize(12).setFontWeight('bold')
+  dowRange.setBackground('#991b1b').setFontColor('#ffffff')
+    .setFontSize(13).setFontWeight('bold')
     .setHorizontalAlignment('center').setVerticalAlignment('middle');
-  cal.getRange(2, 6).setBackground('#1e40af'); // 土
-  cal.getRange(2, 7).setBackground('#b91c1c'); // 日
+  cal.getRange(2, 6).setBackground('#1e40af');
+  cal.getRange(2, 7).setBackground('#b91c1c');
 
-  // 日付グリッド初期化
+  // ── グリッド初期設定 ──
   const gridR = cal.getRange(3, 1, totalWeeks, 7);
-  gridR.setBackground('#ffffff').setFontSize(11).setVerticalAlignment('top')
-    .setWrap(true)
-    .setBorder(true, true, true, true, true, true, '#e5e7eb',
+  gridR.setBackground('#ffffff').setVerticalAlignment('top').setWrap(true)
+    .setBorder(true, true, true, true, true, true, '#d1d5db',
                SpreadsheetApp.BorderStyle.SOLID);
 
-  // 今日のハイライト用
-  const today    = new Date();
-  const todayDay = (today.getFullYear() === year && today.getMonth() === month)
-    ? today.getDate() : -1;
-
-  // 日付を埋める
+  // ── 日付セルを埋める ──
   let calRow = 3, calCol = startDow + 1;
   for (let d = 1; d <= totalDays; d++) {
     const cell  = cal.getRange(calRow, calCol);
     const dow0  = (firstDay.getDay() + d - 1) % 7; // 0=Sun
     const isSat = dow0 === 6;
     const isSun = dow0 === 0;
+    const numFg = isSun ? '#dc2626' : isSat ? '#1d4ed8' : '#111827';
 
-    let bg  = '#ffffff';
-    let fg  = '#111827';
-    let fw  = 'normal';
-    let txt = String(d);
+    let bg = '#ffffff';
+    if (d === todayDay) bg = '#fef9c3';
 
     if (events[d]) {
-      bg  = '#fef2f2';
-      fw  = 'bold';
-      txt = d + '\n' + events[d].map(ev => {
-        const t = formatTimeShort(ev.time);
-        return (t ? t + ' ' : '') + ev.name;
-      }).join('\n');
-    }
-    if (d === todayDay) bg = '#fef9c3';
-    if (isSat) fg = '#1d4ed8';
-    if (isSun) fg = '#dc2626';
+      if (d !== todayDay) bg = '#fef2f2';
 
-    cell.setValue(txt);
-    cell.setBackground(bg).setFontColor(fg).setFontWeight(fw)
-      .setHorizontalAlignment('left');
+      // RichText: 日付を大きく、予定を小さく
+      const evLines = events[d].map(ev => {
+        const t = formatTimeShort(ev.time);
+        return '▶ ' + ev.name + (t ? '  ' + t : '');
+      }).join('\n');
+      const fullText = String(d) + '\n' + evLines;
+
+      const numStyle = SpreadsheetApp.newTextStyle()
+        .setFontSize(15).setFontWeight('bold').setForegroundColor(numFg).build();
+      const evStyle = SpreadsheetApp.newTextStyle()
+        .setFontSize(9).setFontWeight('normal').setForegroundColor('#374151').build();
+
+      const rt = SpreadsheetApp.newRichTextValue()
+        .setText(fullText)
+        .setTextStyle(0, String(d).length, numStyle)
+        .setTextStyle(String(d).length, fullText.length, evStyle)
+        .build();
+
+      cell.setRichTextValue(rt);
+    } else {
+      // 予定なし: 日付のみ
+      const numStyle = SpreadsheetApp.newTextStyle()
+        .setFontSize(13).setFontWeight('normal').setForegroundColor(numFg).build();
+      const rt = SpreadsheetApp.newRichTextValue()
+        .setText(String(d))
+        .setTextStyle(0, String(d).length, numStyle)
+        .build();
+      cell.setRichTextValue(rt);
+    }
+
+    cell.setBackground(bg).setHorizontalAlignment('left');
 
     calCol++;
     if (calCol > 7) { calCol = 1; calRow++; }
   }
 
+  // ── 予定一覧（カレンダー下部） ──
+  const eventKeys = Object.keys(events).map(Number).sort((a, b) => a - b);
+  let listRow = 3 + totalWeeks;
+
+  if (eventKeys.length > 0) {
+    // 区切りヘッダー
+    cal.setRowHeight(listRow, 32);
+    const sepR = cal.getRange(listRow, 1, 1, 7);
+    sepR.merge();
+    sepR.setValue('📌 今月の予定');
+    sepR.setBackground('#7f1d1d').setFontColor('#ffffff')
+      .setFontSize(12).setFontWeight('bold')
+      .setHorizontalAlignment('left').setVerticalAlignment('middle');
+    // セル内の左パディング用にインデント
+    sepR.setTextRotation(0);
+    listRow++;
+
+    for (const day of eventKeys) {
+      const dow = WEEKDAYS[new Date(year, month, day).getDay()];
+      for (const ev of events[day]) {
+        const t    = ev.time ? formatTimeShort(ev.time) : '';
+        const label = (month + 1) + '/' + day + '（' + dow + '）';
+        const full  = label + '　' + ev.name + (t ? '　' + t : '');
+
+        cal.setRowHeight(listRow, 28);
+        const r = cal.getRange(listRow, 1, 1, 7);
+        r.merge();
+
+        const dateStyle = SpreadsheetApp.newTextStyle()
+          .setFontSize(11).setFontWeight('bold').setForegroundColor('#dc2626').build();
+        const nameStyle = SpreadsheetApp.newTextStyle()
+          .setFontSize(11).setFontWeight('normal').setForegroundColor('#111827').build();
+        const rt = SpreadsheetApp.newRichTextValue()
+          .setText('  ' + full)
+          .setTextStyle(2, 2 + label.length, dateStyle)
+          .setTextStyle(2 + label.length, ('  ' + full).length, nameStyle)
+          .build();
+        r.setRichTextValue(rt);
+        r.setBackground(listRow % 2 === 0 ? '#fff5f5' : '#ffffff')
+          .setVerticalAlignment('middle');
+        r.setBorder(false, false, true, false, false, false,
+                    '#fecaca', SpreadsheetApp.BorderStyle.SOLID);
+        listRow++;
+      }
+    }
+  } else {
+    // 予定なし行
+    cal.setRowHeight(listRow, 32);
+    const noEvR = cal.getRange(listRow, 1, 1, 7);
+    noEvR.merge();
+    noEvR.setValue('今月の登録予定はありません');
+    noEvR.setBackground('#f9fafb').setFontColor('#9ca3af')
+      .setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('middle');
+    listRow++;
+  }
+
+  // エクスポート範囲を返す
+  cal['_lastRow'] = listRow - 1;
   return cal;
 }
 
