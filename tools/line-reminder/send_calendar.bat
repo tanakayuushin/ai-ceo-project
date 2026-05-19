@@ -1,0 +1,5 @@
+@echo off
+set LINE_CHANNEL_TOKEN=5bz4pWR5DXjfqI3AwspBbfUVcuN5zDb/R0anrAwGeDWlKOTJtiC7PC6Erpalrehrsa5dP9/Krt/FhOBiYiMSCz4RUoNpZGVcVWkIgJ5YbfJzO73CUzbHUi/fZcXbEt7uQgfeQaF5pLQO3T6LoZPmGwdB04t89/1O/w1cDnyilFU=
+set LINE_GROUP_ID=C4bf14bca7c2f3fe3943fb3965811cb77
+set GOOGLE_SHEET_ID=1Ecn_ItgrM1Rfv84Hsm5r1aausgWhmrMsDhPSzGkV7DQ
+python "%~dp0calendar_image.py" %*
