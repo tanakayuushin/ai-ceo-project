@@ -14,6 +14,8 @@ function onOpen() {
     .addItem('イベントを追加', 'showAddForm')
     .addItem('イベント一覧を確認', 'showList')
     .addSeparator()
+    .addItem('📅 今月のカレンダーを今すぐ送信', 'sendMonthlyCalendar')
+    .addSeparator()
     .addItem('シートのレイアウトを修正', 'fixSheetLayout')
     .addToUi();
 }
@@ -145,22 +147,65 @@ const C_REMINDERS = 6; // "1:20;0:8" → 1日前20時と当日8時
 const C_REMINDED  = 7; // "false" / "1:20|0:8" (送信済みキー) / "done"
 
 
-// ── 月次カレンダー送信 ────────────────────────────────
+// ── 月次カレンダー画像送信 ──────────────────────────────
 
 function sendMonthlyCalendar() {
   const groupId = getGroupId();
   if (!groupId) return;
 
-  const now        = new Date();
-  const year       = now.getFullYear();
-  const month      = now.getMonth();
-  const firstDay   = new Date(year, month, 1);
-  const lastDay    = new Date(year, month + 1, 0);
-  const totalDays  = lastDay.getDate();
+  const now   = new Date();
+  const year  = now.getFullYear();
+  const month = now.getMonth();
+
+  // カレンダーシートを構築してPNG取得
+  const calSheet = buildCalendarSheet(year, month);
+  SpreadsheetApp.flush();
+  Utilities.sleep(2000);
+
+  const ssId      = getSheetId();
+  const gid       = calSheet.getSheetId();
+  const token     = ScriptApp.getOAuthToken();
+  const exportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId +
+    '/export?format=png&gid=' + gid +
+    '&scale=2&portrait=false&fitw=true&gridlines=false';
+
+  const res = UrlFetchApp.fetch(exportUrl, {
+    headers: { 'Authorization': 'Bearer ' + token },
+    muteHttpExceptions: true
+  });
+
+  if (res.getResponseCode() !== 200) {
+    // エクスポート失敗時はテキスト版を送信
+    sendMonthlyCalendarText(groupId, year, month);
+    return;
+  }
+
+  // Google Drive に保存して公開リンクを取得
+  const fileName = 'line_cal_' + year + '_' + (month + 1) + '.png';
+  const existing = DriveApp.getFilesByName(fileName);
+  while (existing.hasNext()) existing.next().setTrashed(true);
+
+  const file = DriveApp.createFile(res.getBlob().setName(fileName));
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  const imageUrl = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+
+  // LINE に画像送信
+  pushImage(groupId, imageUrl, imageUrl);
+}
+
+// カレンダーをスプレッドシートシートとして構築
+function buildCalendarSheet(year, month) {
+  const ss = SpreadsheetApp.openById(getSheetId());
+  let cal  = ss.getSheetByName('_cal');
+  if (cal) { cal.clear(); } else { cal = ss.insertSheet('_cal'); }
+
+  const firstDay  = new Date(year, month, 1);
+  const lastDay   = new Date(year, month + 1, 0);
+  const totalDays = lastDay.getDate();
+  const startDow  = (firstDay.getDay() + 6) % 7; // 月曜始まり
 
   // 当月の予定を収集
-  const sheet  = getSheet();
-  const data   = sheet.getDataRange().getValues();
+  const data   = getSheet().getDataRange().getValues();
   const events = {};
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -169,42 +214,141 @@ function sendMonthlyCalendar() {
     if (d.getFullYear() === year && d.getMonth() === month) {
       const day = d.getDate();
       if (!events[day]) events[day] = [];
-      events[day].push({ name: row[C_NAME - 1], time: row[C_TIME - 1] });
+      events[day].push({ name: String(row[C_NAME - 1]), time: row[C_TIME - 1] });
     }
   }
 
-  // カレンダーグリッド生成（月曜始まり）
-  const DOW_LABELS = ['月', '火', '水', '木', '金', '土', '日'];
-  const startDow   = (firstDay.getDay() + 6) % 7;
-  let grid = DOW_LABELS.join('  ') + '\n';
+  const totalWeeks = Math.ceil((startDow + totalDays) / 7);
+
+  // 列幅・行高
+  for (let c = 1; c <= 7; c++) cal.setColumnWidth(c, 78);
+  cal.setRowHeight(1, 38);
+  cal.setRowHeight(2, 26);
+  for (let r = 3; r < 3 + totalWeeks; r++) cal.setRowHeight(r, 58);
+
+  // タイトル行
+  const titleR = cal.getRange(1, 1, 1, 7);
+  titleR.merge();
+  titleR.setValue(year + '年' + (month + 1) + '月');
+  titleR.setBackground('#dc2626').setFontColor('#ffffff')
+    .setFontSize(16).setFontWeight('bold')
+    .setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+  // 曜日ヘッダー
+  const DOW     = ['月', '火', '水', '木', '金', '土', '日'];
+  const dowRange = cal.getRange(2, 1, 1, 7);
+  dowRange.setValues([DOW]);
+  dowRange.setBackground('#7f1d1d').setFontColor('#ffffff')
+    .setFontSize(12).setFontWeight('bold')
+    .setHorizontalAlignment('center').setVerticalAlignment('middle');
+  cal.getRange(2, 6).setBackground('#1e40af'); // 土
+  cal.getRange(2, 7).setBackground('#b91c1c'); // 日
+
+  // 日付グリッド初期化
+  const gridR = cal.getRange(3, 1, totalWeeks, 7);
+  gridR.setBackground('#ffffff').setFontSize(11).setVerticalAlignment('top')
+    .setWrap(true)
+    .setBorder(true, true, true, true, true, true, '#e5e7eb',
+               SpreadsheetApp.BorderStyle.SOLID);
+
+  // 今日のハイライト用
+  const today    = new Date();
+  const todayDay = (today.getFullYear() === year && today.getMonth() === month)
+    ? today.getDate() : -1;
+
+  // 日付を埋める
+  let calRow = 3, calCol = startDow + 1;
+  for (let d = 1; d <= totalDays; d++) {
+    const cell  = cal.getRange(calRow, calCol);
+    const dow0  = (firstDay.getDay() + d - 1) % 7; // 0=Sun
+    const isSat = dow0 === 6;
+    const isSun = dow0 === 0;
+
+    let bg  = '#ffffff';
+    let fg  = '#111827';
+    let fw  = 'normal';
+    let txt = String(d);
+
+    if (events[d]) {
+      bg  = '#fef2f2';
+      fw  = 'bold';
+      txt = d + '\n' + events[d].map(ev => {
+        const t = formatTimeShort(ev.time);
+        return (t ? t + ' ' : '') + ev.name;
+      }).join('\n');
+    }
+    if (d === todayDay) bg = '#fef9c3';
+    if (isSat) fg = '#1d4ed8';
+    if (isSun) fg = '#dc2626';
+
+    cell.setValue(txt);
+    cell.setBackground(bg).setFontColor(fg).setFontWeight(fw)
+      .setHorizontalAlignment('left');
+
+    calCol++;
+    if (calCol > 7) { calCol = 1; calRow++; }
+  }
+
+  return cal;
+}
+
+// 時刻を HH:MM 形式で返す
+function formatTimeShort(t) {
+  if (!t && t !== 0) return '';
+  let h, m;
+  if (t instanceof Date) {
+    h = t.getHours(); m = t.getMinutes();
+  } else if (typeof t === 'number') {
+    const mins = Math.round(t * 24 * 60);
+    h = Math.floor(mins / 60); m = mins % 60;
+  } else {
+    const p = t.toString().split(':');
+    h = parseInt(p[0]); m = parseInt(p[1] || '0');
+  }
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+// テキスト版カレンダー（画像送信失敗時のフォールバック）
+function sendMonthlyCalendarText(groupId, year, month) {
+  const firstDay  = new Date(year, month, 1);
+  const lastDay   = new Date(year, month + 1, 0);
+  const totalDays = lastDay.getDate();
+  const data      = getSheet().getDataRange().getValues();
+  const events    = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[C_REMINDED - 1] === 'done') continue;
+    const d = parseDate(row[C_DATE - 1]);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate();
+      if (!events[day]) events[day] = [];
+      events[day].push(row[C_NAME - 1]);
+    }
+  }
+  const startDow = (firstDay.getDay() + 6) % 7;
+  let grid = '月  火  水  木  金  土  日\n';
   let row  = Array(startDow).fill('   ');
   for (let d = 1; d <= totalDays; d++) {
-    const mark = events[d] ? '●' : ' ';
-    row.push(mark + String(d).padStart(2, ' '));
-    if (row.length === 7 || d === totalDays) {
-      grid += row.join(' ') + '\n';
-      row  = [];
-    }
+    row.push((events[d] ? '●' : ' ') + String(d).padStart(2, ' '));
+    if (row.length === 7 || d === totalDays) { grid += row.join(' ') + '\n'; row = []; }
   }
+  push(groupId, '📅 ' + (month + 1) + '月のカレンダー\n\n' + grid);
+}
 
-  // 予定リスト
-  const weekdays  = ['日', '月', '火', '水', '木', '金', '土'];
-  const eventKeys = Object.keys(events).map(Number).sort((a, b) => a - b);
-  let eventList   = '';
-  if (eventKeys.length > 0) {
-    eventList = '\n📌 今月の予定\n';
-    for (const day of eventKeys) {
-      const dow = weekdays[new Date(year, month, day).getDay()];
-      for (const ev of events[day]) {
-        const t = ev.time ? ' ' + formatTimeJapanese(ev.time) : '';
-        eventList += '●' + day + '日(' + dow + ') ' + ev.name + t + '\n';
-      }
-    }
-  } else {
-    eventList = '\n今月の登録予定はありません';
-  }
-
-  push(groupId, '📅 ' + (month + 1) + '月のカレンダー\n\n' + grid + eventList);
+// LINE 画像メッセージ送信
+function pushImage(to, originalContentUrl, previewImageUrl) {
+  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'Authorization': 'Bearer ' + getToken() },
+    payload: JSON.stringify({
+      to: to,
+      messages: [{ type: 'image',
+        originalContentUrl: originalContentUrl,
+        previewImageUrl:    previewImageUrl }]
+    }),
+    muteHttpExceptions: true
+  });
 }
 
 
