@@ -14,47 +14,38 @@
   GOOGLE_CREDS_JSON   サービスアカウントJSONのパス（任意）
 """
 
-import asyncio, base64, calendar, json, os, sys
+import asyncio, calendar, os, sys
 from datetime import date, timedelta
 from pathlib import Path
 
 import requests
 
 
-# ── Google Sheets から予定を取得 ──────────────────────────
+# ── GAS ウェブアプリから予定を取得 ──────────────────────
 
-def load_events(sheet_id: str, creds_path: str = '') -> dict:
-    """{day: [{name, t}, ...]} 形式で当月の予定を返す"""
+def load_events(gas_url: str, year: int, month: int) -> dict:
+    """{day: [{name, t}, ...]} 形式で予定を返す"""
+    if not gas_url:
+        print('[WARN] GAS_WEB_APP_URL 未設定 → 予定なしで生成')
+        return {}
     try:
-        import gspread
-        if creds_path and Path(creds_path).exists():
-            gc = gspread.service_account(filename=creds_path)
-        else:
-            gc = gspread.oauth()
-        ws = gc.open_by_key(sheet_id).worksheet('events')
-        rows = ws.get_all_values()[1:]
+        r = requests.get(
+            gas_url,
+            params={'action': 'events', 'year': year, 'month': month},
+            timeout=15,
+        )
+        r.raise_for_status()
+        rows = r.json()
     except Exception as e:
-        print(f'[WARN] Sheets読み込み失敗: {e}')
+        print(f'[WARN] 予定取得失敗: {e}')
         return {}
 
-    today = date.today()
     events: dict = {}
     for row in rows:
-        if len(row) < 3:
-            continue
-        name     = str(row[0]).strip()
-        date_str = str(row[1]).strip()
-        time_str = str(row[2]).strip()
-        reminded = row[6].strip() if len(row) > 6 else ''
-        if reminded == 'done' or not name:
-            continue
-
-        d = None
-        try:
-            d = date(*[int(x) for x in date_str.replace('/', '-').split('-')])
-        except Exception:
-            continue
-        if d.year != today.year or d.month != today.month:
+        day      = int(row.get('day', 0))
+        name     = str(row.get('name', '')).strip()
+        time_str = str(row.get('time', '')).strip()
+        if not day or not name:
             continue
 
         # 時刻の正規化
@@ -68,8 +59,9 @@ def load_events(sheet_id: str, creds_path: str = '') -> dict:
                 h, m = time_str.split(':')[:2]
                 t_str = f'{int(h)}:{m}'
 
-        events.setdefault(d.day, []).append({'name': name, 't': t_str})
+        events.setdefault(day, []).append({'name': name, 't': t_str})
 
+    print(f'[INFO] 予定取得: {sum(len(v) for v in events.values())}件')
     return events
 
 
@@ -176,21 +168,17 @@ async def render_png(html: str) -> bytes:
     return png
 
 
-# ── Imgur に画像をアップロード → 公開URL取得 ─────────────
+# ── catbox.moe に画像をアップロード → 公開URL取得（登録不要）──
 
-def upload_to_imgur(png: bytes, client_id: str) -> str:
+def upload_image(png: bytes) -> str:
     r = requests.post(
-        'https://api.imgur.com/3/image',
-        headers={'Authorization': f'Client-ID {client_id}'},
-        data={
-            'image': base64.b64encode(png).decode(),
-            'type':  'base64',
-            'name':  'calendar.png',
-        },
+        'https://catbox.moe/user/api.php',
+        data={'reqtype': 'fileupload'},
+        files={'fileToUpload': ('calendar.png', png, 'image/png')},
         timeout=30,
     )
     r.raise_for_status()
-    return r.json()['data']['link']   # https://i.imgur.com/xxxxx.png
+    return r.text.strip()   # https://files.catbox.moe/xxxxxx.png
 
 
 # ── LINE Messaging API で画像を送信 ──────────────────────
@@ -231,13 +219,10 @@ async def main():
 
     line_token = os.environ.get('LINE_CHANNEL_TOKEN', '')
     group_id   = os.environ.get('LINE_GROUP_ID', '')
-    imgur_id   = os.environ.get('IMGUR_CLIENT_ID', '')
-    sheet_id   = os.environ.get('GOOGLE_SHEET_ID', '')
-    creds_path = os.environ.get('GOOGLE_CREDS_JSON', '')
+    gas_url    = os.environ.get('GAS_WEB_APP_URL', '')
 
     print(f'[INFO] {year}年{month}月のカレンダーを生成中...')
-    events = load_events(sheet_id, creds_path) if sheet_id else {}
-    print(f'[INFO] 予定: {sum(len(v) for v in events.values())}件')
+    events = load_events(gas_url, year, month)
 
     # PNG 生成
     html = build_html(year, month, events)
@@ -248,13 +233,9 @@ async def main():
     out.write_bytes(png)
     print(f'[INFO] 保存: {out}')
 
-    # Imgur アップロード
-    if not imgur_id:
-        print('[WARN] IMGUR_CLIENT_ID 未設定 → LINE送信スキップ')
-        return
-
-    print('[INFO] Imgur にアップロード中...')
-    image_url = upload_to_imgur(png, imgur_id)
+    # catbox.moe にアップロード
+    print('[INFO] catbox.moe にアップロード中...')
+    image_url = upload_image(png)
     print(f'[INFO] URL: {image_url}')
 
     # LINE 送信

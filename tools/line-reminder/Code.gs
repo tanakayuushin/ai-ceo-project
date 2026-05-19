@@ -89,6 +89,26 @@ function fixSheetLayout() {
 // イベントの追加・一覧・削除ができる（ホーム画面に追加でアプリ風）。
 
 function doGet(e) {
+  // ?action=events&year=2026&month=5 で予定JSONを返す
+  if (e && e.parameter.action === 'events') {
+    const now   = new Date();
+    const year  = parseInt(e.parameter.year  || now.getFullYear());
+    const month = parseInt(e.parameter.month || now.getMonth() + 1);
+
+    const data   = getSheet().getDataRange().getValues();
+    const result = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[C_REMINDED - 1] === 'done') continue;
+      const d = parseDate(row[C_DATE - 1]);
+      if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+        result.push({ day: d.getDate(), name: String(row[C_NAME - 1]), time: String(row[C_TIME - 1]) });
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   return HtmlService.createHtmlOutputFromFile('MobileApp')
     .setTitle('LINEリマインダー')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
