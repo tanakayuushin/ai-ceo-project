@@ -245,7 +245,7 @@ function buildCalendarSheet(year, month) {
   titleR.merge();
   titleR.setValue(year + '年' + (month + 1) + '月');
   titleR.setBackground('#dc2626').setFontColor('#ffffff')
-    .setFontSize(20).setBold(true)
+    .setFontSize(20).setFontWeight('bold')
     .setHorizontalAlignment('center').setVerticalAlignment('middle');
 
   // ── 曜日ヘッダー ──
@@ -253,7 +253,7 @@ function buildCalendarSheet(year, month) {
   const dowRange = cal.getRange(2, 1, 1, 7);
   dowRange.setValues([DOW]);
   dowRange.setBackground('#991b1b').setFontColor('#ffffff')
-    .setFontSize(13).setBold(true)
+    .setFontSize(13).setFontWeight('bold')
     .setHorizontalAlignment('center').setVerticalAlignment('middle');
   cal.getRange(2, 6).setBackground('#1e40af');
   cal.getRange(2, 7).setBackground('#b91c1c');
@@ -326,7 +326,7 @@ function buildCalendarSheet(year, month) {
     sepR.merge();
     sepR.setValue('📌 今月の予定');
     sepR.setBackground('#7f1d1d').setFontColor('#ffffff')
-      .setFontSize(12).setBold(true)
+      .setFontSize(12).setFontWeight('bold')
       .setHorizontalAlignment('left').setVerticalAlignment('middle');
     // セル内の左パディング用にインデント
     sepR.setTextRotation(0);
