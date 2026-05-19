@@ -7,6 +7,7 @@ morning_reply_ui.py - 朝のリプライワークフロー（Streamlit ブラウ
 import sys
 import os
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 import yaml
 import streamlit as st
 
@@ -28,11 +29,13 @@ st.markdown("""
     background:#f0f7ff; border-left:4px solid #1d9bf0;
     padding:12px 16px; border-radius:6px; margin-bottom:4px;
     font-size:15px; line-height:1.7; white-space:pre-wrap;
+    color:#0f1419;
 }
 .reply-option {
     background:#fff; border:1px solid #e1e8ed; border-radius:8px;
     padding:10px 14px; margin-bottom:4px;
     font-size:14px; line-height:1.7; white-space:pre-wrap;
+    color:#0f1419;
 }
 .label-tag {
     font-size:11px; font-weight:bold; color:#888;
@@ -66,9 +69,18 @@ st.divider()
 # ── ツイート取得 ──────────────────────────────────────────────────────────────
 YAML_PATH = BASE_DIR / "target_accounts.yaml"
 
+def hours_since_jst_midnight() -> int:
+    """今日0時（JST）からの経過時間を返す。最低2時間を保証。"""
+    JST = timezone(timedelta(hours=9))
+    now_jst = datetime.now(JST)
+    midnight_jst = now_jst.replace(hour=0, minute=0, second=0, microsecond=0)
+    elapsed = (now_jst - midnight_jst).total_seconds() / 3600
+    return max(2, int(elapsed) + 1)
+
 def fetch_all_tweets():
     with open(YAML_PATH, encoding="utf-8") as f:
         config = yaml.safe_load(f)
+    hours = hours_since_jst_midnight()
     results = []
     for tier in ["tier_a", "tier_b"]:
         for acc in config.get("accounts", {}).get(tier, []):
@@ -78,7 +90,7 @@ def fetch_all_tweets():
             uid = mr.get_user_id(username)
             if not uid:
                 continue
-            for tweet in mr.get_recent_tweets(uid, hours=48)[:3]:
+            for tweet in mr.get_recent_tweets(uid, hours=hours)[:2]:
                 results.append({
                     "username":    username,
                     "name":        name,
