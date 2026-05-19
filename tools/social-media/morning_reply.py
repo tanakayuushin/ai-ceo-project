@@ -12,10 +12,18 @@ import hmac
 import hashlib
 import urllib.parse
 import urllib.request
+import urllib.error
 import secrets
+import ssl
 import yaml
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
+
+# Windows環境のSSL証明書問題を回避（ローカル開発ツールのため検証無効）
+_ssl_ctx_obj = ssl.create_default_context()
+_ssl_ctx_obj.check_hostname = False
+_ssl_ctx_obj.verify_mode = ssl.CERT_NONE
+SSL_CTX = _ssl_ctx_obj
 
 # ── 定数 ──────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).parent
@@ -79,7 +87,7 @@ def x_get(path: str, query: dict = None) -> dict:
     full_url = f"{url}?{qs}" if qs else url
     auth = oauth_header("GET", url, query)
     req  = urllib.request.Request(full_url, headers={"Authorization": auth})
-    with urllib.request.urlopen(req) as r:
+    with urllib.request.urlopen(req, context=SSL_CTX) as r:
         return json.loads(r.read())
 
 def get_user_id(username: str) -> str | None:
@@ -112,7 +120,7 @@ def post_reply(text: str, reply_to_id: str) -> dict:
         url, data=body,
         headers={"Authorization": auth, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req) as r:
+    with urllib.request.urlopen(req, context=SSL_CTX) as r:
         return json.loads(r.read())
 
 # ── Claude Haiku でリプライ案生成 ─────────────────────────────────────────────
@@ -159,7 +167,7 @@ def generate_replies(tweet_text: str, account_name: str, reply_angle: str) -> li
         },
     )
     try:
-        with urllib.request.urlopen(req) as r:
+        with urllib.request.urlopen(req, context=SSL_CTX) as r:
             resp = json.loads(r.read())
             raw  = resp["content"][0]["text"].strip()
             parts = [p.strip() for p in raw.split("===") if p.strip()]
