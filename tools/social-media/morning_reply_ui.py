@@ -69,18 +69,18 @@ st.divider()
 # ── ツイート取得 ──────────────────────────────────────────────────────────────
 YAML_PATH = BASE_DIR / "target_accounts.yaml"
 
-def hours_since_jst_midnight() -> int:
-    """今日0時（JST）からの経過時間を返す。最低2時間を保証。"""
+def hours_since_yesterday_jst_midnight() -> int:
+    """前日0時（JST）からの経過時間を返す（前日＋当日分を取得）。"""
     JST = timezone(timedelta(hours=9))
     now_jst = datetime.now(JST)
-    midnight_jst = now_jst.replace(hour=0, minute=0, second=0, microsecond=0)
-    elapsed = (now_jst - midnight_jst).total_seconds() / 3600
-    return max(2, int(elapsed) + 1)
+    yesterday_midnight = now_jst.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+    elapsed = (now_jst - yesterday_midnight).total_seconds() / 3600
+    return int(elapsed) + 1
 
 def fetch_all_tweets():
     with open(YAML_PATH, encoding="utf-8") as f:
         config = yaml.safe_load(f)
-    hours = hours_since_jst_midnight()
+    hours = hours_since_yesterday_jst_midnight()
     results = []
     for tier in ["tier_a", "tier_b"]:
         for acc in config.get("accounts", {}).get(tier, []):
