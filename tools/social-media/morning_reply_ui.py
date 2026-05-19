@@ -206,24 +206,15 @@ for idx, item in enumerate(st.session_state.tweets_data):
             tweet_url = f"https://x.com/{username}/status/{tweet_id}"
 
             if ec > 0 and ec <= 280:
-                # クリップボードコピー用JS + ツイートを開くボタン
-                escaped = body.replace("`", "\\`").replace("\\", "\\\\").replace("\n", "\\n")
+                st.markdown("**📋 コピー用（右上のアイコンでコピー）：**")
+                st.code(body, language=None)
                 st.markdown(
-                    f"""
-<div style="display:flex;gap:8px;margin-top:8px">
-  <button onclick="navigator.clipboard.writeText(`{escaped}`).then(()=>this.textContent='✅ コピー済み！').catch(()=>alert('コピーできませんでした'))"
-    style="flex:2;padding:10px;background:#1d9bf0;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold">
-    📋 リプライ文をコピー
-  </button>
-  <a href="{tweet_url}" target="_blank"
-    style="flex:2;padding:10px;background:#0f1419;color:white;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">
-    🐦 Xで開いて貼り付け
-  </a>
-</div>
-<div style="margin-top:6px;padding:8px;background:#fff8e1;border-radius:6px;font-size:12px;color:#555">
-  ① 上のボタンでコピー → ② 「Xで開く」→ ③ 返信欄に貼り付けて投稿
-</div>
-                    """,
+                    f'<a href="{tweet_url}" target="_blank"'
+                    ' style="display:inline-block;padding:10px 20px;background:#0f1419;'
+                    'color:white;border-radius:6px;font-size:14px;font-weight:bold;'
+                    'text-decoration:none;margin-top:4px">🐦 Xで開いて貼り付け</a>'
+                    '<span style="font-size:12px;color:#888;margin-left:10px">'
+                    '① コピー → ② Xで開く → ③ 返信欄に貼り付け</span>',
                     unsafe_allow_html=True,
                 )
 
