@@ -1,5 +1,5 @@
 # Emport AI - X リプライ・フォロー ターゲットアカウント
-# 最終更新: 2026-05-19
+# 最終更新: 2026-05-20
 #
 # 分類:
 #   tier_a: 大アカウント（5万+フォロワー）→ 話題を見つけてリプライで露出を稼ぐ
@@ -47,15 +47,38 @@ accounts:
       reply_angle: 地方中小企業へのAI展開・山口での実装可能性
 
     - username: DX_sme_japan
-      name: 中小企業DX推進（検索で発見次第追加）
+      name: 中小企業DX推進
       followers: 5000
       theme: 中小企業DX全般
       reply_angle: 現場の声・具体的な導入ステップ
 
-    # 以下は今後フォロー調査で追加予定
-    # - IT導入補助金関連アカウント
-    # - 山口・広島・九州エリアの経営者
-    # - 商工会議所系アカウント
+    - username: Matsu_AI01
+      name: Matsu | 中小企業×生成AIの活用方法
+      followers: ~500
+      theme: 中小企業向け生成AI活用・ChatGPT実践
+      reply_angle: 同じ中小企業AI支援者として共感・山口での実践例を添える
+      follow_priority: today
+
+    - username: ai_dx_lab
+      name: AI導入事例ラボ | 中小企業DXの成功法則
+      followers: ~2000
+      theme: AI導入成功事例・経営者向け情報・毎日配信
+      reply_angle: 事例への感想＋山口での類似ニーズを紹介
+      follow_priority: today
+
+    - username: vep_japan
+      name: VEP-Japan | 生成AI活用 中小企業診断士
+      followers: ~1000
+      theme: 生成AI活用・中小企業診断士・北九州（九州エリア）
+      reply_angle: 九州同士の連携・地方中小企業AI支援の同志として
+      follow_priority: today
+
+    - username: yanagi_kanmasu
+      name: 柳澤裕治 | 中小企業×DX/生成AI導入支援
+      followers: ~800
+      theme: 中小企業・自治体向けDX/生成AI導入支援・地域密着
+      reply_angle: 地方×中小企業AI支援の共通点・導入事例への具体的な質問
+      follow_priority: today
 
   # ===== Tier C: 地域・ニッチ =====
   tier_c:
