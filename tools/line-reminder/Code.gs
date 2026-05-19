@@ -245,7 +245,7 @@ function buildCalendarSheet(year, month) {
   titleR.merge();
   titleR.setValue(year + '年' + (month + 1) + '月');
   titleR.setBackground('#dc2626').setFontColor('#ffffff')
-    .setFontSize(20).setFontWeight('bold')
+    .setFontSize(20).setBold(true)
     .setHorizontalAlignment('center').setVerticalAlignment('middle');
 
   // ── 曜日ヘッダー ──
@@ -253,7 +253,7 @@ function buildCalendarSheet(year, month) {
   const dowRange = cal.getRange(2, 1, 1, 7);
   dowRange.setValues([DOW]);
   dowRange.setBackground('#991b1b').setFontColor('#ffffff')
-    .setFontSize(13).setFontWeight('bold')
+    .setFontSize(13).setBold(true)
     .setHorizontalAlignment('center').setVerticalAlignment('middle');
   cal.getRange(2, 6).setBackground('#1e40af');
   cal.getRange(2, 7).setBackground('#b91c1c');
@@ -287,9 +287,9 @@ function buildCalendarSheet(year, month) {
       const fullText = String(d) + '\n' + evLines;
 
       const numStyle = SpreadsheetApp.newTextStyle()
-        .setFontSize(15).setFontWeight('bold').setForegroundColor(numFg).build();
+        .setFontSize(15).setBold(true).setForegroundColor(numFg).build();
       const evStyle = SpreadsheetApp.newTextStyle()
-        .setFontSize(9).setFontWeight('normal').setForegroundColor('#374151').build();
+        .setFontSize(9).setBold(false).setForegroundColor('#374151').build();
 
       const rt = SpreadsheetApp.newRichTextValue()
         .setText(fullText)
@@ -301,7 +301,7 @@ function buildCalendarSheet(year, month) {
     } else {
       // 予定なし: 日付のみ
       const numStyle = SpreadsheetApp.newTextStyle()
-        .setFontSize(13).setFontWeight('normal').setForegroundColor(numFg).build();
+        .setFontSize(13).setBold(false).setForegroundColor(numFg).build();
       const rt = SpreadsheetApp.newRichTextValue()
         .setText(String(d))
         .setTextStyle(0, String(d).length, numStyle)
@@ -326,7 +326,7 @@ function buildCalendarSheet(year, month) {
     sepR.merge();
     sepR.setValue('📌 今月の予定');
     sepR.setBackground('#7f1d1d').setFontColor('#ffffff')
-      .setFontSize(12).setFontWeight('bold')
+      .setFontSize(12).setBold(true)
       .setHorizontalAlignment('left').setVerticalAlignment('middle');
     // セル内の左パディング用にインデント
     sepR.setTextRotation(0);
@@ -344,9 +344,9 @@ function buildCalendarSheet(year, month) {
         r.merge();
 
         const dateStyle = SpreadsheetApp.newTextStyle()
-          .setFontSize(11).setFontWeight('bold').setForegroundColor('#dc2626').build();
+          .setFontSize(11).setBold(true).setForegroundColor('#dc2626').build();
         const nameStyle = SpreadsheetApp.newTextStyle()
-          .setFontSize(11).setFontWeight('normal').setForegroundColor('#111827').build();
+          .setFontSize(11).setBold(false).setForegroundColor('#111827').build();
         const rt = SpreadsheetApp.newRichTextValue()
           .setText('  ' + full)
           .setTextStyle(2, 2 + label.length, dateStyle)
