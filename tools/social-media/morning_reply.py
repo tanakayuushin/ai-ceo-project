@@ -104,10 +104,12 @@ def get_recent_tweets(user_id: str, hours: int = 24) -> list[dict]:
         data = x_get(f"users/{user_id}/tweets", {
             "max_results": "10",
             "start_time": since,
-            "tweet.fields": "id,text,created_at,public_metrics",
+            "tweet.fields": "id,text,created_at,public_metrics,reply_settings",
             "exclude": "retweets,replies",
         })
-        return data.get("data", [])
+        tweets = data.get("data", [])
+        # reply_settings が "everyone" のもののみリプライ可能
+        return [t for t in tweets if t.get("reply_settings", "everyone") == "everyone"]
     except Exception as e:
         print(f"  [WARN] ツイート取得失敗: {e}")
         return []

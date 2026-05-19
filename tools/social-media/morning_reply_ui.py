@@ -191,24 +191,42 @@ for idx, item in enumerate(st.session_state.tweets_data):
             st.markdown(f"<small style='color:{color}'>{ec} / 280 文字</small>", unsafe_allow_html=True)
 
             # ── 投稿・スキップボタン ──
+            tweet_url = f"https://x.com/{username}/status/{tweet_id}"
+
+            if ec > 0 and ec <= 280:
+                # クリップボードコピー用JS + ツイートを開くボタン
+                escaped = body.replace("`", "\\`").replace("\\", "\\\\").replace("\n", "\\n")
+                st.markdown(
+                    f"""
+<div style="display:flex;gap:8px;margin-top:8px">
+  <button onclick="navigator.clipboard.writeText(`{escaped}`).then(()=>this.textContent='✅ コピー済み！').catch(()=>alert('コピーできませんでした'))"
+    style="flex:2;padding:10px;background:#1d9bf0;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold">
+    📋 リプライ文をコピー
+  </button>
+  <a href="{tweet_url}" target="_blank"
+    style="flex:2;padding:10px;background:#0f1419;color:white;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">
+    🐦 Xで開いて貼り付け
+  </a>
+</div>
+<div style="margin-top:6px;padding:8px;background:#fff8e1;border-radius:6px;font-size:12px;color:#555">
+  ① 上のボタンでコピー → ② 「Xで開く」→ ③ 返信欄に貼り付けて投稿
+</div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            # 完了マーク（手動で押す）
             p1, p2 = st.columns(2)
             with p1:
-                post_disabled = (ec == 0 or ec > 280)
+                done_disabled = (ec == 0)
                 if st.button(
-                    "🚀 投稿する" + ("　（文字数エラー）" if ec > 280 else "　（本文を入力してください）" if ec == 0 else ""),
+                    "✅ 投稿完了（手動）" + ("　（本文を入力してください）" if ec == 0 else ""),
                     key=f"post_btn_{idx}",
                     type="primary",
-                    disabled=post_disabled,
+                    disabled=done_disabled,
                     use_container_width=True,
                 ):
-                    with st.spinner("X に投稿中..."):
-                        try:
-                            result  = mr.post_reply(body, tweet_id)
-                            new_id  = result.get("data", {}).get("id", "?")
-                            st.session_state.posted_ids.add(tweet_id)
-                            st.success(f"✅ 投稿しました！ ID: {new_id}")
-                        except Exception as e:
-                            st.error(f"❌ 投稿エラー: {e}")
+                    st.session_state.posted_ids.add(tweet_id)
                     st.rerun()
             with p2:
                 if st.button("スキップ", key=f"skip_{idx}", use_container_width=True):
